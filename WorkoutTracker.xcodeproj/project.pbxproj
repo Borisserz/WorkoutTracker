@@ -42,6 +42,7 @@
 		DFF29FA39E67AE2B62006FC5 /* UnitsManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCC4E71E0628C8F616ACDE3C /* UnitsManagerTests.swift */; };
 		E7A1B2C3D4E5F60718293A01 /* WatchConnectivityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7A1B2C3D4E5F60718293A02 /* WatchConnectivityTests.swift */; };
 		E8B2C3D4E5F60718293A0B01 /* SisterAppsCatalogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8B2C3D4E5F60718293A0B02 /* SisterAppsCatalogTests.swift */; };
+		A11B22C33D4E5F60718293A11 /* HonestyWindowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11B22C33D4E5F60718293A12 /* HonestyWindowTests.swift */; };
 		F5E644603197467223F670C5 /* ProgressManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A6B93572A2F5DA01DAC8691 /* ProgressManagerTests.swift */; };
 		FC4ED48F0C2C9E8C39B3DA00 /* CalorieCalculatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DD649EF8B041E49532FD342 /* CalorieCalculatorTests.swift */; };
 /* End PBXBuildFile section */
@@ -167,6 +168,7 @@
 		DCC4E71E0628C8F616ACDE3C /* UnitsManagerTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = UnitsManagerTests.swift; sourceTree = "<group>"; };
 		E7A1B2C3D4E5F60718293A02 /* WatchConnectivityTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchConnectivityTests.swift; sourceTree = "<group>"; };
 		E8B2C3D4E5F60718293A0B02 /* SisterAppsCatalogTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SisterAppsCatalogTests.swift; sourceTree = "<group>"; };
+		A11B22C33D4E5F60718293A12 /* HonestyWindowTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HonestyWindowTests.swift; sourceTree = "<group>"; };
 		F414296D08C64A43BAE5B983 /* HapticManagerTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HapticManagerTests.swift; sourceTree = "<group>"; };
 		F8D3C33349C62742653F1E18 /* WorkoutTrackerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = WorkoutTrackerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -403,6 +405,7 @@
 				F9C4D5E6A7B80910293A0C02 /* UserFacingAIMessageTests.swift */,
 				E7A1B2C3D4E5F60718293A02 /* WatchConnectivityTests.swift */,
 				E8B2C3D4E5F60718293A0B02 /* SisterAppsCatalogTests.swift */,
+				A11B22C33D4E5F60718293A12 /* HonestyWindowTests.swift */,
 			);
 			path = WorkoutTrackerTests;
 			sourceTree = "<group>";
@@ -702,6 +705,7 @@
 				F9C4D5E6A7B80910293A0C01 /* UserFacingAIMessageTests.swift in Sources */,
 				E7A1B2C3D4E5F60718293A01 /* WatchConnectivityTests.swift in Sources */,
 				E8B2C3D4E5F60718293A0B01 /* SisterAppsCatalogTests.swift in Sources */,
+				A11B22C33D4E5F60718293A11 /* HonestyWindowTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

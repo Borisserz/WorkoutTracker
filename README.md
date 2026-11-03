@@ -60,14 +60,7 @@ git clone https://github.com/Borisserz/WorkoutTracker.git
 cd WorkoutTracker
 ```
 
-1. Add a local `Secrets.swift` (gitignored) with your Gemini key:
-
-```swift
-enum Secrets {
-    static let geminiApiKey = "YOUR_GEMINI_API_KEY_HERE"
-}
-```
-
+1. AI calls go through the Firebase proxy (`ai_proxy_url` in Remote Config, with a baked HTTPS fallback). There is no client Gemini key.
 2. In Signing & Capabilities, set App Group `group.com.borisdev.WorkoutTracker` on App, Widget, and Watch targets (or your own group ID).
 3. Select a physical iPhone and run (`Cmd+R`).
 

@@ -55,6 +55,8 @@ struct HistoryView: View {
     @State private var finishedFetchLimit = HistoryView.finishedPageSize
     @State private var hasMoreFinished = true
     @State private var isLoadingMore = false
+    /// Ranked across every finished session, not the loaded timeline page.
+    @State private var bestHistoricalWorkouts: [Workout] = []
 
     @State private var searchText = ""
     @State private var isSearching = false
@@ -86,12 +88,6 @@ struct HistoryView: View {
             return allPresets
         }
         return []
-    }
-
-    // MARK: - Computed Best Workouts for Top Hall of Fame
-    private var bestHistoricalWorkouts: [Workout] {
-        let completed = finishedPage
-        return Array(completed.sorted(by: { $0.totalStrengthVolume > $1.totalStrengthVolume }).prefix(6))
     }
 
     // MARK: - Computed Filtered Workouts
@@ -146,6 +142,7 @@ struct HistoryView: View {
         let fetched = (try? context.fetch(descriptor)) ?? []
         finishedPage = fetched
         hasMoreFinished = fetched.count >= finishedFetchLimit
+        bestHistoricalWorkouts = (try? context.fetch(HistoryBestSessionQuery.descriptor())) ?? []
     }
 
     private func loadMoreFinished() {

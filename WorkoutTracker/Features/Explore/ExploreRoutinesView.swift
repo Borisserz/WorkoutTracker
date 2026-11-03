@@ -17,6 +17,7 @@ final class ExploreViewModel {
     var selectedLevel: ProgramLevel? = nil
     var selectedGoal: ProgramGoal? = nil
     var selectedEquipment: ProgramEquipment? = nil
+    var usingOfflineSamples = false
 
     var filteredPrograms: [WorkoutProgramDefinition] {
         allPrograms.filter { program in
@@ -55,12 +56,11 @@ struct ExploreRoutinesView: View {
 
     @Environment(ThemeManager.self) private var themeManager
     @Environment(DIContainer.self) private var di
-    @Environment(\.colorScheme) private var colorScheme: ColorScheme 
 
     var body: some View {
         ZStack {
 
-            (colorScheme == .dark ? themeManager.current.background : Color.white)
+            themeManager.current.background
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
@@ -78,10 +78,9 @@ struct ExploreRoutinesView: View {
                     HStack(spacing: 12) {
                         DebouncedSearchBar(debouncer: viewModel.searchDebouncer)
                             .padding()
-                            .background(colorScheme == .dark ? themeManager.current.surface : Color(UIColor.secondarySystemBackground))
+                            .background(themeManager.current.surface)
                             .cornerRadius(16)
-                            .overlay(RoundedRectangle(cornerRadius: 16).stroke(colorScheme == .dark ? Color.clear : Color.black.opacity(0.05), lineWidth: 1))
-                            .shadow(color: .black.opacity(colorScheme == .dark ? 0.05 : 0), radius: 5, x: 0, y: 2)
+                            .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
 
                         Button {
                             HapticManager.shared.impact(.light)
@@ -90,7 +89,7 @@ struct ExploreRoutinesView: View {
                             ZStack(alignment: .topTrailing) {
                                 Image(systemName: "line.3.horizontal.decrease.circle.fill")
                                     .font(.system(size: 32))
-                                    .foregroundColor(colorScheme == .dark ? themeManager.current.primaryAccent : .blue)
+                                    .foregroundColor(themeManager.current.primaryAccent)
 
                                 if viewModel.activeFilterCount > 0 {
                                     Circle()
@@ -109,7 +108,7 @@ struct ExploreRoutinesView: View {
                     .padding(.horizontal)
                     .padding(.bottom, 8)
                 }
-                .background(colorScheme == .dark ? themeManager.current.background : Color.white)
+                .background(themeManager.current.background)
                 .zIndex(1)
 
                 ScrollView(.vertical, showsIndicators: false) {
@@ -131,9 +130,24 @@ struct ExploreRoutinesView: View {
                         .buttonStyle(.plain)
                         .padding(.horizontal)
 
+                        if viewModel.usingOfflineSamples {
+                            HStack(alignment: .top, spacing: 10) {
+                                Image(systemName: "icloud.slash")
+                                    .foregroundStyle(PastelTheme.pastelAmber)
+                                Text("Showing bundled sample programs (generic names only). Connect to refresh the live catalog.")
+                                    .font(.footnote)
+                                    .foregroundStyle(PastelTheme.textSecondary)
+                                Spacer(minLength: 0)
+                            }
+                            .padding(14)
+                            .background(PastelTheme.cardSurface)
+                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                            .padding(.horizontal)
+                        }
+
                         Text(viewModel.selectedTab == .programs ? "All Programs" : "Single Routines")
                             .font(.headline)
-                            .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
+                            .foregroundColor(themeManager.current.secondaryText)
                             .padding(.horizontal)
                             .padding(.top, 10)
 
@@ -152,10 +166,7 @@ struct ExploreRoutinesView: View {
                                     : "Clear Filters"
                             ) {
                                 if viewModel.allPrograms.isEmpty {
-                                    Task {
-                                        await FirestoreProgramService.shared.fetchAllPrograms()
-                                        viewModel.allPrograms = FirestoreProgramService.shared.explorePrograms
-                                    }
+                                    Task { await reloadExploreCatalog() }
                                 } else {
                                     viewModel.searchDebouncer.inputText = ""
                                     viewModel.selectedLevel = nil
@@ -188,12 +199,19 @@ struct ExploreRoutinesView: View {
         .sheet(isPresented: $showAIBuilder) {
             AIProgramBuilderSheet(aiLogicService: di.aiLogicService)
         }
-        .task {
-                   if FirestoreProgramService.shared.explorePrograms.isEmpty {
-                       await FirestoreProgramService.shared.fetchAllPrograms()
-                   }
-                   viewModel.allPrograms = FirestoreProgramService.shared.explorePrograms
-               }
+        .task { await reloadExploreCatalog() }
+    }
+
+    private func reloadExploreCatalog() async {
+        if FirestoreProgramService.shared.explorePrograms.isEmpty {
+            await FirestoreProgramService.shared.fetchAllPrograms()
+        }
+        let remote = FirestoreProgramService.shared.explorePrograms
+        viewModel.usingOfflineSamples = ExploreCatalogSource.isOffline(remoteCount: remote.count)
+        viewModel.allPrograms = ExploreCatalogSource.programs(
+            remote: remote,
+            offline: MockProgramCatalog.shared.featuredPrograms
+        )
     }
 }
 

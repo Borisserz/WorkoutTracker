@@ -74,7 +74,6 @@ nonisolated private struct GoogleCloudErrorResponse: Codable, Sendable {
 
 actor GeminiNetworkClient {
     private let urlSession: URLSession
-    private let functionURL = "https://vertexproxy-ryy2hh2k3a-uc.a.run.app"
 
     init() {
         let config = URLSessionConfiguration.default
@@ -92,7 +91,11 @@ actor GeminiNetworkClient {
         }
 
        
-        guard var comps = URLComponents(string: functionURL) else { throw AILogicError.invalidURL }
+        let configured = await RemoteConfigManager.shared.getString(forKey: AIProxyEndpoint.remoteConfigKey)
+        let endpoint = AIProxyEndpoint.resolve(configured: configured)
+        guard var comps = URLComponents(url: endpoint, resolvingAgainstBaseURL: false) else {
+            throw AILogicError.invalidURL
+        }
         if stream { comps.queryItems = [URLQueryItem(name: "stream", value: "true")] }
         guard let url = comps.url else { throw AILogicError.invalidURL }
 

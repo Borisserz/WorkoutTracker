@@ -18,7 +18,6 @@ struct AICoachView: View {
     @Environment(DIContainer.self) private var di
     @Environment(AICoachViewModel.self) private var viewModel
     @Environment(UserStatsViewModel.self) private var userStatsViewModel
-    @Environment(\.colorScheme) private var colorScheme 
     @State private var actualHRV: Double? = nil
     @State private var actualRHR: Double? = nil
     
@@ -33,13 +32,7 @@ struct AICoachView: View {
     @State private var showConsentSheet = false
     @State private var pendingAIAction: (() -> Void)? = nil
 
-    @State private var isBreathing = false
-    @State private var isLevitating = false
     @State private var userQuery: String = ""
-
-    @State private var readinessValue: CGFloat = 0.0
-    @State private var sphereDragOffset: CGSize = .zero
-    @State private var shimmerOffset: CGFloat = -1.0
 
     @AppStorage("cnsScore") private var cnsScore: Double = Constants.CNS.unmeasuredAppStorageDefault
     @AppStorage("sleepHours") private var sleepHours: Double = 7.5
@@ -325,14 +318,6 @@ struct AICoachView: View {
             .dynamicTypeSize(.medium ... .accessibility1)
             .onAppear {
                 TrackingManager.shared.track(.aiCoachOpened(source: "tab"))
-                speechRecognizer.requestPermission()
-
-                withAnimation(.easeOut(duration: 2.5).delay(0.5)) {
-                    readinessValue = cnsScore < 0 ? 0 : cnsScore / 100
-                }
-                withAnimation(.easeInOut(duration: 3).repeatForever(autoreverses: true)) { isBreathing = true }
-                withAnimation(.easeInOut(duration: 4).repeatForever(autoreverses: true)) { isLevitating = true }
-                withAnimation(.linear(duration: 2.5).repeatForever(autoreverses: false)) { shimmerOffset = 2.0 }
             }
             .sheet(isPresented: $showRestSheet) { RestAnalysisSheet().presentationDetents([.large]).presentationCornerRadius(35).presentationDragIndicator(.visible) }
             .sheet(isPresented: $showProgressSheet) { ProgressAnalysisSheet().presentationDetents([.large]).presentationCornerRadius(35).presentationDragIndicator(.visible) }
@@ -450,140 +435,6 @@ struct PastelBentoCard: View {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .stroke(PastelTheme.cardBorder, lineWidth: 1)
         )
-    }
-}
-
-struct PastelReadinessCard: View {
-    let score: Double
-    let hrv: Double?
-    let rhr: Double?
-    let sleep: Double
-    let hasSleep: Bool
-
-    private var scoreColor: Color {
-        if score < 0 { return PastelTheme.textSecondary }
-        if score >= 80 { return PastelTheme.pastelSage }
-        if score >= 50 { return PastelTheme.pastelAmber }
-        return PastelTheme.pastelPeach
-    }
-
-    private var adviceText: String {
-        if score < 0 {
-            return String(localized: "Readiness not measured")
-        }
-        if score >= 80 {
-            return "CNS fully recovered. Great day for high-intensity compound lifts."
-        } else if score >= 50 {
-            return "Moderate load. Work at 70–80% of your max with a focus on clean form."
-        } else {
-            return "High CNS fatigue. Prefer a deload day, light cardio, or mobility work."
-        }
-    }
-
-    var body: some View {
-        VStack(spacing: 14) {
-            HStack(spacing: 14) {
-                // Circular Ring in Apple Watch Activity style
-                ZStack {
-                    Circle()
-                        .stroke(PastelTheme.cardBorder, lineWidth: 5)
-                        .frame(width: 58, height: 58)
-
-                    Circle()
-                        .trim(from: 0, to: CGFloat(min(max(score / 100.0, 0.0), 1.0)))
-                        .stroke(scoreColor, style: StrokeStyle(lineWidth: 5, lineCap: .round))
-                        .frame(width: 58, height: 58)
-                        .rotationEffect(.degrees(-90))
-
-                    Text("\(Int(score))")
-                        .font(.system(size: 18, weight: .heavy, design: .rounded))
-                        .foregroundStyle(PastelTheme.textPrimary)
-                }
-
-                VStack(alignment: .leading, spacing: 3) {
-                    HStack(spacing: 6) {
-                        Circle()
-                            .fill(scoreColor)
-                            .frame(width: 6, height: 6)
-
-                        Text("CNS Readiness")
-                            .font(.system(size: 11, weight: .bold, design: .rounded))
-                            .foregroundStyle(PastelTheme.textSecondary)
-                    }
-
-                    Text(CNSCalculator.getStatus(for: score).text)
-                        .font(.system(size: 16, weight: .bold, design: .rounded))
-                        .foregroundStyle(PastelTheme.textPrimary)
-                }
-
-                Spacer()
-            }
-
-            Divider()
-                .background(PastelTheme.separator)
-
-            // Micro-metrics row
-            HStack {
-                PastelMetricItem(title: "HRV", value: hrv != nil ? "\(Int(hrv!))" : "--", unit: "ms", color: PastelTheme.pastelSlate)
-                Spacer()
-                PastelMetricItem(title: "Resting HR", value: rhr != nil ? "\(Int(rhr!))" : "--", unit: "bpm", color: PastelTheme.pastelLavender)
-                Spacer()
-                PastelMetricItem(title: "Sleep", value: hasSleep ? String(format: "%.1f", sleep) : "--", unit: "h", color: PastelTheme.pastelAmber)
-            }
-
-            // Actionable 1-sentence verdict
-            HStack(alignment: .top, spacing: 8) {
-                Image(systemName: "sparkles")
-                    .font(.caption)
-                    .foregroundStyle(scoreColor)
-                    .padding(.top, 1)
-
-                Text(adviceText)
-                    .font(.caption)
-                    .foregroundStyle(PastelTheme.textSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(10)
-            .background(PastelTheme.cardSurfaceSubtle)
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .stroke(PastelTheme.cardBorder, lineWidth: 1)
-            )
-        }
-        .padding(16)
-        .background(PastelTheme.cardSurface)
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(PastelTheme.cardBorder, lineWidth: 1)
-        )
-    }
-}
-
-struct PastelMetricItem: View {
-    let title: String
-    let value: String
-    let unit: String
-    let color: Color
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(title)
-                .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(PastelTheme.textTertiary)
-
-            HStack(alignment: .firstTextBaseline, spacing: 3) {
-                Text(value)
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
-                    .foregroundStyle(PastelTheme.textPrimary)
-
-                Text(unit)
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(color)
-            }
-        }
     }
 }
 

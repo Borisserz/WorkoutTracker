@@ -284,7 +284,11 @@ struct StatsContentView: View {
 
                             AdvancedStatsSectionView(viewModel: viewModel, userGender: userGender)
 
-                            AllTimeResultsView(bestStats: dashboardViewModel.bestMonthStats, unitsManager: unitsManager)
+                            AllTimeResultsView(
+                                bestStats: dashboardViewModel.bestMonthStats,
+                                sessionCount: dashboardViewModel.totalWorkouts,
+                                unitsManager: unitsManager
+                            )
                         }
                         .blur(radius: dashboardViewModel.totalWorkouts == 0 ? 15 : 0)
                         .opacity(dashboardViewModel.totalWorkouts == 0 ? 0.5 : 1.0)
@@ -496,18 +500,18 @@ struct MascotStreakView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(streak > 0 ? "You're on fire! 🔥" : "Start your streak today!")
                     .font(.subheadline)
-                    .foregroundColor(colorScheme == .dark ? .gray : .secondary)
+                    .foregroundColor(.gray)
                 Text("\(streak) Day Streak")
                     .font(.headline)
-                    .foregroundColor(colorScheme == .dark ? .white : .black)
+                    .foregroundColor(.white)
             }
             Spacer()
         }
         .padding()
-        .background(colorScheme == .dark ? themeManager.current.surface : Color.white)
+        .background(themeManager.current.surface)
         .cornerRadius(20)
-        .overlay(RoundedRectangle(cornerRadius: 20).stroke(colorScheme == .dark ? Color.white.opacity(0.05) : Color.clear, lineWidth: 1))
-        .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 10, y: 4)
+        .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.white.opacity(0.05), lineWidth: 1))
+        .shadow(color: .black.opacity(0), radius: 10, y: 4)
     }
 }
 
@@ -601,7 +605,7 @@ struct CompactGoalEmptyState: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("No Active Goals")
                     .font(.system(size: 16, weight: .bold, design: .rounded))
-                    .foregroundColor(colorScheme == .dark ? .white : .black)
+                    .foregroundColor(.white)
                 Text("Set targets to stay accountable")
                     .font(.system(size: 13, weight: .medium))
                     .foregroundColor(.gray)
@@ -617,16 +621,16 @@ struct CompactGoalEmptyState: View {
                     .font(.system(size: 13, weight: .bold))
                     .padding(.horizontal, 14)
                     .padding(.vertical, 8)
-                    .background(colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.05))
-                    .foregroundColor(colorScheme == .dark ? .white : .black)
+                    .background(Color.white.opacity(0.1))
+                    .foregroundColor(.white)
                     .clipShape(Capsule())
             }
         }
         .padding()
-        .background(colorScheme == .dark ? themeManager.current.surface : Color.white)
+        .background(themeManager.current.surface)
         .cornerRadius(20)
-        .overlay(RoundedRectangle(cornerRadius: 20).stroke(colorScheme == .dark ? Color.white.opacity(0.05) : Color.clear, lineWidth: 1))
-        .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 8, y: 4)
+        .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.white.opacity(0.05), lineWidth: 1))
+        .shadow(color: .black.opacity(0), radius: 8, y: 4)
     }
 }
 
@@ -646,18 +650,18 @@ struct DesignerGoalCard: View {
                     Image(systemName: iconName).foregroundColor(iconColor)
                 }
                 VStack(alignment: .leading) {
-                    Text(title).font(.headline).foregroundColor(colorScheme == .dark ? .white : .black)
-                    Text(subtitle).font(.caption).foregroundColor(colorScheme == .dark ? .gray : .secondary)
+                    Text(title).font(.headline).foregroundColor(.white)
+                    Text(subtitle).font(.caption).foregroundColor(.gray)
                 }
                 Spacer()
                 Menu {
                     Button(role: .destructive, action: onDelete) { Label("Delete", systemImage: "trash") }
-                } label: { Image(systemName: "ellipsis").foregroundColor(colorScheme == .dark ? .gray : .secondary).padding(8) }
+                } label: { Image(systemName: "ellipsis").foregroundColor(.gray).padding(8) }
             }
 
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
-                    Capsule().fill(colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.05)).frame(height: 8)
+                    Capsule().fill(Color.white.opacity(0.1)).frame(height: 8)
                     Capsule()
                         .fill(LinearGradient(colors: [iconColor.opacity(0.6), iconColor], startPoint: .leading, endPoint: .trailing))
                         .frame(width: geo.size.width * CGFloat(calculateProgress()), height: 8)
@@ -665,16 +669,16 @@ struct DesignerGoalCard: View {
             }.frame(height: 8)
 
             HStack {
-                Text(currentText).font(.caption).bold().foregroundColor(colorScheme == .dark ? .white : .black)
+                Text(currentText).font(.caption).bold().foregroundColor(.white)
                 Spacer()
-                Text(targetText).font(.caption).foregroundColor(colorScheme == .dark ? .gray : .secondary)
+                Text(targetText).font(.caption).foregroundColor(.gray)
             }
         }
         .padding()
-        .background(colorScheme == .dark ? Color.white.opacity(0.03) : Color.white)
+        .background(Color.white.opacity(0.03))
         .cornerRadius(16)
-        .overlay(RoundedRectangle(cornerRadius: 16).stroke(colorScheme == .dark ? Color.white.opacity(0.05) : Color.clear, lineWidth: 1))
-        .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 8, y: 4)
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.05), lineWidth: 1))
+        .shadow(color: .black.opacity(0), radius: 8, y: 4)
     }
 
     private var iconName: String { 
@@ -773,7 +777,7 @@ struct BodyTransformBannerCard: View {
             ZStack {
                 // Background card
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(colorScheme == .dark ? Color(red: 0.08, green: 0.08, blue: 0.10) : Color.white)
+                    .fill(Color(red: 0.08, green: 0.08, blue: 0.10))
 
                 // Shimmer effect
                 if colorScheme == .dark {
@@ -876,7 +880,7 @@ struct AIIslandView: View {
             ZStack {
                 // Background card
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(colorScheme == .dark ? Color(red: 0.08, green: 0.08, blue: 0.10) : Color.white)
+                    .fill(Color(red: 0.08, green: 0.08, blue: 0.10))
 
                 HStack(spacing: 16) {
                     // AI sparkles icon
@@ -1431,26 +1435,26 @@ struct InteractiveStatCard: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(value)
                         .font(.system(size: 18, weight: .bold))
-                        .foregroundColor(colorScheme == .dark ? .white : .black)
+                        .foregroundColor(.white)
                         .minimumScaleFactor(0.5)
                         .lineLimit(1)
                         .contentTransition(.numericText())
                     Text(title)
                         .font(.system(size: 11))
-                        .foregroundColor(isSelected ? (colorScheme == .dark ? .white.opacity(0.9) : .black.opacity(0.8)) : .gray)
+                        .foregroundColor(isSelected ? (.white.opacity(0.9)) : .gray)
                         .lineLimit(1)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding()
 
-            .background(isSelected ? (colorScheme == .dark ? Color.white.opacity(0.1) : activeColor.opacity(0.1)) : (colorScheme == .dark ? Color.white.opacity(0.03) : Color.white))
+            .background(isSelected ? (Color.white.opacity(0.1)) : (Color.white.opacity(0.03)))
             .cornerRadius(16)
             .overlay(
                 RoundedRectangle(cornerRadius: 16)
-                    .stroke(isSelected ? activeColor.opacity(0.6) : (colorScheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.05)), lineWidth: isSelected ? 1.5 : 1)
+                    .stroke(isSelected ? activeColor.opacity(0.6) : (Color.white.opacity(0.05)), lineWidth: isSelected ? 1.5 : 1)
             )
-            .shadow(color: isSelected ? activeColor.opacity(0.3) : .black.opacity(colorScheme == .dark ? 0 : 0.03), radius: 10, y: 5)
+            .shadow(color: isSelected ? activeColor.opacity(0.3) : .black.opacity(0), radius: 10, y: 5)
         }
         .buttonStyle(.plain)
     }
@@ -1467,7 +1471,7 @@ struct AdvancedStatsSectionView: View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Extended Statistics")
                 .font(.title3).bold()
-                .foregroundColor(colorScheme == .dark ? .white : .black)
+                .foregroundColor(.white)
 
             VStack(spacing: 12) {
 
@@ -1481,7 +1485,7 @@ struct AdvancedStatsSectionView: View {
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Learn which mechanics and equipment dominate your workouts.")
                             .font(.subheadline)
-                            .foregroundColor(colorScheme == .dark ? .gray : .secondary)
+                            .foregroundColor(.gray)
 
                         InnerCardNavigationButton(title: "Mechanics Breakdown", icon: "scale.3d", color: .orange) {
                             TrainingStyleDetailView()
@@ -1508,7 +1512,7 @@ struct AdvancedStatsSectionView: View {
                                 }
                             }
                             .padding()
-                            .background(colorScheme == .dark ? Color.white.opacity(0.03) : Color(UIColor.secondarySystemGroupedBackground))
+                            .background(Color.white.opacity(0.03))
                             .cornerRadius(16)
 
                             InnerCardNavigationButton(title: "Dynamics and Trends", icon: "waveform.path.ecg", color: .blue) {
@@ -1546,7 +1550,7 @@ struct AdvancedStatsSectionView: View {
                                     Text(LocalizedStringKey(anatomy.setsPerMuscle.first?.muscle ?? ""))
                                         .font(.headline)
                                         .bold()
-                                        .foregroundColor(colorScheme == .dark ? .white : .black)
+                                        .foregroundColor(.white)
                                 }
                             }
                             .padding(.vertical, 10)
@@ -1571,7 +1575,7 @@ struct AdvancedStatsSectionView: View {
 
                         ZStack {
 
-                            (colorScheme == .dark ? Color(hex: "151517") : Color(UIColor.secondarySystemGroupedBackground))
+                            (Color(hex: "151517"))
 
                             RadialGradient(
                                 colors: [Color.red.opacity(0.15), .clear],
@@ -1596,7 +1600,7 @@ struct AdvancedStatsSectionView: View {
                         .frame(height: 240)
 
                         Divider()
-                            .background(colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.1))
+                            .background(Color.white.opacity(0.1))
 
                         NavigationLink(destination: HeatmapDetailView(gender: userGender)) {
                             HStack {
@@ -1605,22 +1609,22 @@ struct AdvancedStatsSectionView: View {
                                 Text("Open Tension Map")
                                     .font(.subheadline)
                                     .bold()
-                                    .foregroundColor(colorScheme == .dark ? .white : .black)
+                                    .foregroundColor(.white)
                                 Spacer()
                                 Image(systemName: "chevron.right")
                                     .font(.caption.bold())
                                     .foregroundColor(.gray)
                             }
                             .padding()
-                            .background(colorScheme == .dark ? Color.white.opacity(0.02) : Color.white)
+                            .background(Color.white.opacity(0.02))
                         }
                     }
                     .clipShape(RoundedRectangle(cornerRadius: 16))
                     .overlay(
                         RoundedRectangle(cornerRadius: 16)
-                            .stroke(colorScheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.05), lineWidth: 1)
+                            .stroke(Color.white.opacity(0.05), lineWidth: 1)
                     )
-                    .shadow(color: .black.opacity(colorScheme == .dark ? 0.2 : 0.05), radius: 10, y: 5)
+                    .shadow(color: .black.opacity(0.2), radius: 10, y: 5)
                 }
 
                 PremiumDisclosureCard(
@@ -1672,10 +1676,10 @@ struct PremiumDisclosureCard<Content: View>: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(LocalizedStringKey(title))
                             .font(.system(size: 16, weight: .bold))
-                            .foregroundColor(colorScheme == .dark ? .white : .black)
+                            .foregroundColor(.white)
                         Text(LocalizedStringKey(subtitle))
                             .font(.system(size: 12))
-                            .foregroundColor(colorScheme == .dark ? .gray : .secondary)
+                            .foregroundColor(.gray)
                             .multilineTextAlignment(.leading)
                             .lineLimit(2)
                     }
@@ -1688,24 +1692,24 @@ struct PremiumDisclosureCard<Content: View>: View {
                         .rotationEffect(.degrees(isExpanded ? 90 : 0))
                 }
                 .padding(16)
-                .background(colorScheme == .dark ? Color.white.opacity(0.03) : Color.white)
+                .background(Color.white.opacity(0.03))
             }
 
             if isExpanded {
                 VStack(alignment: .leading) {
-                    Divider().background(colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.1))
+                    Divider().background(Color.white.opacity(0.1))
                         .padding(.horizontal, 16)
 
                     content()
                         .padding(16)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(colorScheme == .dark ? Color.white.opacity(0.01) : Color.white)
+                .background(Color.white.opacity(0.01))
             }
         }
         .clipShape(RoundedRectangle(cornerRadius: 20))
-        .overlay(RoundedRectangle(cornerRadius: 20).stroke(colorScheme == .dark ? Color.white.opacity(0.05) : Color.clear, lineWidth: 1))
-        .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 8, y: 4)
+        .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.white.opacity(0.05), lineWidth: 1))
+        .shadow(color: .black.opacity(0), radius: 8, y: 4)
     }
 }
 struct InnerCardNavigationButton<Destination: View>: View {
@@ -1731,7 +1735,7 @@ struct InnerCardNavigationButton<Destination: View>: View {
                 Text(LocalizedStringKey(title))
                     .font(.subheadline)
                     .bold()
-                    .foregroundColor(colorScheme == .dark ? .white : .black)
+                    .foregroundColor(.white)
 
                 Spacer()
 
@@ -1740,11 +1744,11 @@ struct InnerCardNavigationButton<Destination: View>: View {
                     .foregroundColor(.gray)
             }
             .padding(12)
-            .background(colorScheme == .dark ? Color.white.opacity(0.03) : Color(UIColor.secondarySystemGroupedBackground))
+            .background(Color.white.opacity(0.03))
             .cornerRadius(16)
             .overlay(
                 RoundedRectangle(cornerRadius: 16)
-                    .stroke(colorScheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.05), lineWidth: 1)
+                    .stroke(Color.white.opacity(0.05), lineWidth: 1)
             )
         }
     }
@@ -1761,11 +1765,11 @@ struct MuscleRow: View {
             HStack {
                 Text(LocalizedStringKey(name)).font(.caption).foregroundColor(.gray)
                 Spacer()
-                Text("\(sets) sets.").font(.caption).bold().foregroundColor(colorScheme == .dark ? .white : .black)
+                Text("\(sets) sets.").font(.caption).bold().foregroundColor(.white)
             }
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
-                    Capsule().fill(colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.05)).frame(height: 8)
+                    Capsule().fill(Color.white.opacity(0.1)).frame(height: 8)
                     Capsule().fill(color).frame(width: geo.size.width * CGFloat(sets) / CGFloat(max), height: 8)
                 }
             }
@@ -1776,21 +1780,8 @@ struct MuscleRow: View {
 
 struct AllTimeResultsView: View {
     let bestStats: PeriodStats
+    let sessionCount: Int
     let unitsManager: UnitsManager
-    @Environment(\.colorScheme) private var colorScheme
-
-    @Query private var allWorkouts: [Workout]
-
-    init(bestStats: PeriodStats, unitsManager: UnitsManager) {
-        self.bestStats = bestStats
-        self.unitsManager = unitsManager
-        var descriptor = FetchDescriptor<Workout>(
-            predicate: #Predicate<Workout> { $0.endTime != nil },
-            sortBy: [SortDescriptor(\.date, order: .reverse)]
-        )
-        descriptor.fetchLimit = 400
-        _allWorkouts = Query(descriptor)
-    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -1805,7 +1796,7 @@ struct AllTimeResultsView: View {
 
                 Spacer()
 
-                Text("\(allWorkouts.count) sessions")
+                Text("\(sessionCount) sessions")
                     .font(.system(size: 12, weight: .semibold, design: .rounded))
                     .foregroundStyle(PastelTheme.textTertiary)
             }
@@ -2051,17 +2042,17 @@ struct SetsTrendDetailView: View {
                                 .padding(.horizontal, 20)
                                 .padding(.vertical, 10)
 
-                                .background(isSelected ? muscleColor : (colorScheme == .dark ? themeManager.current.surface : Color.white))
+                                .background(isSelected ? muscleColor : (themeManager.current.surface))
 
-                                .foregroundColor(isSelected ? .white : (colorScheme == .dark ? .white : .black))
+                                .foregroundColor(isSelected ? .white : (.white))
                                 .cornerRadius(20)
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 20)
 
-                                        .stroke(isSelected ? muscleColor : (colorScheme == .dark ? muscleColor.opacity(0.5) : Color.black.opacity(0.05)), lineWidth: 1.5)
+                                        .stroke(isSelected ? muscleColor : (muscleColor.opacity(0.5)), lineWidth: 1.5)
                                 )
 
-                                .shadow(color: isSelected ? muscleColor.opacity(0.4) : .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 8, x: 0, y: 4)
+                                .shadow(color: isSelected ? muscleColor.opacity(0.4) : .black.opacity(0), radius: 8, x: 0, y: 4)
                         }
                     }
                 }
@@ -2075,7 +2066,7 @@ struct SetsTrendDetailView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(LocalizedStringKey("Total Sets"))
                     .font(.subheadline)
-                    .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray) 
+                    .foregroundColor(themeManager.current.secondaryText) 
 
                 Text("\(totalSets)")
                     .font(.system(size: 40, weight: .bold, design: .rounded))
@@ -2084,27 +2075,27 @@ struct SetsTrendDetailView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding()
-            .background(colorScheme == .dark ? themeManager.current.surface : Color.white) 
+            .background(themeManager.current.surface) 
             .cornerRadius(16)
-            .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 5, y: 2) 
+            .shadow(color: .black.opacity(0), radius: 5, y: 2) 
 
             VStack(alignment: .leading, spacing: 4) {
                 let maxLabel: LocalizedStringKey = (selectedPeriod == .year || selectedPeriod == .allTime) ? "Monthly Max" : "Daily Max"
 
                 Text(maxLabel)
                     .font(.subheadline)
-                    .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray) 
+                    .foregroundColor(themeManager.current.secondaryText) 
 
                 Text("\(maxSetsInPoint)")
                     .font(.system(size: 40, weight: .bold, design: .rounded))
-                    .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black) 
+                    .foregroundColor(themeManager.current.primaryText) 
                     .contentTransition(.numericText())
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding()
-            .background(colorScheme == .dark ? themeManager.current.surface : Color.white) 
+            .background(themeManager.current.surface) 
             .cornerRadius(16)
-            .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 5, y: 2) 
+            .shadow(color: .black.opacity(0), radius: 5, y: 2) 
         }
         .padding(.horizontal)
     }
@@ -2116,7 +2107,7 @@ struct SetsTrendDetailView: View {
         return VStack(alignment: .leading) {
             Text(LocalizedStringKey("Training Volume Over Time"))
                 .font(.headline)
-                .foregroundColor(colorScheme == .dark ? .white : .black) 
+                .foregroundColor(.white) 
                 .padding(.horizontal)
                 .padding(.top, 16)
 
@@ -2162,7 +2153,7 @@ struct SetsTrendDetailView: View {
                             Text("\(point.sets)")
                                 .font(.caption2)
                                 .fontWeight(.bold)
-                                .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray) 
+                                .foregroundColor(themeManager.current.secondaryText) 
                         }
                     }
                 }
@@ -2189,10 +2180,10 @@ struct SetsTrendDetailView: View {
             .padding()
         }
 
-        .background(colorScheme == .dark ? themeManager.current.surface : Color.white)
+        .background(themeManager.current.surface)
         .cornerRadius(20)
-        .overlay(RoundedRectangle(cornerRadius: 20).stroke(colorScheme == .dark ? Color.clear : Color.black.opacity(0.05), lineWidth: 1))
-        .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 8, y: 4)
+        .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.clear, lineWidth: 1))
+        .shadow(color: .black.opacity(0), radius: 8, y: 4)
         .padding(.horizontal)
         .animation(.spring(response: 0.5, dampingFraction: 0.8), value: aggregatedData.count)
         .animation(.easeInOut(duration: 0.3), value: selectedMuscle)
@@ -2336,7 +2327,7 @@ struct RadarChartDetailView: View {
             }
             .navigationTitle(LocalizedStringKey("Muscle distribution (Chart)"))
             .navigationBarTitleDisplayMode(.inline)
-            .background(colorScheme == .dark ? themeManager.current.background : Color(UIColor.systemGroupedBackground))
+            .background(themeManager.current.background)
         }
 
         @ViewBuilder
@@ -2345,12 +2336,12 @@ struct RadarChartDetailView: View {
                 HStack {
                     Text(LocalizedStringKey("Distribution Chart"))
                         .font(.headline)
-                        .foregroundColor(colorScheme == .dark ? .white : .black)
+                        .foregroundColor(.white)
                     Spacer()
                     if selectedPeriod != .allTime {
                         HStack(spacing: 12) {
-                            HStack(spacing: 4) { Circle().fill(Color.gray.opacity(0.5)).frame(width: 8); Text(LocalizedStringKey("Previous")).font(.caption2).foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray) }
-                            HStack(spacing: 4) { Circle().fill(themeManager.current.primaryAccent).frame(width: 8); Text(LocalizedStringKey("Current")).font(.caption2).foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray) }
+                            HStack(spacing: 4) { Circle().fill(Color.gray.opacity(0.5)).frame(width: 8); Text(LocalizedStringKey("Previous")).font(.caption2).foregroundColor(themeManager.current.secondaryText) }
+                            HStack(spacing: 4) { Circle().fill(themeManager.current.primaryAccent).frame(width: 8); Text(LocalizedStringKey("Current")).font(.caption2).foregroundColor(themeManager.current.secondaryText) }
                         }
                     }
                 }
@@ -2365,10 +2356,10 @@ struct RadarChartDetailView: View {
                 .frame(height: 320)
                 .padding()
             }
-            .background(colorScheme == .dark ? themeManager.current.surface : Color.white)
+            .background(themeManager.current.surface)
             .cornerRadius(20)
-            .overlay(RoundedRectangle(cornerRadius: 20).stroke(colorScheme == .dark ? Color.clear : Color.black.opacity(0.05), lineWidth: 1))
-            .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 8, y: 4)
+            .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.clear, lineWidth: 1))
+            .shadow(color: .black.opacity(0), radius: 8, y: 4)
             .padding(.horizontal)
         }
 
@@ -2377,9 +2368,9 @@ struct RadarChartDetailView: View {
             VStack(alignment: .leading, spacing: 0) {
 
                 HStack {
-                    Text(LocalizedStringKey("Muscle")).font(.caption).foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
+                    Text(LocalizedStringKey("Muscle")).font(.caption).foregroundColor(themeManager.current.secondaryText)
                     Spacer()
-                    Text(LocalizedStringKey("Sets (Share)")).font(.caption).foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
+                    Text(LocalizedStringKey("Sets (Share)")).font(.caption).foregroundColor(themeManager.current.secondaryText)
                 }
                 .padding(.horizontal).padding(.vertical, 12)
 
@@ -2393,10 +2384,10 @@ struct RadarChartDetailView: View {
                     }
                 }
             }
-            .background(colorScheme == .dark ? themeManager.current.surface : Color.white)
+            .background(themeManager.current.surface)
             .cornerRadius(20)
-            .overlay(RoundedRectangle(cornerRadius: 20).stroke(colorScheme == .dark ? Color.clear : Color.black.opacity(0.05), lineWidth: 1))
-            .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 8, y: 4)
+            .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.clear, lineWidth: 1))
+            .shadow(color: .black.opacity(0), radius: 8, y: 4)
             .padding(.horizontal)
         }
 
@@ -2406,8 +2397,8 @@ struct RadarChartDetailView: View {
             let percentage = totalSets > 0 ? Double(item.count) / Double(totalSets) * 100 : 0
 
             let isActive = isHighlighted || highlightedMuscle == nil
-            let textColor: Color = isActive ? (colorScheme == .dark ? .white : .black) : .gray
-            let subTextColor: Color = colorScheme == .dark ? themeManager.current.secondaryText : .gray
+            let textColor: Color = isActive ? (.white) : .gray
+            let subTextColor: Color = themeManager.current.secondaryText
 
             HStack {
                 Circle()
@@ -2467,20 +2458,20 @@ struct RadarChartDetailView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(LocalizedStringKey("Symmetry Score"))
                     .font(.headline)
-                    .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
+                    .foregroundColor(themeManager.current.primaryText)
                 Text(message)
                     .font(.caption)
-                    .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
+                    .foregroundColor(themeManager.current.secondaryText)
                     .lineLimit(2)
             }
             Spacer()
         }
         .padding()
 
-        .background(colorScheme == .dark ? themeManager.current.surface : Color.white)
+        .background(themeManager.current.surface)
         .cornerRadius(20)
-        .overlay(RoundedRectangle(cornerRadius: 20).stroke(colorScheme == .dark ? Color.clear : Color.black.opacity(0.05), lineWidth: 1))
-        .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 8, y: 4)
+        .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.clear, lineWidth: 1))
+        .shadow(color: .black.opacity(0), radius: 8, y: 4)
         .padding(.horizontal)
     }
 }
@@ -2549,7 +2540,7 @@ struct RadarChartDetailView: View {
                     if let prev = previousData {
                         DataPolygonShape(data: prev)
 
-                            .fill(colorScheme == .dark ? themeManager.current.surfaceVariant : Color.gray.opacity(0.15))
+                            .fill(themeManager.current.surfaceVariant)
                             .frame(width: chartDiameter, height: chartDiameter)
 
                         DataPolygonShape(data: prev)
@@ -2753,10 +2744,10 @@ struct HeatmapDetailView: View {
                            .padding(.vertical)
                        }
 
-                       .background(colorScheme == .dark ? themeManager.current.surface : Color.white)
+                       .background(themeManager.current.surface)
                        .cornerRadius(24)
-                       .overlay(RoundedRectangle(cornerRadius: 24).stroke(colorScheme == .dark ? Color.clear : Color.black.opacity(0.05), lineWidth: 1))
-                       .shadow(color: .black.opacity(colorScheme == .dark ? 0.05 : 0.05), radius: 10, y: 5)
+                       .overlay(RoundedRectangle(cornerRadius: 24).stroke(Color.clear, lineWidth: 1))
+                       .shadow(color: .black.opacity(0.05), radius: 10, y: 5)
                        .padding(.horizontal)
 
                        detailedBreakdownList(data: data)
@@ -2775,7 +2766,7 @@ struct HeatmapDetailView: View {
            .navigationTitle(LocalizedStringKey("Muscle distribution (Body)"))
            .navigationBarTitleDisplayMode(.inline)
 
-           .background(colorScheme == .dark ? themeManager.current.background : Color(UIColor.systemGroupedBackground))
+           .background(themeManager.current.background)
            .task(id: selectedPeriod) {
                await calculateData()
            }
@@ -2796,12 +2787,12 @@ struct HeatmapDetailView: View {
                VStack(alignment: .leading, spacing: 4) {
                    Text(LocalizedStringKey("Primary Focus"))
                        .font(.caption)
-                       .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
+                       .foregroundColor(themeManager.current.secondaryText)
 
                    Text(LocalizedStringKey(topMuscle.displayName))
                        .font(.title3)
                        .bold()
-                       .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black) 
+                       .foregroundColor(themeManager.current.primaryText) 
                }
 
                Spacer()
@@ -2809,7 +2800,7 @@ struct HeatmapDetailView: View {
                VStack(alignment: .trailing, spacing: 4) {
                    Text(LocalizedStringKey("Sets"))
                        .font(.caption)
-                       .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
+                       .foregroundColor(themeManager.current.secondaryText)
                    Text("\(topMuscle.sets)")
                        .font(.title2)
                        .bold()
@@ -2818,13 +2809,13 @@ struct HeatmapDetailView: View {
            }
            .padding()
 
-           .background(colorScheme == .dark ? themeManager.current.surface : Color.white)
+           .background(themeManager.current.surface)
            .cornerRadius(20)
            .overlay(
                RoundedRectangle(cornerRadius: 20)
-                   .stroke(Color.red.opacity(colorScheme == .dark ? 0.3 : 0.15), lineWidth: 1)
+                   .stroke(Color.red.opacity(0.3), lineWidth: 1)
            )
-           .shadow(color: .red.opacity(colorScheme == .dark ? 0.1 : 0.05), radius: 10, x: 0, y: 4)
+           .shadow(color: .red.opacity(0.1), radius: 10, x: 0, y: 4)
            .padding(.horizontal)
        }
 
@@ -2834,16 +2825,16 @@ struct HeatmapDetailView: View {
                HStack {
                    Text(LocalizedStringKey("Detailed Breakdown"))
                        .font(.headline)
-                       .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black) 
+                       .foregroundColor(themeManager.current.primaryText) 
                    Spacer()
                    Text(LocalizedStringKey("Sets"))
                        .font(.caption)
-                       .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray) 
+                       .foregroundColor(themeManager.current.secondaryText) 
                }
                .padding(.horizontal)
                .padding(.vertical, 12)
 
-               Divider().background(colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.1)) 
+               Divider().background(Color.white.opacity(0.1)) 
 
                ForEach(data.detailedList) { item in
                    HStack(spacing: 16) {
@@ -2851,12 +2842,12 @@ struct HeatmapDetailView: View {
                            Text(LocalizedStringKey(item.displayName))
                                .font(.subheadline)
                                .fontWeight(.medium)
-                               .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black) 
+                               .foregroundColor(themeManager.current.primaryText) 
 
                            GeometryReader { geo in
                                ZStack(alignment: .leading) {
                                    Capsule()
-                                       .fill(colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.05)) 
+                                       .fill(Color.white.opacity(0.1)) 
                                        .frame(height: 6)
 
                                    Capsule()
@@ -2873,23 +2864,23 @@ struct HeatmapDetailView: View {
                            .font(.subheadline)
                            .bold()
                            .monospacedDigit()
-                           .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black) 
+                           .foregroundColor(themeManager.current.primaryText) 
                    }
                    .padding(.horizontal)
                    .padding(.vertical, 12)
 
                    if item.id != data.detailedList.last?.id {
                        Divider().padding(.leading, 16)
-                           .background(colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.1)) 
+                           .background(Color.white.opacity(0.1)) 
                    }
                }
            }
            .padding(.bottom, 12)
 
-           .background(colorScheme == .dark ? themeManager.current.surface : Color.white)
+           .background(themeManager.current.surface)
            .cornerRadius(24)
-           .overlay(RoundedRectangle(cornerRadius: 24).stroke(colorScheme == .dark ? Color.clear : Color.black.opacity(0.05), lineWidth: 1))
-           .shadow(color: .black.opacity(colorScheme == .dark ? 0.05 : 0.05), radius: 10, y: 5)
+           .overlay(RoundedRectangle(cornerRadius: 24).stroke(Color.clear, lineWidth: 1))
+           .shadow(color: .black.opacity(0.05), radius: 10, y: 5)
            .padding(.horizontal)
        }
 

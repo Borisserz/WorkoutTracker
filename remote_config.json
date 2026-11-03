@@ -53,6 +53,13 @@
       "description": "Legacy sister-apps gate (also enables Profile More from us + one-time sheet).",
       "valueType": "STRING"
     },
+    "ai_proxy_url": {
+      "defaultValue": {
+        "value": "https://vertexproxy-ryy2hh2k3a-uc.a.run.app"
+      },
+      "description": "HTTPS AI proxy. Empty or non-https values fall back to the baked Cloud Run URL in the app.",
+      "valueType": "STRING"
+    },
     "show_sister_apps_promo": {
       "defaultValue": {
         "value": "0"

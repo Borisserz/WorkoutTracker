@@ -57,7 +57,7 @@ actor AnalyticsService {
 
            let streak = calculateWorkoutStreak(workouts: recentWorkouts)
            let bWeek = getBestStats(for: .week, workouts: recentWorkouts)
-           let bMonth = getBestStats(for: .month, workouts: recentWorkouts)
+           let bMonth = AllTimeBestMonth.rank(samples: fetchFinishedSessionSamples())
            let weakPts = getWeakPoints(recentWorkouts: recentWorkouts)
            let recs = getRecommendations(workouts: recentWorkouts, recoveryStatus: recovery)
 
@@ -477,6 +477,37 @@ actor AnalyticsService {
             }
             return stats
         }
+    /// Pages finished sessions and keeps only the scalars used by the all-time month card.
+    private func fetchFinishedSessionSamples() -> [FinishedSessionSample] {
+        var samples: [FinishedSessionSample] = []
+        let batchSize = 80
+        var offset = 0
+        while true {
+            let batchContext = ModelContext(modelContainer)
+            batchContext.autosaveEnabled = false
+            var descriptor = FetchDescriptor<Workout>(
+                predicate: #Predicate<Workout> { $0.endTime != nil },
+                sortBy: [SortDescriptor(\.date, order: .reverse)]
+            )
+            descriptor.fetchLimit = batchSize
+            descriptor.fetchOffset = offset
+            let batch = (try? batchContext.fetch(descriptor)) ?? []
+            if batch.isEmpty { break }
+            for workout in batch {
+                samples.append(FinishedSessionSample(
+                    date: workout.date,
+                    volumeKg: workout.totalStrengthVolume,
+                    reps: workout.totalReps,
+                    durationMinutes: workout.durationSeconds / 60,
+                    distanceMeters: workout.totalCardioDistance
+                ))
+            }
+            if batch.count < batchSize { break }
+            offset += batch.count
+        }
+        return samples
+    }
+
     func getBestStats(for periodType: StatsView.Period, workouts: [Workout]) -> PeriodStats {
         guard !workouts.isEmpty else { return PeriodStats() }
         var bestStats = PeriodStats()
