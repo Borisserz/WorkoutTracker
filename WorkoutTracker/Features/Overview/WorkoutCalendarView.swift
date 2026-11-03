@@ -738,7 +738,7 @@ private struct CalendarDayPressurePlate: View {
     var body: some View {
         Button {
             isDepressed = true
-            UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
+            HapticManager.shared.impact(.rigid)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.10) {
                 isDepressed = false
                 onTap()

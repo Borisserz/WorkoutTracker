@@ -164,8 +164,7 @@ struct AIWeeklyReviewSheet: View {
     }
 
     private func generateReview() {
-        let generator = UIImpactFeedbackGenerator(style: .medium)
-        generator.impactOccurred()
+        HapticManager.shared.impact(.medium)
         withAnimation(.easeInOut(duration: 0.3)) { isAnalyzing = true }
 
         Task {
@@ -175,8 +174,7 @@ struct AIWeeklyReviewSheet: View {
             do {
                 let dto = try await aiLogicService.generatePerformanceReview(statsContext: context, language: lang)
                 await MainActor.run {
-                    let successGen = UINotificationFeedbackGenerator()
-                    successGen.notificationOccurred(.success)
+                    HapticManager.shared.notification(.success)
                     withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
                         self.reviewData = dto
                         self.isAnalyzing = false
@@ -185,7 +183,7 @@ struct AIWeeklyReviewSheet: View {
             } catch {
                 await MainActor.run {
                     withAnimation {
-                        self.errorText = error.localizedDescription
+                        self.errorText = error.userFacingAIMessage
                         self.isAnalyzing = false
                     }
                 }
@@ -286,15 +284,15 @@ struct ReviewDashboardView: View {
         withAnimation(.spring(response: 0.8, dampingFraction: 0.7)) { showGauge = true }
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            let gen = UIImpactFeedbackGenerator(style: .light); gen.impactOccurred()
+            HapticManager.shared.impact(.light)
             withAnimation(.spring(response: 0.6, dampingFraction: 0.7)) { showTitle = true }
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            let gen = UIImpactFeedbackGenerator(style: .rigid); gen.impactOccurred()
+            HapticManager.shared.impact(.rigid)
             withAnimation(.spring(response: 0.6, dampingFraction: 0.75)) { showTopRow = true }
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
-            let gen = UIImpactFeedbackGenerator(style: .medium); gen.impactOccurred()
+            HapticManager.shared.impact(.medium)
             withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) { showBottomRow = true }
         }
     }
