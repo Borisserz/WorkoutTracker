@@ -80,7 +80,7 @@ actor AnalyticsService {
         let minDate = previousInterval.start
         let maxDate = currentInterval.end
 
-        var descriptor = FetchDescriptor<Workout>(
+        let descriptor = FetchDescriptor<Workout>(
             predicate: #Predicate<Workout> { $0.date >= minDate && $0.date <= maxDate },
             sortBy: [SortDescriptor(\.date, order: .reverse)]
         )
@@ -93,12 +93,18 @@ actor AnalyticsService {
         let detailedComparison = getDetailedComparison(workouts: bgWorkouts, period: period)
         let chartData = getChartData(for: period, metric: metric, workouts: bgWorkouts)
 
+        let currentWorkouts = bgWorkouts.filter { $0.date >= currentInterval.start && $0.date <= currentInterval.end }
+        let anatomy = fetchAnatomyStats(for: currentInterval, workouts: currentWorkouts)
+        let setsData = fetchSetsOverTime(period: period, workouts: currentWorkouts)
+
         return StatsDataResultDTO(
             currentStats: currentStats,
             previousStats: previousStats,
             recentPRs: recentPRs,
             detailedComparison: detailedComparison,
-            chartData: chartData
+            chartData: chartData,
+            anatomyStats: anatomy,
+            setsOverTime: setsData
         )
     }
 

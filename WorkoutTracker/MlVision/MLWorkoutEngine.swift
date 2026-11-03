@@ -39,16 +39,18 @@ final class MLWorkoutEngine: ObservableObject {
         Task.detached(priority: .userInitiated) {
             let config = MLModelConfiguration()
             do {
-                let model = try WorkoutClassifier(configuration: config).model
+                let model = try await WorkoutClassifier(configuration: config).model
                 await MainActor.run {
                     self.actionClassifier = model
+                    trace?.stop()
                 }
-                trace?.stop()
             } catch {
                 AppLog.ml.error("❌ MLWorkoutEngine: Failed to load WorkoutClassifier")
-                TrackingManager.shared.recordError(error: error, additionalInfo: ["context": "MLWorkoutEngine_init"])
-                await MainActor.run { self.modelLoadFailed = true }
-                trace?.stop()
+                await MainActor.run {
+                    TrackingManager.shared.recordError(error: error, additionalInfo: ["context": "MLWorkoutEngine_init"])
+                    self.modelLoadFailed = true
+                    trace?.stop()
+                }
             }
         }
     }
@@ -103,7 +105,7 @@ final class MLWorkoutEngine: ObservableObject {
 
     nonisolated private func performPrediction(on window: [MLMultiArray], model: MLModel) async -> (label: String, confidence: Double)? {
         do {
-            let combinedArray = try MLMultiArray(concatenating: window, axis: 0, dataType: .float32)
+            let combinedArray = MLMultiArray(concatenating: window, axis: 0, dataType: .float32)
             let input = try MLDictionaryFeatureProvider(dictionary: ["poses": combinedArray])
             let prediction = try await model.prediction(from: input)
 

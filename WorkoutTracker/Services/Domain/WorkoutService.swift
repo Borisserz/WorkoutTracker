@@ -27,8 +27,8 @@ final class WorkoutService {
     private var startInFlight = false
     /// Blocks new starts during finish snackbar undo window (endTime set but session not committed).
     private var finishTransitionDepth = 0
-    /// Token for LiveWorkoutSyncEvent; `nonisolated(unsafe)` so `deinit` can unregister.
-    nonisolated(unsafe) private var liveSyncObserver: NSObjectProtocol?
+    /// Token for LiveWorkoutSyncEvent; `@ObservationIgnored` and `nonisolated(unsafe)` so `deinit` can unregister.
+    @ObservationIgnored nonisolated(unsafe) private var liveSyncObserver: (any NSObjectProtocol)?
 
     var isFinishTransitionPending: Bool { finishTransitionDepth > 0 }
     /// Sync gate for UI (History/Hub) — covers in-flight start and finish-undo window.
@@ -74,7 +74,7 @@ final class WorkoutService {
                   let payload = payloadDict as? LiveSyncPayload else { return }
 
             Task.detached {
-                let container = await self.analyticsService.modelContainer
+                let container = self.analyticsService.modelContainer
                 let bgContext = ModelContext(container)
                 let workoutUUID = UUID(uuidString: payload.workoutID)
 
@@ -102,8 +102,9 @@ final class WorkoutService {
                     let actives = (try? bgContext.fetch(activeDesc)) ?? []
                     let freshActives = actives.filter { Date().timeIntervalSince($0.date) <= 12 * 3600 }
                     if let existing = freshActives.first {
+                        let existingID = existing.persistentModelID
                         await MainActor.run {
-                            self.appState.returnToActiveWorkoutId = existing.persistentModelID
+                            self.appState.returnToActiveWorkoutId = existingID
                             self.appState.showError(
                                 title: String(localized: "Workout in progress"),
                                 message: String(localized: "Finish or delete the current workout before starting another.")
@@ -111,7 +112,9 @@ final class WorkoutService {
                         }
                         return
                     }
-                    TrackingManager.shared.track(.watchWorkoutStarted)
+                    await MainActor.run {
+                        TrackingManager.shared.track(.watchWorkoutStarted)
+                    }
                     let newWorkout = Workout(id: uuid, title: payload.workoutTitle ?? "Watch Workout", date: Date(), exercises: [])
                     newWorkout.icon = "applewatch"
                     bgContext.insert(newWorkout)
@@ -138,9 +141,11 @@ final class WorkoutService {
                         return
                     }
 
+                    let newTitle = newWorkout.title
+                    let newID = newWorkout.persistentModelID
                     await MainActor.run {
-                        self.liveActivityManager.startWorkoutActivity(title: newWorkout.title)
-                        self.appState.returnToActiveWorkoutId = newWorkout.persistentModelID
+                        self.liveActivityManager.startWorkoutActivity(title: newTitle)
+                        self.appState.returnToActiveWorkoutId = newID
                     }
 
                 case .addExercise:
@@ -229,9 +234,10 @@ final class WorkoutService {
                             }
                         }
                         try? bgContext.save()
-                        TrackingManager.shared.track(.watchSyncCompleted(success: true, itemsSynced: workout.exercises.count))
+                        let itemsCount = workout.exercises.count
                         let pid = workout.persistentModelID
                         await MainActor.run {
+                            TrackingManager.shared.track(.watchSyncCompleted(success: true, itemsSynced: itemsCount))
                             let mainContext = container.mainContext
                             if let mainWorkout = mainContext.model(for: pid) as? Workout {
                                 Task { await self.processCompletedWorkout(mainWorkout) }

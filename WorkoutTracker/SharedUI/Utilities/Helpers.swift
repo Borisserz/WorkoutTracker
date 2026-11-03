@@ -92,9 +92,8 @@ struct SVGParser: Sendable {
         var lastCommand = " "
 
         while !scanner.isAtEnd {
-            var command: NSString?
-            if scanner.scanCharacters(from: .letters, into: &command) {
-                lastCommand = (command as String?) ?? " "
+            if let command = scanner.scanCharacters(from: .letters) {
+                lastCommand = command
             }
 
             switch lastCommand {

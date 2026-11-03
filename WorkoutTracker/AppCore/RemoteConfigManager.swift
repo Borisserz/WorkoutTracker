@@ -41,7 +41,7 @@ actor RemoteConfigManager: Sendable {
                 sharedDefaults.set(showPromo, forKey: "show_foodtracker_promo_enabled")
             }
         
-            let jsonString = remoteConfig.configValue(forKey: "ai_personas_config").stringValue ?? ""
+            let jsonString = remoteConfig.configValue(forKey: "ai_personas_config").stringValue
             if let data = jsonString.data(using: .utf8),
                let config = try? JSONDecoder().decode(AIPersonasConfig.self, from: data) {
                 self.cachedPersonas = config.personas
@@ -53,7 +53,7 @@ actor RemoteConfigManager: Sendable {
     }
 
     func getString(forKey key: String) -> String {
-        return remoteConfig.configValue(forKey: key).stringValue ?? ""
+        return remoteConfig.configValue(forKey: key).stringValue
     }
     
     var minimumAppVersion: String {

@@ -7,18 +7,14 @@ protocol UserRepositoryProtocol: Sendable {
     func addWeightEntry(weight: Double, date: Date, imageFileNames: [String]) async throws
     func deleteWeightEntry(_ entryID: PersistentIdentifier) async throws
 
-    func saveBodyMeasurement(_ measurement: BodyMeasurement) async throws
+    func saveBodyMeasurement(_ dto: BodyMeasurementDTO) async throws
     func deleteBodyMeasurement(_ measurementID: PersistentIdentifier) async throws
 
     func saveExerciseNote(exerciseName: String, text: String, existingNoteID: PersistentIdentifier?) async throws -> PersistentIdentifier?
-    func fetchExerciseNote(exerciseName: String) async throws -> ExerciseNote?
-
     func deleteAIChatSession(_ sessionID: PersistentIdentifier) async throws
-    func fetchAIChatSessions() async throws -> [AIChatSession]
-    func saveAIChatSession(_ session: AIChatSession) async throws
     func checkBodyweightGoal(currentWeight: Double) async throws -> Bool
     func deleteGoal(goalID: PersistentIdentifier) async throws
-    }
+}
 
 @ModelActor
 actor UserRepository: UserRepositoryProtocol {
@@ -38,8 +34,8 @@ actor UserRepository: UserRepositoryProtocol {
         try modelContext.save()
     }
 
-    func saveBodyMeasurement(_ measurement: BodyMeasurement) async throws {
-
+    func saveBodyMeasurement(_ dto: BodyMeasurementDTO) async throws {
+        let measurement = BodyMeasurement(from: dto)
         modelContext.insert(measurement)
         try modelContext.save()
     }
@@ -70,33 +66,17 @@ actor UserRepository: UserRepositoryProtocol {
         return note?.persistentModelID
     }
 
-    func fetchExerciseNote(exerciseName: String) async throws -> ExerciseNote? {
-        let descriptor = FetchDescriptor<ExerciseNote>(predicate: #Predicate { $0.exerciseName == exerciseName })
-        return try modelContext.fetch(descriptor).first
-    }
-
     func deleteGoal(goalID: PersistentIdentifier) async throws {
-            guard let goal = modelContext.model(for: goalID) as? UserGoal else {
-
-                return
-            }
-            modelContext.delete(goal)
-            try modelContext.save()
+        guard let goal = modelContext.model(for: goalID) as? UserGoal else {
+            return
         }
+        modelContext.delete(goal)
+        try modelContext.save()
+    }
 
     func deleteAIChatSession(_ sessionID: PersistentIdentifier) async throws {
         guard let session = modelContext.model(for: sessionID) as? AIChatSession else { throw WorkoutRepositoryError.modelNotFound }
         modelContext.delete(session)
-        try modelContext.save()
-    }
-
-    func fetchAIChatSessions() async throws -> [AIChatSession] {
-        let descriptor = FetchDescriptor<AIChatSession>(sortBy: [SortDescriptor(\.date, order: .reverse)])
-        return try modelContext.fetch(descriptor)
-    }
-
-    func saveAIChatSession(_ session: AIChatSession) async throws {
-        modelContext.insert(session)
         try modelContext.save()
     }
 

@@ -143,7 +143,7 @@ struct WorkoutTrackerApp: App {
                     queuedOpenURL = url
                 }
             }
-            .onChange(of: scenePhase) { newPhase in
+            .onChange(of: scenePhase) { _, newPhase in
                 if newPhase == .active {
                     TrackingManager.shared.track(.appOpened(source: "scene_active"))
                     UNUserNotificationCenter.current().setBadgeCount(0)
@@ -152,7 +152,7 @@ struct WorkoutTrackerApp: App {
                     Task { await versionManager.checkForUpdates() }
                 }
             }
-            .onChange(of: hasCompletedGodModeOnboarding) { completed in
+            .onChange(of: hasCompletedGodModeOnboarding) { _, completed in
                 guard completed, let di = diContainer, let url = di.appState.pendingOpenURL else { return }
                 di.appState.pendingOpenURL = nil
                 NotificationCenter.default.post(name: Notification.Name("pendingOpenURLReady"), object: url)

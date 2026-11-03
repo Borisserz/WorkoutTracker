@@ -11,7 +11,7 @@ public struct MuscleCategoryMapper: Sendable {
         "core": ["abdominals", "abs", "obliques", "core"]
     ]
 
-    public static func expandMuscles(from uiCategories: Set<String>) -> Set<String> {
+    public nonisolated static func expandMuscles(from uiCategories: Set<String>) -> Set<String> {
         var expandedMuscles = Set<String>()
 
         for category in uiCategories {
@@ -27,7 +27,7 @@ public struct MuscleCategoryMapper: Sendable {
         return expandedMuscles
     }
 
-    public static func getBroadCategory(for rawMuscle: String) -> String {
+    public nonisolated static func getBroadCategory(for rawMuscle: String) -> String {
            let lower = rawMuscle.lowercased()
 
            for (category, muscles) in categoryToMuscles {

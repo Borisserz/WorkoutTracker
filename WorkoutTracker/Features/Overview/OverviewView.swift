@@ -80,13 +80,12 @@ struct OverviewView: View {
     var body: some View {
         NavigationStack(path: $router.path) {
             ZStack {
-                PastelTheme.canvas.ignoresSafeArea()
-                AtmosphericGymBackdropView(style: .overview)
+                Color.clear.ignoresSafeArea()
 
                 ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 18) {
                         
-                        // 1. Header with greeting, date, streak, calendar and profile
+                        // 1. Header with greeting, date, streak, calendar, settings and profile
                         OverviewHeaderView(
                             streakDays: dashboardViewModel.streakCount,
                             onCalendarTap: { router.push(.calendar) },
@@ -110,9 +109,6 @@ struct OverviewView: View {
                                     fullRecoveryHours: storedRecoveryHours
                                 )
                                 router.present(.bodyAnalysis(report))
-                            },
-                            onSettingsTap: {
-                                router.present(.settings)
                             }
                         )
 

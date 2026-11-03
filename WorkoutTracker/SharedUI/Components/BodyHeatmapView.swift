@@ -74,7 +74,6 @@ struct BodyHeatmapView: View {
                 let scale = min(geo.size.width / canvasWidth, geo.size.height / canvasHeight)
                 let currentMuscles = getMuscles(isFront: activeIsFront)
                 let centeringOffset = getCenteringOffset(isFront: activeIsFront, muscles: currentMuscles)
-                let tagsToShow = activeIsFront ? frontTags : backTags
 
                 ZStack {
                     // Silhouette vector paths with direct path-level hit-testing

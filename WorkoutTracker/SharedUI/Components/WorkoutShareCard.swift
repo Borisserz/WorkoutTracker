@@ -35,7 +35,6 @@ struct ReceiptZigZagShape: Shape {
         for i in (0..<topTeeth).reversed() {
             let startX = rect.minX + CGFloat(i) * actualToothWidth
             let midX = startX + actualToothWidth / 2
-            let endX = startX + actualToothWidth
             path.addLine(to: CGPoint(x: midX, y: rect.maxY))
             path.addLine(to: CGPoint(x: startX, y: rect.maxY - toothHeight))
         }

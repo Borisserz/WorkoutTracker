@@ -4,7 +4,7 @@ import Foundation
 import SwiftData
 internal import SwiftUI
 
-enum SetType: String, Codable, CaseIterable {
+enum SetType: String, Codable, CaseIterable, Sendable {
     case normal = "N"
     case warmup = "W"
     case failure = "F"
@@ -18,7 +18,7 @@ enum SetType: String, Codable, CaseIterable {
     }
 }
 
-enum ExerciseType: String, Codable, CaseIterable, Identifiable {
+enum ExerciseType: String, Codable, CaseIterable, Identifiable, Sendable {
     case strength = "Strength"
     case cardio = "Cardio"
     case duration = "Duration"
@@ -26,10 +26,10 @@ enum ExerciseType: String, Codable, CaseIterable, Identifiable {
     var id: String { self.rawValue }
 }
 
-enum ExerciseCategory: String, Codable, CaseIterable {
+enum ExerciseCategory: String, Codable, CaseIterable, Sendable {
     case squat = "Squat", press = "Press", deadlift = "Deadlift", pull = "Pull", curl = "Curl", core = "Core", cardio = "Cardio", other = "Other"
 
-    static func determine(from name: String) -> ExerciseCategory {
+    nonisolated static func determine(from name: String) -> ExerciseCategory {
         let lower = name.lowercased()
         if lower.contains("squat") { return .squat }
         if lower.contains("bench") || lower.contains("press") || lower.contains("push-up") || lower.contains("pushup") { return .press }
@@ -273,6 +273,59 @@ struct ExerciseDTO: Codable, Sendable {
     var sets: Int?
     var reps: Int?
     var recommendedWeightKg: Double?
+
+    init(
+        name: String, muscleGroup: String, type: ExerciseType, category: ExerciseCategory,
+        effort: Int, isCompleted: Bool, setsList: [WorkoutSetDTO]? = nil,
+        subExercises: [ExerciseDTO]? = nil, sets: Int? = nil, reps: Int? = nil,
+        recommendedWeightKg: Double? = nil
+    ) {
+        self.name = name
+        self.muscleGroup = muscleGroup
+        self.type = type
+        self.category = category
+        self.effort = effort
+        self.isCompleted = isCompleted
+        self.setsList = setsList
+        self.subExercises = subExercises
+        self.sets = sets
+        self.reps = reps
+        self.recommendedWeightKg = recommendedWeightKg
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case name, muscleGroup, type, category, effort, isCompleted, setsList, subExercises, sets, reps, recommendedWeightKg
+    }
+
+    nonisolated init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        name = try container.decode(String.self, forKey: .name)
+        muscleGroup = try container.decode(String.self, forKey: .muscleGroup)
+        type = try container.decode(ExerciseType.self, forKey: .type)
+        category = try container.decode(ExerciseCategory.self, forKey: .category)
+        effort = try container.decode(Int.self, forKey: .effort)
+        isCompleted = try container.decode(Bool.self, forKey: .isCompleted)
+        setsList = try container.decodeIfPresent([WorkoutSetDTO].self, forKey: .setsList)
+        subExercises = try container.decodeIfPresent([ExerciseDTO].self, forKey: .subExercises)
+        sets = try container.decodeIfPresent(Int.self, forKey: .sets)
+        reps = try container.decodeIfPresent(Int.self, forKey: .reps)
+        recommendedWeightKg = try container.decodeIfPresent(Double.self, forKey: .recommendedWeightKg)
+    }
+
+    nonisolated func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(name, forKey: .name)
+        try container.encode(muscleGroup, forKey: .muscleGroup)
+        try container.encode(type, forKey: .type)
+        try container.encode(category, forKey: .category)
+        try container.encode(effort, forKey: .effort)
+        try container.encode(isCompleted, forKey: .isCompleted)
+        try container.encodeIfPresent(setsList, forKey: .setsList)
+        try container.encodeIfPresent(subExercises, forKey: .subExercises)
+        try container.encodeIfPresent(sets, forKey: .sets)
+        try container.encodeIfPresent(reps, forKey: .reps)
+        try container.encodeIfPresent(recommendedWeightKg, forKey: .recommendedWeightKg)
+    }
 }
 
 extension Exercise {

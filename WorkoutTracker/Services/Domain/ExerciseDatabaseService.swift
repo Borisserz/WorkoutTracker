@@ -39,7 +39,7 @@ public struct MuscleActivation: Sendable {
 }
 
 public struct PatternClassifier: Sendable {
-    public static func classify(name: String, force: String?, mechanic: String?, primaryMuscles: [String]?) -> MovementPattern {
+    public nonisolated static func classify(name: String, force: String?, mechanic: String?, primaryMuscles: [String]?) -> MovementPattern {
         let n = name.lowercased()
         let f = force?.lowercased()
         let m = mechanic?.lowercased()

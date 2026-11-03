@@ -54,6 +54,8 @@ struct StatsDataResultDTO: Sendable {
     let recentPRs: [PersonalRecord]
     let detailedComparison: [DetailedComparison]
     let chartData: [ChartDataPoint]
+    var anatomyStats: AnatomyStatsDTO? = nil
+    var setsOverTime: [SetsOverTimePoint] = []
 }
 
 struct ExerciseChartDTO: Sendable, Identifiable {
@@ -75,14 +77,28 @@ struct ChartDataPoint: Identifiable, Sendable { let id = UUID(); let label: Stri
 struct PersonalRecord: Identifiable, Hashable, Sendable { let id = UUID(); let exerciseName: String; let weight: Double; let date: Date }
 struct ExerciseTrend: Identifiable, Sendable { let id = UUID(); let exerciseName: String; let trend: TrendDirection; let changePercentage: Double; let currentValue: Double; let previousValue: Double; let period: String }
 
-enum TrendDirection: Sendable { case growing, declining, stable
+enum TrendDirection: String, Codable, Equatable, Sendable { case growing, declining, stable
     var icon: String { self == .growing ? "arrow.up.right" : self == .declining ? "arrow.down.right" : "arrow.right" }
     var color: Color { self == .growing ? .green : self == .declining ? .red : .orange }
 }
 
 struct ProgressForecast: Identifiable, Sendable { let id = UUID(); let exerciseName: String; let currentMax: Double; let predictedMax: Double; let confidence: Int; let timeframe: String }
 struct DetailedComparison: Sendable { let metric: String; let currentValue: Double; let previousValue: Double; let change: Double; let changePercentage: Double; let trend: TrendDirection }
-struct PeriodStats: Sendable { var workoutCount = 0; var totalReps = 0; var totalDuration = 0; var totalVolume = 0.0; var totalDistance = 0.0 }
+struct PeriodStats: Sendable {
+    var workoutCount: Int
+    var totalReps: Int
+    var totalDuration: Int
+    var totalVolume: Double
+    var totalDistance: Double
+
+    nonisolated init(workoutCount: Int = 0, totalReps: Int = 0, totalDuration: Int = 0, totalVolume: Double = 0.0, totalDistance: Double = 0.0) {
+        self.workoutCount = workoutCount
+        self.totalReps = totalReps
+        self.totalDuration = totalDuration
+        self.totalVolume = totalVolume
+        self.totalDistance = totalDistance
+    }
+}
 struct MuscleRecoveryStatus: Sendable { var muscleGroup: String; var recoveryPercentage: Int }
 struct WeakPoint: Identifiable, Sendable { var id = UUID(); let muscleGroup: String; let frequency: Int; var averageVolume: Double; var recommendation: String }
 struct Recommendation: Identifiable, Sendable { var id = UUID(); let type: RecommendationType; let title: String; let message: String; let priority: Int }

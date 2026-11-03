@@ -1,9 +1,11 @@
 internal import SwiftUI
 
+/// Luxury modal preview sheet for a Legendary Routine.
+/// Adheres strictly to PastelTheme (Strict Dark Mode #0E0F12) and Apple HIG HUD specifications.
+/// Features mechanical architectural hero card, corner micro-screws, specular rim bevel highlight,
+/// tier 1 fixed-height CTA (50pt) with two-phase tactile haptics, and zero neon slop.
 struct LegendaryTemplatePreviewSheet: View {
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.colorScheme) private var colorScheme
-    @Environment(ThemeManager.self) private var themeManager
     @Environment(PresetService.self) private var presetService
     
     let routine: LegendaryRoutine
@@ -12,247 +14,84 @@ struct LegendaryTemplatePreviewSheet: View {
     @State private var isSaving = false
     @State private var showSavedToast = false
     
+    var eraColor: Color {
+        let lower = (routine.eraTitle + " " + routine.title).lowercased()
+        if lower.contains("golden") || lower.contains("arnold") {
+            return PastelTheme.pastelAmber
+        } else if lower.contains("olympia") || lower.contains("dc") || lower.contains("brutality") {
+            return PastelTheme.pastelPeach
+        } else if lower.contains("calisthenics") || lower.contains("xero") {
+            return PastelTheme.pastelSage
+        } else if lower.contains("olympic") || lower.contains("bulgarian") || lower.contains("power") {
+            return PastelTheme.pastelLavender
+        }
+        return PastelTheme.pastelOat
+    }
+
+    var eraIcon: String {
+        let lower = (routine.eraTitle + " " + routine.title).lowercased()
+        if lower.contains("calisthenics") || lower.contains("xero") {
+            return "figure.strengthtraining.traditional"
+        } else if lower.contains("arnold") || lower.contains("golden") {
+            return "crown.fill"
+        } else if lower.contains("olympia") || lower.contains("dc") || lower.contains("brutality") {
+            return "trophy.fill"
+        } else if lower.contains("olympic") || lower.contains("bulgarian") || lower.contains("power") {
+            return "bolt.fill"
+        } else if lower.contains("combat") || lower.contains("gladiator") {
+            return "shield.fill"
+        }
+        return "star.fill"
+    }
+
     var body: some View {
         NavigationStack {
             ZStack(alignment: .top) {
-                (colorScheme == .dark ? Color(UIColor.systemGroupedBackground) : Color(UIColor.secondarySystemBackground)).ignoresSafeArea()
-                
-                LinearGradient(colors: routine.gradientColors, startPoint: .top, endPoint: .bottom)
-                    .opacity(0.15)
-                    .frame(height: 400)
-                    .ignoresSafeArea()
-                    .mask(LinearGradient(colors: [.black, .clear], startPoint: .top, endPoint: .bottom))
+                PastelTheme.canvas.ignoresSafeArea()
                 
                 ScrollView(.vertical, showsIndicators: false) {
-                    VStack(spacing: 32) {
+                    VStack(spacing: 20) {
                         
-                        // Hall of Fame Title
-                        VStack(spacing: 8) {
+                        // Header Title Section
+                        VStack(spacing: 6) {
                             Text("Hall of Fame")
-                                .font(.system(size: 32, weight: .heavy, design: .rounded))
-                                .foregroundColor(colorScheme == .dark ? .white : .black)
+                                .font(.system(size: 28, weight: .heavy, design: .rounded))
+                                .foregroundStyle(PastelTheme.textPrimary)
                             
                             Text("Train like the legends of every era.")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
+                                .font(.system(size: 13, weight: .medium, design: .rounded))
+                                .foregroundStyle(PastelTheme.textSecondary)
                         }
                         .padding(.top, 16)
                         
-                        // The Big Hero Card
-                        VStack(spacing: 0) {
-                            // Top part with gradient
-                            VStack(alignment: .leading, spacing: 12) {
-                                HStack {
-                                    HStack(spacing: 6) {
-                                        Image(systemName: "star.fill").foregroundColor(.orange)
-                                        Text(LocalizedStringKey(routine.eraTitle))
-                                            .font(.system(size: 14, weight: .bold))
-                                            .tracking(1.5)
-                                            .foregroundColor(.orange)
-                                    }
-                                    
-                                    Spacer()
-                                    
-                                    HStack(spacing: 4) {
-                                        Image(systemName: "stopwatch")
-                                        Text(LocalizedStringKey("\(routine.estimatedMinutes) min"))
-                                            .font(.system(size: 14, weight: .bold))
-                                    }
-                                    .foregroundColor(.white.opacity(0.8))
-                                }
-                                
-                                Spacer().frame(height: 16)
-                                
-                                VStack(alignment: .leading, spacing: 8) {
-                                    Text(LocalizedStringKey(routine.title))
-                                        .font(.system(size: 36, weight: .black, design: .rounded))
-                                        .foregroundColor(.white)
-                                        .lineLimit(2)
-                                        .multilineTextAlignment(.leading)
-                                    
-                                    Text(LocalizedStringKey(routine.shortVibe))
-                                        .font(.system(size: 16))
-                                        .italic()
-                                        .foregroundColor(.orange)
-                                }
-                            }
-                            .padding(24)
-                            .background(
-                                LinearGradient(colors: routine.gradientColors, startPoint: .topLeading, endPoint: .bottomTrailing)
-                            )
-                            
-                            // Bottom part with details
-                            VStack(alignment: .leading, spacing: 20) {
-                                Text(LocalizedStringKey(routine.loreDescription))
-                                    .font(.system(size: 16, design: .rounded))
-                                    .foregroundColor(.white.opacity(0.9))
-                                    .lineSpacing(5)
-                                
-                                HStack(spacing: 24) {
-                                    HStack(spacing: 6) {
-                                        Image(systemName: "stopwatch.fill").foregroundColor(.gray)
-                                        Text(LocalizedStringKey("~\(routine.estimatedMinutes) min")).fontWeight(.bold)
-                                    }
-                                    HStack(spacing: 6) {
-                                        Image(systemName: "flame.fill").foregroundColor(.red)
-                                        Text(LocalizedStringKey(routine.difficulty.rawValue)).fontWeight(.bold)
-                                    }
-                                }
-                                .font(.headline)
-                                .foregroundColor(.white)
-                                
-                                ScrollView(.horizontal, showsIndicators: false) {
-                                    HStack(spacing: 8) {
-                                        ForEach(routine.benefits, id: \.self) { benefit in
-                                            Text(LocalizedStringKey(benefit))
-                                                .font(.system(size: 12, weight: .bold))
-                                                .padding(.horizontal, 12)
-                                                .padding(.vertical, 8)
-                                                .background(Color.black)
-                                                .foregroundColor(.white)
-                                                .overlay(Capsule().stroke(Color.orange, lineWidth: 1))
-                                                .clipShape(Capsule())
-                                        }
-                                    }
-                                }
-                                
-                                VStack(alignment: .leading, spacing: 12) {
-                                    Text(LocalizedStringKey("Protocol Overview"))
-                                        .font(.system(size: 13, weight: .black, design: .rounded))
-                                        .tracking(1.5)
-                                        .foregroundColor(.white.opacity(0.5))
-                                        .textCase(.uppercase)
-                                    
-                                    VStack(spacing: 0) {
-                                        ForEach(Array(routine.exercises.enumerated()), id: \.element.name) { index, exercise in
-                                            HStack(spacing: 16) {
-                                                ZStack {
-                                                    Circle()
-                                                        .stroke(LinearGradient(colors: routine.gradientColors, startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1.5)
-                                                        .frame(width: 32, height: 32)
-                                                    
-                                                    Text("\(index + 1)")
-                                                        .font(.system(size: 14, weight: .bold, design: .rounded))
-                                                        .foregroundStyle(LinearGradient(colors: routine.gradientColors, startPoint: .topLeading, endPoint: .bottomTrailing))
-                                                }
-                                                
-                                                VStack(alignment: .leading, spacing: 4) {
-                                                    Text(LocalizationHelper.shared.translateName(exercise.name))
-                                                        .font(.system(size: 16, weight: .bold, design: .rounded))
-                                                        .foregroundColor(.white)
-                                                        .lineLimit(2)
-                                                    
-                                                    HStack(spacing: 8) {
-                                                        HStack(spacing: 4) {
-                                                            Text("\(exercise.sets)").foregroundColor(.white)
-                                                            Text("sets")
-                                                        }
-                                                        Rectangle()
-                                                            .fill(PastelTheme.cardBorder)
-                                                            .frame(width: 1, height: 10)
-                                                        HStack(spacing: 4) {
-                                                            Text("\(exercise.reps)").foregroundColor(.white)
-                                                            Text("reps")
-                                                        }
-                                                    }
-                                                    .font(.system(size: 13, weight: .medium))
-                                                    .foregroundColor(.gray)
-                                                }
-                                                Spacer()
-                                                
-                                                Image(systemName: exercise.type == "Cardio" ? "figure.run" : "dumbbell.fill")
-                                                    .font(.system(size: 14))
-                                                    .foregroundColor(.white.opacity(0.2))
-                                            }
-                                            .padding(.vertical, 14)
-                                            
-                                            if index < routine.exercises.count - 1 {
-                                                Divider()
-                                                    .background(Color.white.opacity(0.1))
-                                                    .padding(.leading, 48)
-                                            }
-                                        }
-                                    }
-                                    .padding(.horizontal, 16)
-                                    .background(Color.black.opacity(0.4))
-                                    .cornerRadius(20)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                            .stroke(Color.white.opacity(0.05), lineWidth: 1)
-                                    )
-                                }
-                                .padding(.top, 8)
-                                .padding(.bottom, 8)
-                                
-                                Button {
-                                    HapticManager.shared.notification(.success)
-                                    dismiss()
-                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                        onStart()
-                                    }
-                                } label: {
-                                    HStack(spacing: 8) {
-                                        Text(LocalizedStringKey("Start Routine"))
-                                        Image(systemName: "bolt.fill")
-                                    }
-                                    .font(.title3.bold())
-                                    .foregroundColor(.white)
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 16)
-                                    .background(
-                                        LinearGradient(colors: routine.gradientColors, startPoint: .leading, endPoint: .trailing)
-                                    )
-                                    .cornerRadius(16)
-                                }
-                                
-                                Button {
-                                    saveToLibrary()
-                                } label: {
-                                    HStack(spacing: 8) {
-                                        Text(LocalizedStringKey(showSavedToast ? "Saved to Library!" : "Save to My Library"))
-                                        Image(systemName: showSavedToast ? "checkmark.circle.fill" : "bookmark.fill")
-                                    }
-                                    .font(.headline)
-                                    .foregroundColor(showSavedToast ? .green : .white)
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 14)
-                                    .background(Color.white.opacity(showSavedToast ? 0.05 : 0.1))
-                                    .cornerRadius(16)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 16)
-                                            .stroke(showSavedToast ? Color.green.opacity(0.3) : Color.white.opacity(0.1), lineWidth: 1)
-                                    )
-                                }
-                                .disabled(isSaving || showSavedToast)
-                            }
-                            .padding(24)
-                            .background(Color(red: 0.12, green: 0.12, blue: 0.12))
-                        }
-                        .cornerRadius(24)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 24)
-                                .stroke(LinearGradient(colors: routine.gradientColors, startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 2)
-                        )
-                        .shadow(color: routine.gradientColors[0].opacity(0.4), radius: 20, x: 0, y: 10)
-                        .padding(.horizontal, 20)
+                        // Architectural Pressure Hero Card
+                        heroPlateCard
                         
-                        Spacer().frame(height: 20)
+                        // Protocol Exercise Roster
+                        exerciseRosterCard
                         
-                        Spacer().frame(height: 40)
+                        // Bottom Actions: Start Routine CTA (Tier 1) & Save Library (Tier 2)
+                        actionsSection
+                        
+                        Spacer(minLength: 40)
                     }
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 24)
                 }
                 
-                // Floating back button
+                // Floating Close Button
                 HStack {
                     Button {
+                        HapticManager.shared.impact(.light)
                         dismiss()
                     } label: {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundColor(.white)
-                            .frame(width: 36, height: 36)
-                            .background(Color.black.opacity(0.4))
+                        Image(systemName: "xmark")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(PastelTheme.textSecondary)
+                            .frame(width: 32, height: 32)
+                            .background(PastelTheme.cardSurfaceSubtle)
                             .clipShape(Circle())
+                            .overlay(Circle().stroke(PastelTheme.cardBorder, lineWidth: 1))
                     }
                     Spacer()
                 }
@@ -260,12 +99,266 @@ struct LegendaryTemplatePreviewSheet: View {
                 .padding(.top, 16)
             }
         }
+        .preferredColorScheme(.dark)
         .presentationDragIndicator(.visible)
+    }
+
+    // MARK: - Hero Plate Card
+    private var heroPlateCard: some View {
+        ZStack {
+            // Slab Background with Specular Top Rim
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(PastelTheme.cardSurface)
+                .overlay(
+                    LinearGradient(
+                        colors: [Color.white.opacity(0.09), Color.clear],
+                        startPoint: .top,
+                        endPoint: .center
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                )
+            
+            // Corner Micro-Screws
+            VStack {
+                HStack {
+                    Circle().fill(PastelTheme.cardBorder.opacity(0.4)).frame(width: 3.5, height: 3.5)
+                    Spacer()
+                    Circle().fill(PastelTheme.cardBorder.opacity(0.4)).frame(width: 3.5, height: 3.5)
+                }
+                Spacer()
+                HStack {
+                    Circle().fill(PastelTheme.cardBorder.opacity(0.4)).frame(width: 3.5, height: 3.5)
+                    Spacer()
+                    Circle().fill(PastelTheme.cardBorder.opacity(0.4)).frame(width: 3.5, height: 3.5)
+                }
+            }
+            .padding(8)
+
+            // Content
+            VStack(alignment: .leading, spacing: 14) {
+                // Top Row: Era Badge + Stopwatch
+                HStack(alignment: .center) {
+                    HStack(spacing: 5) {
+                        Image(systemName: eraIcon)
+                            .font(.system(size: 11, weight: .bold))
+                        Text(LocalizedStringKey(routine.eraTitle))
+                            .font(.system(size: 11, weight: .heavy, design: .rounded))
+                    }
+                    .foregroundStyle(eraColor)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 4.5)
+                    .background(eraColor.opacity(0.14))
+                    .clipShape(Capsule())
+                    
+                    Spacer()
+                    
+                    HStack(spacing: 4) {
+                        Image(systemName: "stopwatch")
+                            .font(.system(size: 11, weight: .medium))
+                        Text(LocalizedStringKey("\(routine.estimatedMinutes) min"))
+                            .font(.system(size: 12, weight: .bold, design: .rounded))
+                    }
+                    .foregroundStyle(PastelTheme.textSecondary)
+                }
+                
+                // Routine Title & Vibe
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(LocalizedStringKey(routine.title))
+                        .font(.system(size: 26, weight: .heavy, design: .rounded))
+                        .foregroundStyle(PastelTheme.textPrimary)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.85)
+                    
+                    Text(LocalizedStringKey(routine.shortVibe))
+                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                        .foregroundStyle(eraColor)
+                }
+                
+                // Lore Description
+                Text(LocalizedStringKey(routine.loreDescription))
+                    .font(.system(size: 13.5, weight: .regular, design: .rounded))
+                    .foregroundStyle(PastelTheme.textSecondary)
+                    .lineSpacing(4)
+                
+                // Badges: Difficulty & Benefits
+                HStack(spacing: 12) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "chart.bar.fill")
+                            .font(.system(size: 11))
+                            .foregroundStyle(eraColor)
+                        Text(LocalizedStringKey(routine.difficulty.rawValue))
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .foregroundStyle(PastelTheme.textPrimary)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(PastelTheme.cardSurfaceSubtle)
+                    .clipShape(Capsule())
+
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 6) {
+                            ForEach(routine.benefits, id: \.self) { benefit in
+                                Text(LocalizedStringKey(benefit))
+                                    .font(.system(size: 10.5, weight: .semibold, design: .rounded))
+                                    .foregroundStyle(PastelTheme.textSecondary)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(PastelTheme.cardSurfaceSubtle)
+                                    .clipShape(Capsule())
+                                    .overlay(Capsule().stroke(PastelTheme.cardBorder, lineWidth: 0.8))
+                            }
+                        }
+                    }
+                }
+            }
+            .padding(18)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .stroke(PastelTheme.cardBorder, lineWidth: 1)
+        )
+        .shadow(color: Color.black.opacity(0.35), radius: 10, x: 0, y: 5)
+    }
+
+    // MARK: - Exercise Roster Card
+    private var exerciseRosterCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text(LocalizedStringKey("Protocol Roster"))
+                    .font(.system(size: 12, weight: .heavy, design: .rounded))
+                    .foregroundStyle(PastelTheme.textSecondary)
+                
+                Spacer()
+                
+                Text("\(routine.exercises.count) exercises")
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .foregroundStyle(eraColor)
+            }
+            
+            VStack(spacing: 0) {
+                ForEach(Array(routine.exercises.enumerated()), id: \.element.name) { index, exercise in
+                    HStack(spacing: 12) {
+                        // Numeric index badge
+                        ZStack {
+                            Circle()
+                                .fill(PastelTheme.cardSurface)
+                                .frame(width: 28, height: 28)
+                                .overlay(Circle().stroke(eraColor.opacity(0.35), lineWidth: 1))
+                            
+                            Text("\(index + 1)")
+                                .font(.system(size: 12, weight: .heavy, design: .rounded))
+                                .foregroundStyle(eraColor)
+                        }
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(LocalizationHelper.shared.translateName(exercise.name))
+                                .font(.system(size: 14, weight: .bold, design: .rounded))
+                                .foregroundStyle(PastelTheme.textPrimary)
+                                .lineLimit(1)
+                            
+                            HStack(spacing: 6) {
+                                Text("\(exercise.sets) sets")
+                                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                                    .foregroundStyle(PastelTheme.textSecondary)
+                                Text("•")
+                                    .font(.system(size: 8))
+                                    .foregroundStyle(PastelTheme.textTertiary)
+                                Text("\(exercise.reps) reps")
+                                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                                    .foregroundStyle(PastelTheme.textSecondary)
+                                if let rest = exercise.restSeconds {
+                                    Text("•")
+                                        .font(.system(size: 8))
+                                        .foregroundStyle(PastelTheme.textTertiary)
+                                    Text("\(rest)s rest")
+                                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                                        .foregroundStyle(PastelTheme.textTertiary)
+                                }
+                            }
+                        }
+                        
+                        Spacer()
+                        
+                        Image(systemName: exercise.type == "Cardio" ? "figure.run" : "dumbbell.fill")
+                            .font(.system(size: 12))
+                            .foregroundStyle(PastelTheme.textTertiary)
+                    }
+                    .padding(.vertical, 10)
+                    .padding(.horizontal, 12)
+                    
+                    if index < routine.exercises.count - 1 {
+                        Divider()
+                            .background(PastelTheme.cardBorder.opacity(0.5))
+                            .padding(.leading, 48)
+                    }
+                }
+            }
+            .background(PastelTheme.cardSurfaceSubtle)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(PastelTheme.cardBorder, lineWidth: 1)
+            )
+        }
+    }
+
+    // MARK: - Actions Section
+    private var actionsSection: some View {
+        VStack(spacing: 10) {
+            // Primary CTA: Start Routine (Tier 1 Height: 50pt)
+            Button {
+                HapticManager.shared.impact(.medium)
+                dismiss()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) {
+                    HapticManager.shared.impact(.heavy)
+                    HapticManager.shared.notification(.success)
+                    onStart()
+                }
+            } label: {
+                HStack(spacing: 8) {
+                    Text(LocalizedStringKey("Start Routine"))
+                        .font(.system(size: 16, weight: .heavy, design: .rounded))
+                    Image(systemName: "bolt.fill")
+                        .font(.system(size: 14, weight: .bold))
+                }
+                .foregroundStyle(PastelTheme.textOnOat)
+                .frame(maxWidth: .infinity)
+                .frame(height: PastelTheme.ButtonMetrics.heroHeight)
+                .background(PastelTheme.pastelOat)
+                .clipShape(RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.heroRadius, style: .continuous))
+            }
+            .buttonStyle(PlainButtonStyle())
+            
+            // Secondary CTA: Save to Library (Tier 2 Height: 42pt)
+            Button {
+                saveToLibrary()
+            } label: {
+                HStack(spacing: 6) {
+                    Text(LocalizedStringKey(showSavedToast ? "Saved to Library!" : "Save to My Library"))
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                    Image(systemName: showSavedToast ? "checkmark.circle.fill" : "bookmark.fill")
+                        .font(.system(size: 13, weight: .bold))
+                }
+                .foregroundStyle(showSavedToast ? PastelTheme.pastelSage : PastelTheme.textPrimary)
+                .frame(maxWidth: .infinity)
+                .frame(height: PastelTheme.ButtonMetrics.splitHeight)
+                .background(PastelTheme.cardSurfaceSubtle)
+                .clipShape(RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.splitRadius, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.splitRadius, style: .continuous)
+                        .stroke(showSavedToast ? PastelTheme.pastelSage.opacity(0.4) : PastelTheme.cardBorder, lineWidth: 1)
+                )
+            }
+            .buttonStyle(PlainButtonStyle())
+            .disabled(isSaving || showSavedToast)
+        }
     }
     
     private func saveToLibrary() {
         guard !isSaving else { return }
         isSaving = true
+        HapticManager.shared.impact(.light)
         
         let exerciseDTOs = routine.exercises.map { genDTO in
             ExerciseDTO(

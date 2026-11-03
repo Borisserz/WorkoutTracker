@@ -86,13 +86,15 @@ final class WatchActiveWorkoutViewModel: Hashable {
         WatchSyncManager.shared.sendLiveAction(payload)
     }
     func listenForRemoteUpdates() {
-            NotificationCenter.default.addObserver(forName: NSNotification.Name("WatchLiveSyncEvent"), object: nil, queue: .main) { [weak self] notification in
-                guard let self = self,
-                      let payload = notification.userInfo?["payload"] as? LiveSyncPayload,
-                      payload.workoutID == self.workoutID.uuidString else { return }
-                self.applyRemoteDelta(payload)
+        NotificationCenter.default.addObserver(forName: NSNotification.Name("WatchLiveSyncEvent"), object: nil, queue: .main) { [weak self] notification in
+            guard let self = self,
+                  let payload = notification.userInfo?["payload"] as? LiveSyncPayload,
+                  payload.workoutID == self.workoutID.uuidString else { return }
+            Task { @MainActor [weak self] in
+                self?.applyRemoteDelta(payload)
             }
         }
+    }
 
         private func applyRemoteDelta(_ payload: LiveSyncPayload) {
             switch payload.action {

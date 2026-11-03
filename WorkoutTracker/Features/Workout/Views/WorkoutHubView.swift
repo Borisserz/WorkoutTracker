@@ -105,87 +105,128 @@ struct WorkoutHubView: View {
         return routines.isEmpty ? LegendaryFallbackCatalog.routines : routines
     }
 
-    var body: some View {
-        NavigationStack {
-            ScrollViewReader { proxy in
-                ZStack(alignment: .bottom) {
-                    PastelTheme.canvas.ignoresSafeArea()
-                    AtmosphericGymBackdropView(style: .workout)
+    @ViewBuilder
+    private var scrollContent: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            // 1. Top Bar: Streak Flame + Create
+            topHeaderRow
 
-                    ScrollView(showsIndicators: false) {
-                        VStack(alignment: .leading, spacing: 18) {
-                            // 1. Top Bar: Streak Flame + Create
-                            topHeaderRow
+            // 2. Large Bold Title: Workout
+            titleSection
 
-                            // 2. Large Bold Title: Workout
-                            titleSection
+            // 3. 7-Day Consistency Habit Bar (Apple Fitness Philosophy)
+            weeklyConsistencyBar
 
-                            // 3. 7-Day Consistency Habit Bar (Apple Fitness Philosophy)
-                            weeklyConsistencyBar
-
-                            // 4. Active Workout In-Progress Card (ONLY if a workout is actually running right now)
-                            if let active = activeWorkouts.first, active.isActive, active.endTime == nil, !di.appState.isInsideActiveWorkout, abs(active.date.timeIntervalSinceNow) < 12 * 3600 {
-                                ActiveWorkoutResumeCard(workout: active) {
-                                    HapticManager.shared.impact(.medium)
-                                    self.navigateToActiveWorkout = active
-                                }
-                            }
-
-                            // 5. Hero Action: Unified Start Workout CTA (Triggers Hearthstone 3-Card Discovery)
-                            startWorkoutHeroSection
-
-                            // 6. Best workout for today (Merged Target Focus + Muscle Readiness)
-                            todayPlanHeroCard
-
-                            // 7. Legendary Programs Discovery Row
-                            legendarySection
-
-                            Spacer(minLength: 40)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.top, 10)
-                        .padding(.bottom, 24)
-                    }
-                    .frame(maxWidth: .infinity)
-
-                    // Streak mascot popup overlay
-                    if showStreakPopup {
-                        StreakMascotPopup(
-                            streakDays: dashboardViewModel.streakCount,
-                            isShowing: $showStreakPopup
-                        )
-                        .transition(.asymmetric(
-                            insertion: .scale(scale: 0.85).combined(with: .opacity),
-                            removal: .scale(scale: 0.95).combined(with: .opacity)
-                        ))
-                        .zIndex(100)
-                    }
-
-                    // Hearthstone 3-Card Discovery Popup Overlay
-                    if showWorkoutModeDiscovery {
-                        WorkoutModeDiscoveryPopup(
-                            isPresented: $showWorkoutModeDiscovery,
-                            hasTemplates: !userPresets.isEmpty,
-                            onCreateTemplate: {
-                                presetToEdit = nil
-                                showPresetEditor = true
-                            },
-                            onSelectEmpty: {
-                                startEmptyWorkout()
-                            },
-                            onSelectAI: {
-                                showSmartBuilder = true
-                            },
-                            onSelectTemplates: {
-                                // Navigate directly to History tab where best workouts and templates live
-                                di.appState.selectedTab = 1
-                            }
-                        )
-                        .transition(.opacity)
-                        .zIndex(200)
-                    }
+            // 4. Active Workout In-Progress Card (ONLY if a workout is actually running right now)
+            if let active = activeWorkouts.first, active.isActive, active.endTime == nil, !di.appState.isInsideActiveWorkout, abs(active.date.timeIntervalSinceNow) < 12 * 3600 {
+                ActiveWorkoutResumeCard(workout: active) {
+                    HapticManager.shared.impact(.medium)
+                    self.navigateToActiveWorkout = active
                 }
             }
+
+            // 5. Hero Action: Unified Start Workout CTA (Triggers Hearthstone 3-Card Discovery)
+            startWorkoutHeroSection
+
+            // 6. Best workout for today (Merged Target Focus + Muscle Readiness)
+            todayPlanHeroCard
+
+            // 7. Legendary Programs Discovery Row
+            legendarySection
+
+            Spacer(minLength: 40)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.top, 10)
+        .padding(.bottom, 24)
+    }
+
+    @ViewBuilder
+    private var streakPopupOverlay: some View {
+        StreakMascotPopup(
+            streakDays: dashboardViewModel.streakCount,
+            isShowing: $showStreakPopup
+        )
+        .transition(.asymmetric(
+            insertion: .scale(scale: 0.85).combined(with: .opacity),
+            removal: .scale(scale: 0.95).combined(with: .opacity)
+        ))
+        .zIndex(100)
+    }
+
+    @ViewBuilder
+    private var discoveryPopupOverlay: some View {
+        WorkoutModeDiscoveryPopup(
+            isPresented: $showWorkoutModeDiscovery,
+            hasTemplates: !userPresets.isEmpty,
+            onCreateTemplate: {
+                presetToEdit = nil
+                showPresetEditor = true
+            },
+            onSelectEmpty: {
+                startEmptyWorkout()
+            },
+            onSelectAI: {
+                showSmartBuilder = true
+            },
+            onSelectTemplates: {
+                di.appState.selectedTab = 1
+            }
+        )
+        .transition(.opacity)
+        .zIndex(200)
+    }
+
+    @ViewBuilder
+    private var hubContent: some View {
+        ScrollViewReader { _ in
+            ZStack(alignment: .bottom) {
+                Color.clear.ignoresSafeArea()
+
+                ScrollView(showsIndicators: false) {
+                    scrollContent
+                }
+                .frame(maxWidth: .infinity)
+
+                if showStreakPopup {
+                    streakPopupOverlay
+                }
+
+                if showWorkoutModeDiscovery {
+                    discoveryPopupOverlay
+                }
+            }
+        }
+    }
+
+    private func handleSmartWorkoutReady(_ exerciseDTOs: [ExerciseDTO]) {
+        Task { @MainActor in
+            let generatedDTO = GeneratedWorkoutDTO(
+                title: "Smart Workout",
+                aiMessage: "Generated by Smart Workout",
+                exercises: exerciseDTOs.map { dto in
+                    let safeSetsList = dto.setsList ?? []
+                    return GeneratedExerciseDTO(
+                        name: dto.name,
+                        muscleGroup: dto.muscleGroup,
+                        type: dto.type.rawValue,
+                        sets: safeSetsList.count,
+                        reps: safeSetsList.first?.reps ?? 10,
+                        recommendedWeightKg: safeSetsList.first?.weight,
+                        restSeconds: nil
+                    )
+                }
+            )
+            if let id = await workoutService.startGeneratedWorkout(generatedDTO, source: "smart_builder"),
+               let newWorkout = context.model(for: id) as? Workout {
+                self.navigateToActiveWorkout = newWorkout
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var hubNavDestinations: some View {
+        hubContent
             .navigationBarHidden(true)
             .accessibilityIdentifier("wt.workout.root")
             .navigationDestination(item: $navigateToActiveWorkout) { workout in
@@ -194,6 +235,11 @@ struct WorkoutHubView: View {
             .navigationDestination(isPresented: $navigateToExplore) {
                 ProgramDiscoveryView()
             }
+    }
+
+    @ViewBuilder
+    private var hubWithSheets: some View {
+        hubNavDestinations
             .sheet(isPresented: $showPresetEditor) {
                 PresetEditorView(preset: presetToEdit)
             }
@@ -203,32 +249,18 @@ struct WorkoutHubView: View {
                 }
             }
             .sheet(isPresented: $showSmartBuilder) {
-                SmartGeneratorEntryView(onWorkoutReady: { exerciseDTOs in
-                    Task { @MainActor in
-                        let generatedDTO = GeneratedWorkoutDTO(
-                            title: "Smart Workout",
-                            aiMessage: "Generated by Smart Workout",
-                            exercises: exerciseDTOs.map { dto in
-                                let safeSetsList = dto.setsList ?? []
-                                return GeneratedExerciseDTO(
-                                    name: dto.name, muscleGroup: dto.muscleGroup, type: dto.type.rawValue,
-                                    sets: safeSetsList.count, reps: safeSetsList.first?.reps ?? 10,
-                                    recommendedWeightKg: safeSetsList.first?.weight, restSeconds: nil
-                                )
-                            }
-                        )
-                        if let id = await workoutService.startGeneratedWorkout(generatedDTO, source: "smart_builder"),
-                           let newWorkout = context.model(for: id) as? Workout {
-                            self.navigateToActiveWorkout = newWorkout
-                        }
-                    }
-                })
+                SmartGeneratorEntryView(onWorkoutReady: handleSmartWorkoutReady)
             }
             .sheet(item: $selectedLegendaryRoutine) { routine in
                 LegendaryTemplatePreviewSheet(routine: routine) {
                     startLegendaryRoutine(routine)
                 }
             }
+    }
+
+    @ViewBuilder
+    private var hubWithAlerts: some View {
+        hubWithSheets
             .alert("Active workout in progress", isPresented: $showActiveWorkoutAlert) {
                 Button("Got it", role: .cancel) { }
             } message: {
@@ -240,6 +272,11 @@ struct WorkoutHubView: View {
             } message: {
                 Text("This can’t be undone.")
             }
+    }
+
+    var body: some View {
+        NavigationStack {
+            hubWithAlerts
             .onChange(of: di.appState.returnToActiveWorkoutId) { _, newId in
                 if let id = newId {
                     let desc = FetchDescriptor<Workout>(predicate: #Predicate { $0.endTime == nil })
@@ -1270,10 +1307,10 @@ struct WorkoutHubView: View {
         "\(count) exercises"
     }
 
-    // MARK: - 6. Legendary Programs Discovery Row (warm Pastel, no ALL-CAPS chrome)
+    // MARK: - 6. Legendary Programs Discovery Row (Luxury Mechanical Plate, no flame)
     private var legendarySection: some View {
         Button {
-            HapticManager.shared.impact(.medium)
+            HapticManager.shared.impact(.rigid)
             navigateToExplore = true
         } label: {
             HStack(spacing: 14) {
@@ -1290,7 +1327,7 @@ struct WorkoutHubView: View {
                                 .stroke(PastelTheme.pastelAmber.opacity(0.45), lineWidth: 1.5)
                         )
 
-                    Image(systemName: "flame.fill")
+                    Image(systemName: "crown.fill")
                         .font(.system(size: 20, weight: .bold))
                         .foregroundStyle(PastelTheme.pastelAmber)
                 }
@@ -1342,7 +1379,7 @@ struct WorkoutHubView: View {
                     PastelTheme.cardSurface
                     LinearGradient(
                         colors: [
-                            PastelTheme.pastelAmber.opacity(0.08),
+                            PastelTheme.pastelAmber.opacity(0.06),
                             Color.clear
                         ],
                         startPoint: .leading,
@@ -1353,8 +1390,9 @@ struct WorkoutHubView: View {
             .clipShape(RoundedRectangle(cornerRadius: PastelTheme.cardRadius, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: PastelTheme.cardRadius, style: .continuous)
-                    .stroke(PastelTheme.pastelAmber.opacity(0.35), lineWidth: 1)
+                    .stroke(PastelTheme.cardBorder, lineWidth: 1)
             )
+            .shadow(color: Color.black.opacity(0.3), radius: 8, x: 0, y: 4)
             .padding(.horizontal, 16)
         }
         .buttonStyle(Tactile3DCardButtonStyle(scale: 0.982, maxTilt: 2.8))
@@ -1804,78 +1842,13 @@ private struct PastelRoutineCard: View {
     }
 }
 
-/// Editorial Luxury Card for Legendary Routines (Uniform 220x130pt Grid)
+/// Editorial Luxury Card for Legendary Routines (Compact Mechanical Plate)
 private struct PastelLegendaryCard: View {
     let routine: LegendaryRoutine
     let onSelect: () -> Void
 
     var body: some View {
-        Button(action: onSelect) {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Text(routine.eraTitle)
-                        .font(.system(size: 10, weight: .semibold, design: .rounded))
-                        .foregroundStyle(PastelTheme.pastelAmber)
-                        .padding(.horizontal, 8)
-                        .frame(height: 22)
-                        .background(PastelTheme.pastelAmber.opacity(0.14))
-                        .clipShape(Capsule())
-
-                    Spacer()
-
-                    HStack(spacing: 3) {
-                        Image(systemName: "clock")
-                            .font(.system(size: 10))
-                        Text("\(routine.estimatedMinutes) min")
-                            .font(.system(size: 11, weight: .bold))
-                    }
-                    .foregroundStyle(PastelTheme.textSecondary)
-                }
-
-                Spacer()
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(routine.title)
-                        .font(.system(size: 15, weight: .bold, design: .rounded))
-                        .foregroundStyle(PastelTheme.textPrimary)
-                        .lineLimit(1)
-
-                    Text(routine.shortVibe)
-                        .font(.caption2)
-                        .foregroundStyle(PastelTheme.textSecondary)
-                        .lineLimit(1)
-                }
-
-                HStack {
-                    HStack(spacing: 4) {
-                        ForEach(routine.benefits.prefix(2), id: \.self) { b in
-                            Text(b)
-                                .font(.system(size: 9, weight: .medium))
-                                .foregroundStyle(PastelTheme.textTertiary)
-                                .padding(.horizontal, 6)
-                                .frame(height: 18)
-                                .background(PastelTheme.cardSurfaceSubtle)
-                                .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
-                        }
-                    }
-
-                    Spacer()
-
-                    Image(systemName: "play.circle.fill")
-                        .font(.system(size: 20))
-                        .foregroundStyle(PastelTheme.pastelOat)
-                }
-            }
-            .padding(14)
-            .frame(width: 220, height: 130)
-            .background(PastelTheme.cardSurface)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(PastelTheme.cardBorder, lineWidth: 1)
-            )
-        }
-        .buttonStyle(.plain)
+        CompactLegendaryPressurePlate(routine: routine, onSelect: onSelect)
     }
 }
 

@@ -219,27 +219,21 @@ struct SliderSheetView: View {
     }
 
     private func validateValue(_ val: Double) {
-        let isValid: Bool
         let errMsg: String?
 
         switch fieldType {
         case .weight:
             let kg = unitsManager.convertToKilograms(val)
-            let v = InputValidator.validateWeight(kg)
-            isValid = v.isValid; errMsg = v.errorMessage
+            errMsg = InputValidator.validateWeight(kg).errorMessage
         case .reps:
-            let v = InputValidator.validateReps(Int(val))
-            isValid = v.isValid; errMsg = v.errorMessage
+            errMsg = InputValidator.validateReps(Int(val)).errorMessage
         case .distance:
             let m = unitsManager.convertToMeters(val)
-            let v = InputValidator.validateDistance(m)
-            isValid = v.isValid; errMsg = v.errorMessage
+            errMsg = InputValidator.validateDistance(m).errorMessage
         case .timeMin:
-            let v = InputValidator.validateTime(Int(val) * 60)
-            isValid = v.isValid; errMsg = v.errorMessage
+            errMsg = InputValidator.validateTime(Int(val) * 60).errorMessage
         case .timeSec:
-            let v = InputValidator.validateTime(Int(val))
-            isValid = v.isValid; errMsg = v.errorMessage
+            errMsg = InputValidator.validateTime(Int(val)).errorMessage
         }
 
         self.errorMessage = errMsg

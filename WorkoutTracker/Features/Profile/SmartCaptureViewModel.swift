@@ -63,7 +63,7 @@ final class SmartCaptureViewModel: NSObject {
         case .notDetermined:
             authorizationDenied = false
             AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
-                Task { @MainActor in
+                Task { @MainActor [weak self] in
                     self?.isAuthorized = granted
                     self?.authorizationDenied = !granted
                     if granted { self?.setupSession() }
@@ -99,14 +99,21 @@ final class SmartCaptureViewModel: NSObject {
 
         if session.canAddOutput(videoOutput) {
             session.addOutput(videoOutput)
-            if let connection = videoOutput.connection(with: .video), connection.isVideoOrientationSupported {
-                connection.videoOrientation = .portrait
+            if let connection = videoOutput.connection(with: .video) {
+                if connection.isVideoRotationAngleSupported(90) {
+                    connection.videoRotationAngle = 90
+                } else if connection.isVideoOrientationSupported {
+                    connection.videoOrientation = .portrait
+                }
                 connection.isVideoMirrored = true
             }
         }
 
         session.commitConfiguration()
-        Task.detached { [weak self] in self?.session.startRunning() }
+        let captureSession = session
+        Task.detached {
+            captureSession.startRunning()
+        }
     }
 
     func startCountdown() {
@@ -198,7 +205,7 @@ extension SmartCaptureViewModel: AVCaptureVideoDataOutputSampleBufferDelegate, A
             guard frameCounter % 5 == 0 else { return } 
 
             do {
-                let result = try await visionProcessor.process(sampleBuffer: sampleBuffer)
+                let result = try visionProcessor.process(sampleBuffer: sampleBuffer)
 
                 self.checkBodyAlignment(joints: result.joints)
 
@@ -242,7 +249,7 @@ extension SmartCaptureViewModel: AVCaptureVideoDataOutputSampleBufferDelegate, A
 private extension UIImage {
     /// Returns a CGImage, rendering a concrete bitmap if the backing cgImage is nil.
     /// Guarantees a non-nil result for formats where `.cgImage` is unavailable.
-    func normalizedCGImage() -> CGImage? {
+    nonisolated func normalizedCGImage() -> CGImage? {
         if let cgImage { return cgImage }
         let renderer = UIGraphicsImageRenderer(size: size)
         let bitmap = renderer.image { _ in

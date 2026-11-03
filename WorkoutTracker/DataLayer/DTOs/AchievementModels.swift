@@ -3,7 +3,7 @@
 import Foundation
 internal import SwiftUI
 
-enum AchievementTier: Int, Comparable {
+enum AchievementTier: Int, Comparable, Sendable {
     case none = 0
     case bronze = 1
     case silver = 2
@@ -25,19 +25,28 @@ enum AchievementTier: Int, Comparable {
     }
 }
 
-struct Achievement: Identifiable {
-    let id = UUID()
+struct Achievement: Identifiable, Sendable {
+    let id: UUID
     let title: LocalizedStringKey
     let description: LocalizedStringKey
     let icon: String 
 
-    var tier: AchievementTier = .none
-    var progress: String = ""
+    var tier: AchievementTier
+    var progress: String
 
-    var isUnlocked: Bool { tier != .none }
+    nonisolated var isUnlocked: Bool { tier != .none }
+
+    nonisolated init(id: UUID = UUID(), title: LocalizedStringKey, description: LocalizedStringKey, icon: String, tier: AchievementTier = .none, progress: String = "") {
+        self.id = id
+        self.title = title
+        self.description = description
+        self.icon = icon
+        self.tier = tier
+        self.progress = progress
+    }
 }
 
-class AchievementCalculator {
+struct AchievementCalculator: Sendable {
 
     private static func getTierAndTarget(current: Double, thresholds: [Double]) -> (AchievementTier, Double) {
         if current >= thresholds[3] { return (.diamond, thresholds[3]) } 
@@ -47,7 +56,7 @@ class AchievementCalculator {
         return (.none, thresholds[0])
     }
 
-    static func calculateAchievements(
+    nonisolated static func calculateAchievements(
         totalWorkouts: Int,
         totalVolume: Double,
         totalDistance: Double,
