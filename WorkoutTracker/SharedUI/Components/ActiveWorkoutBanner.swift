@@ -6,8 +6,16 @@ import SwiftData
 struct ActiveWorkoutBannerContainer: View {
     @Environment(DIContainer.self) private var di
 
-    @Query(filter: #Predicate<Workout> { $0.endTime == nil }, sort: \.date, order: .reverse)
-    private var activeWorkouts: [Workout]
+    @Query private var activeWorkouts: [Workout]
+
+    init() {
+        var active = FetchDescriptor<Workout>(
+            predicate: #Predicate<Workout> { $0.endTime == nil },
+            sortBy: [SortDescriptor(\.date, order: .reverse)]
+        )
+        active.fetchLimit = 5
+        _activeWorkouts = Query(active)
+    }
 
     var body: some View {
         if let activeWorkout = activeWorkouts.first,

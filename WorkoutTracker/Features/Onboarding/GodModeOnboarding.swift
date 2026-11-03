@@ -451,7 +451,7 @@ struct GodModeProfileScreen: View {
                 }
                 
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("NAME / ALIAS").font(.system(size: 13, weight: .bold)).foregroundStyle(.white.opacity(0.5)).padding(.leading, 4)
+                    Text("Name / alias").font(.system(size: 13, weight: .bold)).foregroundStyle(.white.opacity(0.5)).padding(.leading, 4)
                     TextField("Champion", text: $metrics.name)
                         .font(.system(size: 20, weight: .semibold, design: .rounded))
                         .foregroundStyle(.white)

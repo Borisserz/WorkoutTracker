@@ -476,7 +476,7 @@ struct WorkoutRow: View {
                                     .fill(Color.red)
                                     .frame(width: 6, height: 6)
                                     .opacity(isBlinking ? 0.3 : 1.0)
-                                Text("LIVE")
+                                Text("Live")
                                     .font(.system(size: 10, weight: .heavy, design: .rounded))
                                     .foregroundColor(.red)
                             }

@@ -22,6 +22,18 @@ cd "$ROOT"
 TAG="${1:-smoke}"
 BUNDLE_ID="com.borisdev.WorkoutTracker"
 SCHEME="WorkoutTracker"
+PBXPROJ="${ROOT}/WorkoutTracker.xcodeproj/project.pbxproj"
+DERIVED="${ROOT}/.derivedData/maestro"
+WATCH_DETACHED=0
+
+restore_watch_embed() {
+  if [[ "${WATCH_DETACHED}" -eq 1 ]]; then
+    echo "→ Restoring Watch embed in project.pbxproj"
+    git -C "${ROOT}" checkout -- "${PBXPROJ}" 2>/dev/null || true
+    WATCH_DETACHED=0
+  fi
+}
+trap restore_watch_embed EXIT
 
 if ! command -v maestro >/dev/null 2>&1; then
   echo "Maestro CLI not found. Install: curl -Ls 'https://get.maestro.mobile.dev' | bash"
@@ -42,17 +54,40 @@ if [[ -z "${SIM_ID}" ]]; then
   exit 1
 fi
 
+# No watchOS Simulator runtime → temporarily drop Watch embed (same as prior audit passes).
+if ! xcrun simctl list runtimes 2>/dev/null | grep -qiE 'watchOS|watchos'; then
+  if grep -q 'ACF4FCAD2F01698F00850F6E /\* Embed Watch Content \*/' "${PBXPROJ}" \
+    && grep -q 'AC3CB9922F8176AB008A6777 /\* PBXTargetDependency \*/' "${PBXPROJ}"; then
+    echo "→ No watchsimulator runtime; detaching Watch embed for iOS Maestro build"
+    python3 - <<'PY'
+from pathlib import Path
+path = Path("WorkoutTracker.xcodeproj/project.pbxproj")
+text = path.read_text()
+text = text.replace("\t\t\t\tACF4FCAD2F01698F00850F6E /* Embed Watch Content */,\n", "")
+text = text.replace("\t\t\t\tAC3CB9922F8176AB008A6777 /* PBXTargetDependency */,\n", "")
+path.write_text(text)
+PY
+    WATCH_DETACHED=1
+  fi
+fi
+
 echo "→ Building ${SCHEME} for ${SIM_ID}"
+mkdir -p "${DERIVED}"
 xcodebuild \
   -scheme "${SCHEME}" \
   -destination "id=${SIM_ID}" \
   -configuration Debug \
+  -derivedDataPath "${DERIVED}" \
   -quiet \
   build
 
-APP="$(find ~/Library/Developer/Xcode/DerivedData -path '*/Build/Products/Debug-iphonesimulator/WorkoutTracker.app' -type d 2>/dev/null | head -1)"
-if [[ -z "${APP}" || ! -d "${APP}" ]]; then
-  echo "WorkoutTracker.app not found in DerivedData"
+APP="${DERIVED}/Build/Products/Debug-iphonesimulator/WorkoutTracker.app"
+if [[ ! -d "${APP}" ]]; then
+  echo "WorkoutTracker.app not found at ${APP}"
+  exit 1
+fi
+if ! /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "${APP}/Info.plist" >/dev/null 2>&1; then
+  echo "Built app missing CFBundleIdentifier at ${APP}"
   exit 1
 fi
 

@@ -476,7 +476,7 @@ struct PromoVisualProgressIllustration: View {
                     VStack {
                         Spacer()
                         HStack {
-                            Text("BEFORE")
+                            Text("Before")
                                 .font(.system(size: 8, weight: .bold, design: .rounded))
                                 .foregroundColor(.orange)
                                 .padding(.horizontal, 5)
@@ -511,7 +511,7 @@ struct PromoVisualProgressIllustration: View {
                             Spacer()
                             HStack {
                                 Spacer()
-                                Text("AFTER")
+                                Text("After")
                                     .font(.system(size: 8, weight: .bold, design: .rounded))
                                     .foregroundColor(.white)
                                     .padding(.horizontal, 5)

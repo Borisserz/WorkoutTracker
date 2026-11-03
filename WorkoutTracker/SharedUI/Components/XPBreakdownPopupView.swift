@@ -26,7 +26,7 @@ struct XPBreakdownPopupView: View {
 
             VStack(spacing: 24) {
                 if isLevelUp {
-                    Text("LEVEL UP!")
+                    Text("Level up")
                         .font(.system(size: 36, weight: .black, design: .rounded))
                         .foregroundStyle(
                             LinearGradient(colors: [PastelTheme.pastelAmber, PastelTheme.pastelPeach], startPoint: .topLeading, endPoint: .bottomTrailing)
@@ -46,7 +46,7 @@ struct XPBreakdownPopupView: View {
                     .opacity(showContent ? 1 : 0)
                     .animation(.easeIn.delay(0.4), value: showContent)
                 } else {
-                    Text("WORKOUT COMPLETE")
+                    Text("Workout complete")
                         .font(.system(size: 28, weight: .black, design: .rounded))
                         .foregroundColor(.white)
                         .opacity(showContent ? 1 : 0)

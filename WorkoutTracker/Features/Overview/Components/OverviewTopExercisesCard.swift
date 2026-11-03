@@ -29,7 +29,7 @@ struct OverviewTopExercisesCard: View {
                     HapticManager.shared.impact(.light)
                     onSeeAllTap()
                 } label: {
-                    Text("ALL")
+                    Text("All")
                         .font(.caption.bold())
                         .foregroundStyle(PastelTheme.pastelOat)
                         .padding(.horizontal, 10)

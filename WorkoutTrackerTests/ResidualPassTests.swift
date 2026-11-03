@@ -398,20 +398,21 @@ final class ResidualPassTests: XCTestCase {
         XCTAssertNil(proposal, "Empty recovery must not invent 100% and emit Heavy Legs")
     }
 
-    func testLegendaryFallbackXEROIsBodyweightOnly() throws {
-        let xero = LegendaryFallbackCatalog.routines.first { $0.title.contains("XERO") }
-        let routine = try XCTUnwrap(xero)
-        XCTAssertTrue(
-            routine.shortVibe.localizedCaseInsensitiveContains("no equipment")
-            || routine.loreDescription.localizedCaseInsensitiveContains("bodyweight")
-        )
+    @MainActor
+    func testLegendaryFallbackBodyweightSampleHasNoBarbellsOrWeights() throws {
+        let bodyweight = LegendaryFallbackCatalog.routines.first {
+            $0.shortVibe.localizedCaseInsensitiveContains("no equipment")
+                || $0.loreDescription.localizedCaseInsensitiveContains("bodyweight")
+        }
+        let routine = try XCTUnwrap(bodyweight)
         for exercise in routine.exercises {
             let name = exercise.name.lowercased()
-            XCTAssertFalse(name.contains("barbell"), "XERO offline fallback must not list barbell lifts")
-            XCTAssertNil(exercise.recommendedWeightKg, "XERO offline fallback must not invent loaded weights")
+            XCTAssertFalse(name.contains("barbell"), "Bodyweight sample must not list barbell lifts")
+            XCTAssertNil(exercise.recommendedWeightKg, "Bodyweight sample must not invent loaded weights")
         }
     }
 
+    @MainActor
     func testLegendaryFallbackCopyDoesNotClaimExactPublishedPrograms() {
         for routine in LegendaryFallbackCatalog.routines {
             let lore = routine.loreDescription.lowercased()
@@ -420,6 +421,40 @@ final class ResidualPassTests: XCTestCase {
                 lore.contains("inspired") || lore.contains("sample") || lore.contains("taste"),
                 "Sample lore should signal inspired/sample: \(routine.title)"
             )
+        }
+    }
+
+    /// Bundled offline Legendary must not ship third-party program / celebrity brand names (App Store risk).
+    @MainActor
+    func testLegendaryFallbackAvoidsTrademarkBrandNames() {
+        let banned = ["athlean", "xero", "arnold", "mentzer", "goggins"]
+        for routine in LegendaryFallbackCatalog.routines {
+            let blob = "\(routine.title) \(routine.eraTitle) \(routine.shortVibe) \(routine.loreDescription)".lowercased()
+            for token in banned {
+                XCTAssertFalse(
+                    blob.contains(token),
+                    "Offline Legendary must not include '\(token)': \(routine.title)"
+                )
+            }
+        }
+    }
+
+    func testGestureConfidenceThresholdIsConservative() {
+        XCTAssertGreaterThanOrEqual(
+            GestureTuning.confidenceThreshold,
+            0.5,
+            "Low Vision confidence causes false set confirms in gym lighting"
+        )
+    }
+
+    @MainActor
+    func testMockProgramCatalogAvoidsCelebrityBrandProgramTitles() {
+        let banned = ["arnold", "athlean", "mentzer", "goggins"]
+        for program in MockProgramCatalog.shared.featuredPrograms {
+            let blob = "\(program.title) \(program.description)".lowercased()
+            for token in banned {
+                XCTAssertFalse(blob.contains(token), "Mock Explore catalog must not include '\(token)': \(program.title)")
+            }
         }
     }
 
@@ -558,13 +593,28 @@ final class ResidualPassTests: XCTestCase {
         let previous = PeriodStats(workoutCount: 2, totalReps: 0, totalDuration: 3600, totalVolume: 1000, totalDistance: 0)
         let current = PeriodStats(workoutCount: 4, totalReps: 0, totalDuration: 7200, totalVolume: 2000, totalDistance: 0)
         let units = UnitsManager.shared
-        let prevVal = ComparisonSectionView.metricValue(previous, metric: .count, units: units)
-        let currVal = ComparisonSectionView.metricValue(current, metric: .count, units: units)
+        let prevVal = PeriodComparisonMetrics.metricValue(previous, metric: .count, units: units)
+        let currVal = PeriodComparisonMetrics.metricValue(current, metric: .count, units: units)
         XCTAssertEqual(prevVal, 2)
         XCTAssertEqual(currVal, 4)
-        let volumePrev = ComparisonSectionView.metricValue(previous, metric: .volume, units: units)
-        let volumeCurr = ComparisonSectionView.metricValue(current, metric: .volume, units: units)
+        let volumePrev = PeriodComparisonMetrics.metricValue(previous, metric: .volume, units: units)
+        let volumeCurr = PeriodComparisonMetrics.metricValue(current, metric: .volume, units: units)
         XCTAssertGreaterThan(volumeCurr, volumePrev)
+    }
+
+    @MainActor
+    func testExerciseFormattedDetailsAvoidsMiddleDotSlop() {
+        let exercise = Exercise(
+            name: "Bench",
+            muscleGroup: "Chest",
+            type: .strength,
+            sets: 3,
+            reps: 8,
+            weight: 60
+        )
+        let details = exercise.formattedDetails(unitsManager: UnitsManager.shared)
+        XCTAssertFalse(details.contains("·"), "Anti-slop: no decorative middle dots in set summaries")
+        XCTAssertTrue(details.contains(","), "Prefer comma separators for weight metadata")
     }
 
     func testCalorieCalculatorDoesNotInventOneHourWhenDurationMissing() {

@@ -422,7 +422,7 @@ extension Exercise {
         switch type {
         case .strength:
             return firstSetWeight > 0
-                ? "\(setsCount) sets × \(firstSetReps) reps · \(unitsManager.displayWeightWithUnit(forKg: firstSetWeight))"
+                ? "\(setsCount) sets × \(firstSetReps) reps, \(unitsManager.displayWeightWithUnit(forKg: firstSetWeight))"
                 : "\(setsCount) sets × \(firstSetReps) reps"
         case .cardio:
             if let dist = firstSetDistance, dist > 0 {

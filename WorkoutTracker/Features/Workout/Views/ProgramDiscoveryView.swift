@@ -15,44 +15,6 @@ struct ProgramDiscoveryView: View {
     @State private var selectedFilter: CatalogFilter = .all
     @State private var hasPavedScreen = false
     
-    private var fallbackLegendaryRoutines: [LegendaryRoutine] {
-        [
-            LegendaryRoutine(
-                title: "Arnold's Golden Split",
-                eraTitle: "Golden Era",
-                shortVibe: "High Volume, Classic V-Taper focus",
-                loreDescription: "Golden Era–inspired sample focused on chest, back, and classic proportions — not Arnold's full weekly protocol.",
-                gradientColors: [PastelTheme.pastelAmber, PastelTheme.pastelPeach],
-                difficulty: .advanced,
-                estimatedMinutes: 75,
-                benefits: ["V-Taper", "Volume", "Mass"],
-                exercises: [
-                    GeneratedExerciseDTO(name: "Barbell Bench Press - Medium Grip", muscleGroup: "Chest", type: "Strength", sets: 5, reps: 10, recommendedWeightKg: nil, restSeconds: 90),
-                    GeneratedExerciseDTO(name: "Incline Barbell Bench Press", muscleGroup: "Chest", type: "Strength", sets: 4, reps: 10, recommendedWeightKg: nil, restSeconds: 90),
-                    GeneratedExerciseDTO(name: "Wide-Grip Lat Pulldown", muscleGroup: "Back", type: "Strength", sets: 4, reps: 10, recommendedWeightKg: nil, restSeconds: 90),
-                    GeneratedExerciseDTO(name: "Bent-Over Barbell Row", muscleGroup: "Back", type: "Strength", sets: 4, reps: 10, recommendedWeightKg: nil, restSeconds: 90),
-                    GeneratedExerciseDTO(name: "Dumbbell Bicep Curl", muscleGroup: "Arms", type: "Hypertrophy", sets: 3, reps: 12, recommendedWeightKg: nil, restSeconds: 60)
-                ]
-            ),
-            LegendaryRoutine(
-                title: "Mike Mentzer Heavy Duty",
-                eraTitle: "High Intensity Era",
-                shortVibe: "Maximum Intensity, Low Volume",
-                loreDescription: "The revolutionary High-Intensity Training (HIT) system. Train to absolute failure with one heavy working set, followed by complete rest for ultimate growth.",
-                gradientColors: [PastelTheme.pastelLavender, PastelTheme.pastelSlate],
-                difficulty: .advanced,
-                estimatedMinutes: 45,
-                benefits: ["HIT", "Intensity", "Hypertrophy"],
-                exercises: [
-                    GeneratedExerciseDTO(name: "Incline Dumbbell Press", muscleGroup: "Chest", type: "Strength", sets: 2, reps: 8, recommendedWeightKg: nil, restSeconds: 120),
-                    GeneratedExerciseDTO(name: "Dumbbell Flyes", muscleGroup: "Chest", type: "Hypertrophy", sets: 1, reps: 10, recommendedWeightKg: nil, restSeconds: 90),
-                    GeneratedExerciseDTO(name: "Barbell Deadlift", muscleGroup: "Back", type: "Strength", sets: 2, reps: 6, recommendedWeightKg: nil, restSeconds: 120),
-                    GeneratedExerciseDTO(name: "Pullups", muscleGroup: "Back", type: "Bodyweight", sets: 2, reps: 10, recommendedWeightKg: nil, restSeconds: 90)
-                ]
-            )
-        ]
-    }
-    
     private var usingOfflineCatalog: Bool {
         FirestoreProgramService.shared.legendaryRoutines.isEmpty
             || FirestoreProgramService.shared.explorePrograms.isEmpty
@@ -60,7 +22,8 @@ struct ProgramDiscoveryView: View {
 
     private var legendaryPrograms: [LegendaryRoutine] {
         let routines = FirestoreProgramService.shared.legendaryRoutines
-        return routines.isEmpty ? fallbackLegendaryRoutines : routines
+        // Single source of truth — trademark-safe offline samples.
+        return routines.isEmpty ? LegendaryFallbackCatalog.routines : routines
     }
     
     private var featuredPrograms: [WorkoutProgramDefinition] {
@@ -141,7 +104,7 @@ struct ProgramDiscoveryView: View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: "icloud.slash")
                 .foregroundStyle(PastelTheme.pastelAmber)
-            Text("Showing bundled sample programs. Connect to refresh the live catalog.")
+            Text("Showing bundled sample programs (generic names only). Connect to refresh the live catalog.")
                 .font(.footnote)
                 .foregroundStyle(PastelTheme.textSecondary)
             Spacer(minLength: 0)

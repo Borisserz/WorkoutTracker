@@ -64,4 +64,10 @@ enum WatchSessionPolicy {
     }
 
     static let watchStartReservationSeconds: TimeInterval = 8
+
+    /// User-facing copy when an HK workout session fails mid-run (or after start).
+    /// Keep in sync with Watch-target `WatchSessionPolicy`.
+    static var healthKitSessionFailureMessage: String {
+        String(localized: "HealthKit workout session failed. Try again.")
+    }
 }

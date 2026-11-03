@@ -272,7 +272,7 @@ struct AICameraIllustration: View {
             
             VStack {
                 HStack {
-                    Text("REP: 12")
+                    Text("Rep: 12")
                         .font(.system(size: 9, weight: .black, design: .monospaced))
                         .foregroundColor(.white)
                         .padding(.horizontal, 6)
@@ -282,7 +282,7 @@ struct AICameraIllustration: View {
                     
                     Spacer()
                     
-                    Text("FORM: GOOD")
+                    Text("Form: good")
                         .font(.system(size: 9, weight: .black, design: .monospaced))
                         .foregroundColor(.green)
                         .padding(.horizontal, 6)

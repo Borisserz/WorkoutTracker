@@ -9,6 +9,14 @@ import AVFoundation
 
 // MARK: - Types
 
+/// Shared Vision gesture thresholds (unit-tested). Keep confidence conservative in gym lighting.
+enum GestureTuning {
+    /// Minimum joint confidence before a finger counts as extended.
+    static let confidenceThreshold: Float = 0.5
+    static let dwellTimeRequired: TimeInterval = 3.0
+    static let cooldownDuration: TimeInterval = 3.0
+}
+
 enum RecognizedGesture: Equatable {
     case none
     case victory    // ✌️ — засчитать сет
@@ -37,10 +45,10 @@ final class GestureController: ObservableObject {
     private var gestureStartTime: Date?
     private var cooldownUntil: Date = .distantPast
 
-    // Tuning constants
-    private let dwellTimeRequired: TimeInterval = 3.0   // Увеличено для защиты от случайных срабатываний
-    private let confidenceThreshold: Float = 0.35       // Было 0.5 — снижено
-    private let cooldownDuration: TimeInterval = 3.0    // Кулдаун после триггера
+    // Tuning constants — see `GestureTuning` (raised confidence reduces false set confirms).
+    private let dwellTimeRequired: TimeInterval = GestureTuning.dwellTimeRequired
+    private let confidenceThreshold: Float = GestureTuning.confidenceThreshold
+    private let cooldownDuration: TimeInterval = GestureTuning.cooldownDuration
 
     // MARK: - Public API
 

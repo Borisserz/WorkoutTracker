@@ -1,6 +1,6 @@
 # WorkoutTracker documentation index
 
-Last updated: **2026-11-03** (full-app audit + P1 fix pass)
+Last updated: **2026-11-03** (readiness verify + Maestro harden)
 
 ## Agent entry points
 
@@ -16,6 +16,11 @@ Last updated: **2026-11-03** (full-app audit + P1 fix pass)
 | [`audits/2026-11-03-full-audit.md`](audits/2026-11-03-full-audit.md) | Full-app audit + P1 fixes (**closed**, tests green) |
 | [`audits/2026-11-03-p1-honesty-fix.md`](audits/2026-11-03-p1-honesty-fix.md) | Residual P1 honesty/UX pass (**closed**, tests green) |
 | [`audits/2026-11-03-p2-polish-fix.md`](audits/2026-11-03-p2-polish-fix.md) | Residual P2 polish pass (**closed**, tests green) |
+| [`audits/2026-11-03-p1-product-fix.md`](audits/2026-11-03-p1-product-fix.md) | Product P1 (brands / Watch HK / gesture / queries) (**closed**, tests green) |
+| [`audits/2026-11-03-p2-anti-slop-pass.md`](audits/2026-11-03-p2-anti-slop-pass.md) | P2 anti-slop + dead Comparison UI (**closed**, tests green) |
+| [`audits/2026-11-03-readiness-hardening.md`](audits/2026-11-03-readiness-hardening.md) | Readiness verify + Maestro smoke/workout (**conditionally ready**) |
+| [`superpowers/specs/2026-11-03-readiness-hardening-design.md`](superpowers/specs/2026-11-03-readiness-hardening-design.md) | Design (approved) |
+| [`superpowers/plans/2026-11-03-readiness-hardening.md`](superpowers/plans/2026-11-03-readiness-hardening.md) | Implementation plan |
 
 ## Audits (2026-11-02)
 
@@ -42,12 +47,13 @@ Last updated: **2026-11-03** (full-app audit + P1 fix pass)
 | [`audits/2026-11-01-visual-pass.md`](audits/2026-11-01-visual-pass.md) | Pastel visual / anti-slop pass |
 | [`audits/2026-11-01-agent-questions.md`](audits/2026-11-01-agent-questions.md) | Autonomous decisions / optional follow-ups |
 
-## Maestro E2E (pending approval)
+## Maestro E2E
 
 | Doc | Status |
 |-----|--------|
-| [`superpowers/specs/2026-11-01-maestro-e2e-design.md`](superpowers/specs/2026-11-01-maestro-e2e-design.md) | Design — **awaiting your «ок»** |
-| [`superpowers/plans/2026-11-01-maestro-e2e.md`](superpowers/plans/2026-11-01-maestro-e2e.md) | Implementation plan (Phase 1 smoke) |
+| [`superpowers/specs/2026-11-01-maestro-e2e-design.md`](superpowers/specs/2026-11-01-maestro-e2e-design.md) | Design — **implemented** |
+| [`superpowers/plans/2026-11-01-maestro-e2e.md`](superpowers/plans/2026-11-01-maestro-e2e.md) | Phase 1+ flows in `.maestro/` |
+| Re-run | `./scripts/maestro_run.sh smoke` · `workout` · `all` |
 
 ## Plans
 

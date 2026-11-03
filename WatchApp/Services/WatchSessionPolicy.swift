@@ -57,4 +57,9 @@ enum WatchSessionPolicy {
     }
 
     static let watchStartReservationSeconds: TimeInterval = 8
+
+    /// Keep in sync with phone `WatchSessionPolicy` (separate Watch target root).
+    static var healthKitSessionFailureMessage: String {
+        String(localized: "HealthKit workout session failed. Try again.")
+    }
 }

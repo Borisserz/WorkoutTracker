@@ -238,7 +238,7 @@ struct SmartGeneratorEntryView: View {
                     key: "Quick Pump",
                     icon: "bolt.fill",
                     accentColor: PastelTheme.pastelAmber,
-                    desc: "Arms & chest · 20 min",
+                    desc: "Arms & chest, 20 min",
                     reason: "Short upper-body pump when chest and arms are recovered."
                 ) {
                     vm.applyQuickPreset(name: "Quick Pump", muscles: ["Arms", "Chest"], duration: 20, equipment: .fullGym, historyCache: dashboard.lastPerformancesCache)
@@ -249,7 +249,7 @@ struct SmartGeneratorEntryView: View {
                     key: "Dumbbell Full Body",
                     icon: "scalemass.fill",
                     accentColor: PastelTheme.pastelLavender,
-                    desc: "Full body · 45 min",
+                    desc: "Full body, 45 min",
                     reason: "Balanced dumbbell session across major groups."
                 ) {
                     vm.applyQuickPreset(name: "Dumbbell Full Body", muscles: ["Chest", "Back", "Legs"], duration: 45, equipment: .dumbbellsOnly, historyCache: dashboard.lastPerformancesCache)
@@ -260,7 +260,7 @@ struct SmartGeneratorEntryView: View {
                     key: "Home Shred",
                     icon: "house.fill",
                     accentColor: PastelTheme.pastelSlate,
-                    desc: "Bodyweight · 30 min",
+                    desc: "Bodyweight, 30 min",
                     reason: "No equipment — keep form and conditioning at home."
                 ) {
                     vm.applyQuickPreset(name: "Home Shred", muscles: ["Chest", "Core", "Legs"], duration: 30, equipment: .bodyweight, historyCache: dashboard.lastPerformancesCache)
@@ -271,7 +271,7 @@ struct SmartGeneratorEntryView: View {
                     key: "Cardio Blast",
                     icon: "flame.fill",
                     accentColor: PastelTheme.pastelPeach,
-                    desc: "Conditioning · 30 min",
+                    desc: "Conditioning, 30 min",
                     reason: "Higher tempo work for cardio and core."
                 ) {
                     vm.applyQuickPreset(name: "Cardio Blast", muscles: ["Cardio", "Core"], duration: 30, equipment: .bodyweight, historyCache: dashboard.lastPerformancesCache)

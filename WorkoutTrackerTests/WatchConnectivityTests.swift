@@ -199,6 +199,17 @@ final class WatchConnectivityTests: XCTestCase {
         )
     }
 
+    func testHealthKitSessionFailureMessageIsUserFacing() {
+        let message = WatchSessionPolicy.healthKitSessionFailureMessage
+        XCTAssertFalse(message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        XCTAssertTrue(
+            message.localizedCaseInsensitiveContains("healthkit")
+                || message.localizedCaseInsensitiveContains("session")
+                || message.localizedCaseInsensitiveContains("failed"),
+            "Mid-session HK failure copy must be explicit, not empty: \(message)"
+        )
+    }
+
     // MARK: - Dual-start (policy; full WC race = device smoke + ResidualPass concurrent create)
 
     func testDualStartGate_blocksWhenPhoneBusyOrActive() {

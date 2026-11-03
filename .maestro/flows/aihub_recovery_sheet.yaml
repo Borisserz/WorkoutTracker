@@ -24,7 +24,7 @@ tags:
       id: "wt.recovery.root"
     timeout: 10000
 
-- assertVisible: "CNS fatigue score"
+- assertVisible: "Rest readiness estimate"
 - assertVisible: "Not measured"
 - assertVisible: "Biometrics"
 

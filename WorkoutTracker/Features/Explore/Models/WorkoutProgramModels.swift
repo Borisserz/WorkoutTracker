@@ -94,8 +94,8 @@ struct MockProgramCatalog {
     var featuredPrograms: [WorkoutProgramDefinition] {
         [
             WorkoutProgramDefinition(
-                title: "Arnold's Golden 6",
-                description: "The classic full-body routine that built the Austrian Oak. Simple, effective, and brutal. Focus on progressive overload and ample rest.",
+                title: "Classic Six Lift Full Body",
+                description: "A classic full-body sample with six compound lifts. Simple, effective, and demanding — focus on progressive overload and ample rest.",
                 level: .intermediate, goal: .buildMuscle, equipment: .fullGym,
                 gradientColors: [PastelTheme.pastelAmber, PastelTheme.pastelPeach], isSingleRoutine: true,
                 routines: [

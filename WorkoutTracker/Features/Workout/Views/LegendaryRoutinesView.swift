@@ -172,7 +172,7 @@ struct LegendaryRoutinesView: View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: "icloud.slash")
                 .foregroundStyle(PastelTheme.pastelAmber)
-            Text("Showing bundled sample programs. Connect to refresh the live catalog.")
+            Text("Showing bundled sample programs (generic names only). Connect to refresh the live catalog.")
                 .font(.footnote)
                 .foregroundStyle(PastelTheme.textSecondary)
             Spacer(minLength: 0)

@@ -13,8 +13,8 @@ tags:
     timeout: 15000
 
 - assertVisible: "Progress"
-- assertVisible: "Trends and sports analytics"
+- assertVisible: "Trends and training analytics"
 - assertVisible: "No Active Goals"
-- assertVisible: "Start your streak today"
-- assertVisible: "Weekly activity"
+- assertVisible: "Start a streak today"
+- assertVisible: "Week activity"
 - assertVisible: "0 workouts"

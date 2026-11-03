@@ -179,6 +179,7 @@ struct WorkoutCalendarView: View {
                 }
             }
         }
+        .accessibilityIdentifier("wt.calendar.root")
         .navigationTitle("Activity calendar")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -1021,7 +1022,7 @@ struct DayInspectionSheet: View {
 
                 metricCell(
                     title: "Load",
-                    value: "\(workout.exercisesCount) ex · \(workout.totalSets) sets",
+                    value: "\(workout.exercisesCount) ex, \(workout.totalSets) sets",
                     icon: "flame.fill",
                     color: PastelTheme.pastelAmber
                 )

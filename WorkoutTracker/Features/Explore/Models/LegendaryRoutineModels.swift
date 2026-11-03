@@ -57,10 +57,10 @@ enum LegendaryFallbackCatalog {
     static var routines: [LegendaryRoutine] {
         [
             LegendaryRoutine(
-                title: "ATHLEAN-X: XERO",
-                eraTitle: "8 Weeks, Program 1",
+                title: "Bodyweight Definition Circuit",
+                eraTitle: "No Equipment",
                 shortVibe: "No equipment, maximum definition",
-                loreDescription: "Bodyweight-focused sample inspired by ATHLEAN-X style training — not the full published program.",
+                loreDescription: "Bodyweight-focused sample inspired by minimal-equipment conditioning — a starter circuit, not a full published program.",
                 gradientColors: [PastelTheme.pastelSlate, PastelTheme.pastelOat],
                 difficulty: .intermediate,
                 estimatedMinutes: 45,
@@ -73,10 +73,10 @@ enum LegendaryFallbackCatalog {
                 ]
             ),
             LegendaryRoutine(
-                title: "ATHLEAN-X: EOP...",
-                eraTitle: "8 Weeks, Program 2",
+                title: "Barbell Hypertrophy Primer",
+                eraTitle: "Strength Block",
                 shortVibe: "Elite hypertrophy and strength",
-                loreDescription: "Short hypertrophy sample in an ATHLEAN-X-inspired style — a starter split, not the full EOP curriculum.",
+                loreDescription: "Short hypertrophy sample inspired by classic strength blocks — a starter split, not a full curriculum.",
                 gradientColors: [PastelTheme.pastelAmber, PastelTheme.pastelPeach],
                 difficulty: .advanced,
                 estimatedMinutes: 60,
@@ -88,10 +88,10 @@ enum LegendaryFallbackCatalog {
                 ]
             ),
             LegendaryRoutine(
-                title: "Arnold's Golden Split",
+                title: "Golden Era Volume Split",
                 eraTitle: "Golden Era",
                 shortVibe: "High volume, classic V-taper physique",
-                loreDescription: "Golden Era–inspired push/pull sample for chest, back, and arms — not Arnold's full weekly split.",
+                loreDescription: "Golden Era–inspired push/pull sample for chest, back, and arms — a taste of classic volume training, not a full weekly split.",
                 gradientColors: [PastelTheme.pastelAmber, PastelTheme.pastelOat],
                 difficulty: .advanced,
                 estimatedMinutes: 75,
@@ -105,10 +105,10 @@ enum LegendaryFallbackCatalog {
                 ]
             ),
             LegendaryRoutine(
-                title: "Mike Mentzer Heavy Duty",
-                eraTitle: "High Intensity Era",
+                title: "High Intensity Peak Sample",
+                eraTitle: "High Intensity",
                 shortVibe: "Peak intensity, failure sets",
-                loreDescription: "HIT-inspired sample with low volume and hard sets — a taste of Mentzer-style intensity, not his full system.",
+                loreDescription: "HIT-inspired sample with low volume and hard sets — a taste of high-intensity training, not a full system.",
                 gradientColors: [PastelTheme.pastelLavender, PastelTheme.pastelSlate],
                 difficulty: .advanced,
                 estimatedMinutes: 45,

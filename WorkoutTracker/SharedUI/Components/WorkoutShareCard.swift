@@ -285,18 +285,18 @@ struct WorkoutShareCard: View {
     private var receiptHeaderSection: some View {
         VStack(spacing: 4) {
             HStack {
-                Text("WORKOUTTRACKER /// CERTIFIED RECEIPT")
+                Text("WorkoutTracker — certified receipt")
                     .font(.system(size: 10, weight: .black, design: .monospaced))
-                    .tracking(1.5)
+                    .tracking(0.5)
                     .foregroundColor(PastelTheme.pastelOat)
                 Spacer()
-                Text("SLIP #\(abs(workout.id.hashValue) % 9000 + 1000)")
+                Text("Slip #\(abs(workout.id.hashValue) % 9000 + 1000)")
                     .font(.system(size: 10, weight: .bold, design: .monospaced))
                     .foregroundColor(PastelTheme.textTertiary)
             }
 
             HStack {
-                Text(workout.date.formatted(date: .abbreviated, time: .shortened).uppercased())
+                Text(workout.date.formatted(date: .abbreviated, time: .shortened))
                     .font(.system(size: 9, weight: .bold, design: .monospaced))
                     .foregroundColor(PastelTheme.textSecondary)
                 Spacer()
@@ -453,9 +453,9 @@ struct WorkoutShareCard: View {
                     .tracking(1)
                     .foregroundColor(PastelTheme.textTertiary)
                 Spacer()
-                Text("WORKOUTTRACKER")
+                Text("WorkoutTracker")
                     .font(.system(size: 8, weight: .black, design: .monospaced))
-                    .tracking(1.5)
+                    .tracking(0.5)
                     .foregroundColor(PastelTheme.pastelOat)
             }
         }

@@ -136,6 +136,7 @@ struct AICoachView: View {
                                 }
                             }
                             .buttonStyle(.plain)
+                            .accessibilityIdentifier("wt.aihub.settings")
                         }
                         .padding(.horizontal, 16)
                         .padding(.top, 10)
@@ -319,6 +320,7 @@ struct AICoachView: View {
                     }
                 }
             }
+            .accessibilityIdentifier("wt.aihub.root")
             .navigationBarHidden(true)
             .dynamicTypeSize(.medium ... .accessibility1)
             .onAppear {
@@ -1802,6 +1804,7 @@ struct RestAnalysisSheet: View {
                 }
                 .background(.ultraThinMaterial)
             }
+            .accessibilityIdentifier("wt.recovery.root")
             .navigationBarHidden(true)
             .task {
                 if let sleep = await HealthKitManager.shared.fetchSleepDuration() {

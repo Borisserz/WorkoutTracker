@@ -54,6 +54,7 @@ ui-debug.log
 # Maestro
 .maestro/output/
 .maestro/.reports/
+.derivedData/
 !scripts/
 !scripts/**
 

@@ -95,7 +95,18 @@ extension WatchWorkoutManager: HKWorkoutSessionDelegate, HKLiveWorkoutBuilderDel
         }
     }
 
-    nonisolated func workoutSession(_ workoutSession: HKWorkoutSession, didFailWithError error: Error) {}
+    nonisolated func workoutSession(_ workoutSession: HKWorkoutSession, didFailWithError error: Error) {
+        let detail = error.localizedDescription
+        Task { @MainActor in
+            self.isRunning = false
+            self.session = nil
+            self.builder = nil
+            self.startFailureMessage = WatchSessionPolicy.healthKitSessionFailureMessage
+            WatchAppLog.workout.error(
+                "WatchWorkoutManager: HK session failed — \(detail, privacy: .public)"
+            )
+        }
+    }
 
     nonisolated func workoutBuilder(_ workoutBuilder: HKLiveWorkoutBuilder, didCollectDataOf collectedTypes: Set<HKSampleType>) {
         // Do all HealthKit reads here (nonisolated). Extract only Sendable Doubles

@@ -12,14 +12,14 @@ tags:
       id: "wt.aihub.root"
     timeout: 10000
 
-- assertVisible: "Load readiness"
-- assertVisible: "Coach dialog"
+- assertVisible: "Check readiness"
+- assertVisible: "Coach chat"
 
 - tapOn:
     id: "wt.aihub.settings"
 
 - extendedWaitUntil:
-    visible: "AI settings"
+    visible: "AI Settings"
     timeout: 8000
 - tapOn: "Done"
 - assertVisible:
@@ -35,11 +35,11 @@ tags:
 
 # Open chat via text field (no mic)
 - scrollUntilVisible:
-    element: "Ask your coach about training..."
+    element: "Ask the coach about your workout…"
     direction: UP
     timeout: 15000
 
-- tapOn: "Ask your coach about training..."
+- tapOn: "Ask the coach about your workout…"
 - inputText: "Hello"
 - pressKey: Enter
 

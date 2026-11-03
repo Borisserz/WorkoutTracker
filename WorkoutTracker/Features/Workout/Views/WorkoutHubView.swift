@@ -37,8 +37,8 @@ struct WorkoutHubView: View {
 
     @Query private var favoriteWorkouts: [Workout]
 
-    @Query(filter: #Predicate<Workout> { $0.endTime == nil }, sort: \Workout.date, order: .reverse)
-    private var activeWorkouts: [Workout]
+    /// Only need the newest active for the resume card — keep the query bounded.
+    @Query private var activeWorkouts: [Workout]
 
     /// Cap finished sessions in memory — same window as History (400).
     @Query private var finishedWorkouts: [Workout]
@@ -69,6 +69,13 @@ struct WorkoutHubView: View {
     @State private var isMuscleGridExpanded: Bool = false
 
     init() {
+        var active = FetchDescriptor<Workout>(
+            predicate: #Predicate<Workout> { $0.endTime == nil },
+            sortBy: [SortDescriptor(\.date, order: .reverse)]
+        )
+        active.fetchLimit = 5
+        _activeWorkouts = Query(active)
+
         var finished = FetchDescriptor<Workout>(
             predicate: #Predicate<Workout> { $0.endTime != nil },
             sortBy: [SortDescriptor(\.date, order: .reverse)]
@@ -832,56 +839,6 @@ struct WorkoutHubView: View {
             .overlay(Capsule().stroke(PastelTheme.cardBorder, lineWidth: 1))
     }
 
-    // MARK: - 5. Default Routines Data (Exact Mockup Match)
-    private var defaultPowerDayAExercises: [GeneratedExerciseDTO] {
-        [
-            GeneratedExerciseDTO(name: "Barbell Bench Press", muscleGroup: "Chest", type: "Strength", sets: 3, reps: 8, recommendedWeightKg: 90, restSeconds: 90),
-            GeneratedExerciseDTO(name: "Pull-ups", muscleGroup: "Back", type: "Strength", sets: 3, reps: 8, recommendedWeightKg: nil, restSeconds: 90),
-            GeneratedExerciseDTO(name: "Overhead Press", muscleGroup: "Shoulders", type: "Strength", sets: 3, reps: 8, recommendedWeightKg: 50, restSeconds: 90),
-            GeneratedExerciseDTO(name: "Bent-Over Barbell Row", muscleGroup: "Back", type: "Strength", sets: 3, reps: 8, recommendedWeightKg: 70, restSeconds: 90)
-        ]
-    }
-
-    private var defaultFullBodyExercises: [GeneratedExerciseDTO] {
-        [
-            GeneratedExerciseDTO(name: "Barbell Squat", muscleGroup: "Legs", type: "Strength", sets: 3, reps: 8, recommendedWeightKg: 100, restSeconds: 120),
-            GeneratedExerciseDTO(name: "Barbell Bench Press", muscleGroup: "Chest", type: "Strength", sets: 3, reps: 8, recommendedWeightKg: 90, restSeconds: 90),
-            GeneratedExerciseDTO(name: "Bent-Over Barbell Row", muscleGroup: "Back", type: "Strength", sets: 3, reps: 8, recommendedWeightKg: 70, restSeconds: 90),
-            GeneratedExerciseDTO(name: "Romanian Deadlift", muscleGroup: "Legs", type: "Strength", sets: 3, reps: 10, recommendedWeightKg: 80, restSeconds: 90),
-            GeneratedExerciseDTO(name: "Overhead Press", muscleGroup: "Shoulders", type: "Strength", sets: 3, reps: 8, recommendedWeightKg: 50, restSeconds: 90),
-            GeneratedExerciseDTO(name: "Barbell Curl", muscleGroup: "Arms", type: "Strength", sets: 3, reps: 12, recommendedWeightKg: 16, restSeconds: 60)
-        ]
-    }
-
-    private func startPresetOrTemplate(name: String, exercises: [GeneratedExerciseDTO]) {
-        guard !isProcessing else { return }
-        isProcessing = true
-        HapticManager.shared.impact(.medium)
-
-        Task { @MainActor in
-            if await workoutService.hasActiveWorkout() {
-                if let existing = await workoutService.fetchLatestWorkout() {
-                    self.navigateToActiveWorkout = existing
-                } else {
-                    showActiveWorkoutAlert = true
-                }
-                isProcessing = false
-                return
-            }
-
-            let generatedDTO = GeneratedWorkoutDTO(
-                title: name,
-                aiMessage: "Workout \(name)",
-                exercises: exercises
-            )
-            if let id = await workoutService.startGeneratedWorkout(generatedDTO, source: "template"),
-               let newWorkout = context.model(for: id) as? Workout {
-                self.navigateToActiveWorkout = newWorkout
-            }
-            isProcessing = false
-        }
-    }
-
     // MARK: - 6. Workout Templates Compact Horizontal Swipe-Deck (Concept 1: Zero Walls of Text)
     private var totalTemplateCount: Int {
         myRoutines.isEmpty ? 2 : myRoutines.count
@@ -1195,132 +1152,6 @@ struct WorkoutHubView: View {
         .padding(.horizontal, 16)
     }
 
-    private func templateCard(
-        name: String,
-        iconName: String,
-        exerciseCount: Int,
-        muscles: String,
-        duration: String,
-        exercises: [GeneratedExerciseDTO]
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // Top Row: Squircle Icon + Title + Metadata + Exercise Count Pill
-            HStack(alignment: .center, spacing: 12) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(PastelTheme.cardSurfaceSubtle)
-                        .frame(width: 40, height: 40)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                .stroke(PastelTheme.cardBorder, lineWidth: 1)
-                        )
-
-                    Image(systemName: iconName)
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(PastelTheme.pastelOat)
-                }
-
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(name)
-                        .font(.system(size: 17, weight: .bold, design: .rounded))
-                        .foregroundStyle(PastelTheme.textPrimary)
-                        .lineLimit(1)
-
-                    HStack(spacing: 8) {
-                        Text(muscles)
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(PastelTheme.textSecondary)
-
-                        Rectangle()
-                            .fill(PastelTheme.cardBorder)
-                            .frame(width: 1, height: 10)
-
-                        Text(duration)
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(PastelTheme.textTertiary)
-                    }
-                }
-
-                Spacer(minLength: 6)
-
-                // Exercise count pill
-                Text("\(exerciseCount) exercises")
-                    .font(.system(size: 11, weight: .bold, design: .rounded))
-                    .foregroundStyle(PastelTheme.pastelSage)
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 4)
-                    .background(PastelTheme.pastelSage.opacity(0.12))
-                    .clipShape(Capsule())
-            }
-
-            // Subtle Divider
-            Rectangle()
-                .fill(PastelTheme.cardBorder.opacity(0.6))
-                .frame(height: 1)
-                .padding(.vertical, 2)
-
-            // Exercises Breakdown List (Hevy Hallmark)
-            VStack(alignment: .leading, spacing: 6) {
-                ForEach(exercises.prefix(4), id: \.name) { ex in
-                    HStack(alignment: .center, spacing: 8) {
-                        Text("\(ex.sets) × \(ex.reps)")
-                            .font(.system(size: 12, weight: .bold, design: .monospaced))
-                            .foregroundStyle(PastelTheme.pastelSage)
-                            .frame(width: 48, alignment: .leading)
-
-                        Text(LocalizationHelper.shared.translateName(ex.name))
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundStyle(PastelTheme.textSecondary)
-                            .lineLimit(1)
-
-                        Spacer()
-
-                        if let weight = ex.recommendedWeightKg, weight > 0 {
-                            Text("\(Int(unitsManager.convertFromKilograms(weight))) \(unitsManager.weightUnitString())")
-                                .font(.system(size: 12, weight: .semibold, design: .rounded))
-                                .foregroundStyle(PastelTheme.textTertiary)
-                        }
-                    }
-                }
-
-                if exercises.count > 4 {
-                    Text(String(localized: "+ \(exercises.count - 4) more exercises"))
-                        .font(.system(size: 11, weight: .medium, design: .rounded))
-                        .foregroundStyle(PastelTheme.textTertiary)
-                        .padding(.top, 2)
-                }
-            }
-
-            // Bottom Full-Width CTA: Solid Warm Oat Button
-            Button {
-                startPresetOrTemplate(name: name, exercises: exercises)
-            } label: {
-                HStack(spacing: 7) {
-                    Image(systemName: "play.fill")
-                        .font(.system(size: 12, weight: .bold))
-                    Text("Start workout")
-                        .font(.system(size: 14, weight: .bold, design: .rounded))
-                }
-                .foregroundStyle(PastelTheme.textOnOat)
-                .frame(maxWidth: .infinity)
-                .frame(height: PastelTheme.ButtonMetrics.splitHeight)
-                .background(PastelTheme.pastelOat)
-                .clipShape(RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.splitRadius, style: .continuous))
-                .shadow(color: PastelTheme.pastelOat.opacity(0.2), radius: 6, y: 2)
-            }
-            .buttonStyle(Tactile3DCardButtonStyle(scale: 0.98, maxTilt: 2.2))
-            .padding(.top, 4)
-        }
-        .padding(16)
-        .background(PastelTheme.cardSurface)
-        .clipShape(RoundedRectangle(cornerRadius: PastelTheme.cardRadius, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: PastelTheme.cardRadius, style: .continuous)
-                .stroke(PastelTheme.cardBorder, lineWidth: 1)
-        )
-        .padding(.horizontal, 16)
-    }
-
     private func exerciseWord(count: Int) -> String {
         "\(count) exercises"
     }
@@ -1366,7 +1197,7 @@ struct WorkoutHubView: View {
                             .background(PastelTheme.pastelAmber.opacity(0.14))
                             .clipShape(Capsule())
 
-                        Text("Golden era, Arnold & HIT")
+                        Text("Classic volume & intensity samples")
                             .font(.system(size: 11, weight: .medium))
                             .foregroundStyle(PastelTheme.textSecondary)
                             .lineLimit(1)
