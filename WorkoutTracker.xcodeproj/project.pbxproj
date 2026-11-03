@@ -177,6 +177,7 @@
 			membershipExceptions = (
 				AppCore/Constants.swift,
 				CoreLogic/Helpers/LocalizationHelper.swift,
+				CoreLogic/Managers/RestDurationPolicy.swift,
 				CoreLogic/Managers/UnitsManager.swift,
 				DataLayer/DTOs/AchievementModels.swift,
 				DataLayer/DTOs/SharedModels.swift,

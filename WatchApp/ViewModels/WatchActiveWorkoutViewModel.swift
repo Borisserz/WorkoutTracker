@@ -3,6 +3,7 @@
 internal import SwiftUI
 import Observation
 import SwiftData
+import os
 
 struct ActiveExerciseWrapper: Identifiable, Hashable, Sendable {
     var id: Int { index }
