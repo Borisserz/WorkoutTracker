@@ -378,9 +378,24 @@ struct CNSCalculator {
     }
 
     static func getStatus(for score: Double) -> (text: String, color: Color) {
+        if score < 0 { return (String(localized: "Readiness not measured"), PastelTheme.textSecondary) }
         if score >= 80 { return (String(localized: "Optimal for hypertrophy"), PastelTheme.pastelSage) }
         if score >= 60 { return (String(localized: "Moderate fatigue"), PastelTheme.pastelAmber) }
         if score >= 40 { return (String(localized: "Needs recovery"), PastelTheme.pastelAmber) }
         return (String(localized: "CNS depleted — rest only"), PastelTheme.pastelPeach)
+    }
+
+    /// AI Hub coach dialog copy — never treat unmeasured (`< 0`) as fatigue.
+    static func coachGreeting(for score: Double) -> String {
+        if score < 0 {
+            return String(localized: "CNS readiness is not measured yet. Connect Health data or check in when vitals are available. How do you feel today?")
+        }
+        if score >= 80 {
+            return String(localized: "CNS recovered to \(Int(score))%. Strong window for heavy compound work. What should we plan today?")
+        }
+        if score >= 50 {
+            return String(localized: "Readiness is balanced (\(Int(score))%). Aim for moderate intensity and clean form. Need help with load or warm-up?")
+        }
+        return String(localized: "CNS fatigue noted (\(Int(score))%). Consider a deload or light cardio with mobility. How do you feel?")
     }
 }

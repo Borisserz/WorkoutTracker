@@ -1016,7 +1016,7 @@ struct WorkoutHubView: View {
                     }
                     .foregroundStyle(PastelTheme.textOnOat)
                     .padding(.horizontal, 12)
-                    .frame(height: 32)
+                    .frame(height: PastelTheme.ButtonMetrics.inCardHeight)
                     .background(PastelTheme.pastelSage)
                     .clipShape(Capsule())
                 }

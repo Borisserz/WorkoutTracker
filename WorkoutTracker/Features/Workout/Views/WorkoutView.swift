@@ -311,7 +311,9 @@ struct DynamicWorkoutListView: View {
         case .effortAscending: sortDescriptors = [SortDescriptor(\.effortPercentage, order: .forward)]
         }
 
-        _workouts = Query(filter: predicate, sort: sortDescriptors)
+        var descriptor = FetchDescriptor<Workout>(predicate: predicate, sortBy: sortDescriptors)
+        descriptor.fetchLimit = 400
+        _workouts = Query(descriptor)
     }
 
     var body: some View {

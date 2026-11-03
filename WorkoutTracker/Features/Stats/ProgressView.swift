@@ -435,7 +435,7 @@ struct HeaderView: View {
             Spacer()
 
             Button {
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                HapticManager.shared.impact(.light)
                 showProfile = true
             } label: {
                 ZStack {
@@ -520,7 +520,7 @@ struct GoalsSectionView: View {
                 Spacer()
 
                 Button {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    HapticManager.shared.impact(.light)
                     showingAddGoal = true
                 } label: {
                     HStack(spacing: 4) {
@@ -597,7 +597,7 @@ struct CompactGoalEmptyState: View {
             Spacer()
             
             Button(action: {
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                HapticManager.shared.impact(.light)
                 showingAddGoal = true
             }) {
                 Text("Set Goal")
@@ -741,7 +741,7 @@ struct BodyTransformBannerCard: View {
 
     var body: some View {
         Button(action: {
-            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            HapticManager.shared.impact(.medium)
             onTap()
         }) {
             ZStack {
@@ -844,7 +844,7 @@ struct AIIslandView: View {
 
     var body: some View {
         Button(action: {
-            UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+            HapticManager.shared.impact(.heavy)
             action()
         }) {
             ZStack {
@@ -919,7 +919,7 @@ struct BodyTransformSquareCard: View {
         let subtitleColor = PastelTheme.textSecondary
 
         Button(action: {
-            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            HapticManager.shared.impact(.medium)
             onTap()
         }) {
             ZStack {
@@ -1039,7 +1039,7 @@ struct AIIslandSquareView: View {
         let subtitleColor = PastelTheme.textSecondary
 
         Button(action: {
-            UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+            HapticManager.shared.impact(.heavy)
             action()
         }) {
             ZStack {
@@ -1115,7 +1115,7 @@ struct CurrentStreakSquareCard: View {
         let titleColor = PastelTheme.textPrimary
 
         Button(action: {
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            HapticManager.shared.impact(.light)
             di.appState.showCalendarSheet = true
         }) {
             ZStack {
@@ -1190,7 +1190,7 @@ struct ActivityThisWeekSquareCard: View {
         let titleColor = PastelTheme.textPrimary
 
         Button(action: {
-            UISelectionFeedbackGenerator().selectionChanged()
+            HapticManager.shared.selection()
             showSheet = true
         }) {
             ZStack {
@@ -1268,7 +1268,7 @@ struct PeriodPicker: View {
             ForEach(StatsView.Period.allCases) { period in
                 let isSelected = selectedPeriod == period
                 Button(action: {
-                    UISelectionFeedbackGenerator().selectionChanged()
+                    HapticManager.shared.selection()
                     withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
                         selectedPeriod = period
                     }
@@ -1385,7 +1385,7 @@ struct InteractiveStatCard: View {
 
     var body: some View {
         Button(action: {
-            UISelectionFeedbackGenerator().selectionChanged()
+            HapticManager.shared.selection()
             withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
                 selectedMetric = metric
             }
@@ -1760,7 +1760,7 @@ struct PremiumDisclosureCard<Content: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Button(action: {
-                UISelectionFeedbackGenerator().selectionChanged()
+                HapticManager.shared.selection()
                 withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
                     isExpanded.toggle()
                 }
@@ -2146,8 +2146,7 @@ struct SetsTrendDetailView: View {
                         let muscleColor = colorManager.getColor(for: muscle)
 
                         Button {
-                            let generator = UISelectionFeedbackGenerator()
-                            generator.selectionChanged()
+                            HapticManager.shared.selection()
                             withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
                                 selectedMuscle = muscle
                             }
@@ -2545,8 +2544,7 @@ struct RadarChartDetailView: View {
             .background(isHighlighted ? themeManager.current.primaryAccent.opacity(0.1) : Color.clear)
             .contentShape(Rectangle())
             .onTapGesture {
-                let generator = UISelectionFeedbackGenerator()
-                generator.selectionChanged()
+                HapticManager.shared.selection()
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                     highlightedMuscle = isHighlighted ? nil : item.muscle
                 }
@@ -3277,8 +3275,7 @@ struct HeatmapDetailView: View {
                                     dragStartTime = nil
 
                                     if duration < 0.3 {
-                                        let generator = UIImpactFeedbackGenerator(style: .light)
-                                        generator.impactOccurred()
+                                        HapticManager.shared.impact(.light)
                                         if value.location.x < geo.size.width / 2 {
                                             prevSlide()
                                         } else {
@@ -3695,8 +3692,7 @@ struct StorySlideOutro: View {
 
               
                     Button {
-                        let generator = UIImpactFeedbackGenerator(style: .heavy)
-                        generator.impactOccurred()
+                        HapticManager.shared.impact(.heavy)
                         
                         let shareView = StorySlideOutroShareCard(data: data)
                             .environment(ThemeManager.shared)
@@ -4133,7 +4129,7 @@ struct PremiumStatsEmptyState: View {
             .opacity(appear ? 1.0 : 0)
 
             Button(action: {
-                UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+                HapticManager.shared.impact(.heavy)
                 onStartWorkout()
             }) {
                 HStack(spacing: 8) {

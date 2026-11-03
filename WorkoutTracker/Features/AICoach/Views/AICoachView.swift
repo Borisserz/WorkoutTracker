@@ -497,6 +497,9 @@ struct PastelReadinessCard: View {
     }
 
     private var adviceText: String {
+        if score < 0 {
+            return String(localized: "Readiness not measured")
+        }
         if score >= 80 {
             return "CNS fully recovered. Great day for high-intensity compound lifts."
         } else if score >= 50 {
@@ -651,13 +654,7 @@ struct InteractiveCoachDialogCard: View {
     let onSubmitQuery: () -> Void
 
     private var coachGreeting: String {
-        if score >= 80 {
-            return "CNS recovered to \(Int(score))%. Strong window for heavy compound work. What should we plan today?"
-        } else if score >= 50 {
-            return "Readiness is balanced (\(Int(score))%). Aim for moderate intensity and clean form. Need help with load or warm-up?"
-        } else {
-            return "CNS fatigue noted (\(Int(score))%). Consider a deload or light cardio with mobility. How do you feel?"
-        }
+        CNSCalculator.coachGreeting(for: score)
     }
 
     var body: some View {

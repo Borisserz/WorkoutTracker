@@ -1,6 +1,6 @@
 # WorkoutTracker documentation index
 
-Last updated: **2026-11-02** (sister-apps promo)
+Last updated: **2026-11-03** (full-app audit + P1 fix pass)
 
 ## Agent entry points
 
@@ -8,6 +8,12 @@ Last updated: **2026-11-02** (sister-apps promo)
 |-----|---------|
 | [`AGENTS.md`](../AGENTS.md) | Hard rules, design system, verification |
 | [`README.md`](../README.md) | Public product overview + local build |
+
+## Audits (2026-11-03)
+
+| Doc | Status |
+|-----|--------|
+| [`audits/2026-11-03-full-audit.md`](audits/2026-11-03-full-audit.md) | Full-app audit + P1 fixes (**closed**, tests green) |
 
 ## Audits (2026-11-02)
 

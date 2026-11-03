@@ -10,6 +10,9 @@ enum HistoryFilter: String, CaseIterable, Identifiable {
     case year = "This year"
 
     var id: String { rawValue }
+
+    /// Catalog key for `Text` / `String(localized:)` — do not use `Text(rawValue)` (bypasses lookup).
+    var localizedTitleKey: String { rawValue }
 }
 
 /// Timeline grouping structure for workouts
@@ -57,14 +60,14 @@ struct HistoryView: View {
     private static let monthYearFormatter: DateFormatter = {
         let f = DateFormatter()
         f.dateFormat = "LLLL yyyy"
-        f.locale = Locale(identifier: "en_US")
+        f.locale = .autoupdatingCurrent
         return f
     }()
 
     static let shortDateFormatter: DateFormatter = {
         let f = DateFormatter()
         f.dateFormat = "d MMM"
-        f.locale = Locale(identifier: "ru_RU")
+        f.locale = .autoupdatingCurrent
         return f
     }()
 
@@ -154,7 +157,7 @@ struct HistoryView: View {
         guard let startOfThisWeek = calendar.dateInterval(of: .weekOfYear, for: now)?.start,
               let startOfLastWeek = calendar.date(byAdding: .weekOfYear, value: -1, to: startOfThisWeek),
               let startOfThisMonth = calendar.dateInterval(of: .month, for: now)?.start else {
-            return [WorkoutTimelineGroup(id: "all", title: "All workouts", workouts: filteredWorkouts)]
+            return [WorkoutTimelineGroup(id: "all", title: String(localized: "All workouts"), workouts: filteredWorkouts)]
         }
 
         var thisWeek: [Workout] = []
@@ -176,13 +179,13 @@ struct HistoryView: View {
 
         var groups: [WorkoutTimelineGroup] = []
         if !thisWeek.isEmpty {
-            groups.append(WorkoutTimelineGroup(id: "thisWeek", title: "This week", workouts: thisWeek))
+            groups.append(WorkoutTimelineGroup(id: "thisWeek", title: String(localized: "This week"), workouts: thisWeek))
         }
         if !lastWeek.isEmpty {
-            groups.append(WorkoutTimelineGroup(id: "lastWeek", title: "Last week", workouts: lastWeek))
+            groups.append(WorkoutTimelineGroup(id: "lastWeek", title: String(localized: "Last week"), workouts: lastWeek))
         }
         if !thisMonth.isEmpty {
-            groups.append(WorkoutTimelineGroup(id: "thisMonth", title: "This month", workouts: thisMonth))
+            groups.append(WorkoutTimelineGroup(id: "thisMonth", title: String(localized: "This month"), workouts: thisMonth))
         }
         if !older.isEmpty {
             let monthFormatter = Self.monthYearFormatter
@@ -726,7 +729,7 @@ private struct HistoryFilterBarView: View {
                             selectedFilter = filter
                         }
                     } label: {
-                        Text(filter.rawValue)
+                        Text(LocalizedStringKey(filter.localizedTitleKey))
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(isSelected ? PastelTheme.textOnOat : PastelTheme.textSecondary)
                             .padding(.horizontal, 14)
@@ -1139,7 +1142,7 @@ private struct BestWorkoutReplayCard: View {
                 }
                 .foregroundStyle(PastelTheme.textOnOat)
                 .frame(maxWidth: .infinity)
-                .frame(height: 32)
+                .frame(height: PastelTheme.ButtonMetrics.inCardHeight)
                 .background(PastelTheme.pastelOat)
                 .clipShape(Capsule())
             }
@@ -1195,7 +1198,7 @@ private struct PresetReplayCard: View {
                 }
                 .foregroundStyle(PastelTheme.textOnOat)
                 .frame(maxWidth: .infinity)
-                .frame(height: 32)
+                .frame(height: PastelTheme.ButtonMetrics.inCardHeight)
                 .background(PastelTheme.pastelSage)
                 .clipShape(Capsule())
             }

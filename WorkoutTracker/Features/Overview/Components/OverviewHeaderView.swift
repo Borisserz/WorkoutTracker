@@ -23,7 +23,7 @@ struct OverviewHeaderView: View {
     private var formattedDate: String {
         let formatter = DateFormatter()
         formatter.dateFormat = "EEEE, d MMMM"
-        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.locale = .autoupdatingCurrent
         return formatter.string(from: Date()).capitalized
     }
 
@@ -57,6 +57,7 @@ struct OverviewHeaderView: View {
                             .font(.system(size: 12, weight: .bold, design: .rounded).monospacedDigit())
                             .foregroundStyle(PastelTheme.textPrimary)
                             .lineLimit(1)
+                            .minimumScaleFactor(0.75)
                     }
                     .padding(.horizontal, 11)
                     .frame(height: 38)

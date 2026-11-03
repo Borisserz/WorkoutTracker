@@ -46,6 +46,34 @@ final class ResidualPassTests: XCTestCase {
         XCTAssertNotEqual(Constants.CNS.unmeasuredAppStorageDefault, 85)
     }
 
+    func testCNSStatusTreatsNegativeAsNotMeasured() {
+        let status = CNSCalculator.getStatus(for: Constants.CNS.unmeasuredAppStorageDefault)
+        XCTAssertFalse(status.text.localizedCaseInsensitiveContains("depleted"))
+        XCTAssertFalse(status.text.localizedCaseInsensitiveContains("fatigue"))
+        XCTAssertTrue(
+            status.text.localizedCaseInsensitiveContains("not measured")
+            || status.text.localizedCaseInsensitiveContains("unmeasured")
+        )
+    }
+
+    func testCNSCoachGreetingDoesNotInventFatigueForUnmeasured() {
+        let greeting = CNSCalculator.coachGreeting(for: Constants.CNS.unmeasuredAppStorageDefault)
+        XCTAssertFalse(greeting.contains("-1"))
+        XCTAssertFalse(greeting.localizedCaseInsensitiveContains("fatigue noted"))
+        XCTAssertTrue(
+            greeting.localizedCaseInsensitiveContains("not measured")
+            || greeting.localizedCaseInsensitiveContains("Health")
+        )
+    }
+
+    func testHistoryFilterLocalizedTitlesAreCatalogKeys() {
+        XCTAssertEqual(HistoryFilter.all.localizedTitleKey, "All")
+        XCTAssertEqual(HistoryFilter.favorites.localizedTitleKey, "Favorites")
+        XCTAssertEqual(HistoryFilter.month.localizedTitleKey, "This month")
+        XCTAssertEqual(HistoryFilter.threeMonths.localizedTitleKey, "3 months")
+        XCTAssertEqual(HistoryFilter.year.localizedTitleKey, "This year")
+    }
+
     func testAILogicErrorServerMessageDoesNotBlameGoogle() {
         let message = AILogicError.apiError(statusCode: 503, message: "upstream").errorDescription ?? ""
         XCTAssertFalse(message.localizedCaseInsensitiveContains("Google"))

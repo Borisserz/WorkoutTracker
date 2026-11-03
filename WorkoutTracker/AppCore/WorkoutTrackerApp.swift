@@ -413,7 +413,8 @@ struct WorkoutTrackerApp: App {
 
             PhoneWatchManager.shared.start(with: container)
             PhoneWatchManager.shared.isSessionStartBlocked = { [weak di] in
-                di?.workoutService.isFinishTransitionPending == true
+                // Cover finish-undo window AND in-flight phone create/start (Watch canStartWorkout TOCTOU).
+                di?.workoutService.isStartBlocked == true
             }
             MuscleColorManager.shared.initialize(modelContainer: container)
 
