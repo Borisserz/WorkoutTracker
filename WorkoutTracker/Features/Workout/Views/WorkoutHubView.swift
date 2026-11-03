@@ -361,31 +361,6 @@ struct WorkoutHubView: View {
             .buttonStyle(Tactile3DCardButtonStyle(scale: 0.97, maxTilt: 2.0))
 
             Spacer()
-
-            // Create button (Right - Refined Glass Capsule)
-            Button {
-                HapticManager.shared.impact(.soft)
-                presetToEdit = nil
-                showPresetEditor = true
-            } label: {
-                HStack(spacing: 5) {
-                    Image(systemName: "plus")
-                        .font(.system(size: 12, weight: .bold))
-                    Text("Create")
-                        .font(.system(size: 13, weight: .bold, design: .rounded))
-                }
-                .foregroundStyle(PastelTheme.pastelOat)
-                .padding(.horizontal, 14)
-                .frame(height: PastelTheme.ButtonMetrics.pillHeight)
-                .background(PastelTheme.cardSurfaceSubtle)
-                .clipShape(Capsule())
-                .overlay(
-                    Capsule()
-                        .stroke(PastelTheme.cardBorderFocused, lineWidth: 1)
-                )
-            }
-            .buttonStyle(Tactile3DCardButtonStyle(scale: 0.97, maxTilt: 2.0))
-            .accessibilityIdentifier("wt.hub.create")
         }
         .padding(.horizontal, 16)
     }
@@ -573,21 +548,22 @@ struct WorkoutHubView: View {
                         .lineLimit(1)
                 }
 
-                Spacer(minLength: 8)
+                // Dynamic flight corridor for the floating bicep icon
+                GeometryReader { proxy in
+                    let travel = max(0, proxy.size.width - 26)
+                    FloatingBicepsIcon(travelDistance: travel)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .trailing)
+                }
+                .frame(height: 44)
 
-                HStack(spacing: 8) {
-                    FloatingSparklesIcon()
+                ZStack {
+                    Circle()
+                        .fill(PastelTheme.textOnOat.opacity(0.12))
+                        .frame(width: 32, height: 32)
+
+                    Image(systemName: "arrow.right")
+                        .font(.system(size: 13, weight: .heavy))
                         .foregroundStyle(PastelTheme.textOnOat)
-
-                    ZStack {
-                        Circle()
-                            .fill(PastelTheme.textOnOat.opacity(0.12))
-                            .frame(width: 32, height: 32)
-
-                        Image(systemName: "arrow.right")
-                            .font(.system(size: 13, weight: .heavy))
-                            .foregroundStyle(PastelTheme.textOnOat)
-                    }
                 }
             }
             .padding(.horizontal, 16)
@@ -766,30 +742,99 @@ struct WorkoutHubView: View {
                 }
             }
 
-            // Direct 1-tap Start Today's Plan Button
-            Button {
-                HapticManager.playMediumImpact()
-                if let first = myRoutines.first {
-                    startWorkoutFromPreset(first)
-                } else {
-                    showWorkoutModeDiscovery = true
-                }
-            } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: "play.fill")
-                        .font(.system(size: 13, weight: .bold))
+            // Dual Action Row: Choose Workout (Left 50%) + Build Custom Routine (Right 50%)
+            HStack(spacing: 10) {
+                // 1. Choose / Start Today's Plan (Left 50%)
+                Button {
+                    HapticManager.playMediumImpact()
+                    if let first = myRoutines.first {
+                        startWorkoutFromPreset(first)
+                    } else {
+                        showWorkoutModeDiscovery = true
+                    }
+                } label: {
+                    HStack(spacing: 8) {
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .fill(PastelTheme.textOnOat.opacity(0.12))
+                                .frame(width: 28, height: 28)
 
-                    Text(myRoutines.first.map { "Start: \($0.name)" } ?? String(localized: "Choose workout"))
-                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                            Image(systemName: "play.fill")
+                                .font(.system(size: 11, weight: .black))
+                                .foregroundStyle(PastelTheme.textOnOat)
+                                .offset(x: 1)
+                        }
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(myRoutines.first.map { "Start: \($0.name)" } ?? String(localized: "Choose workout"))
+                                .font(.system(size: 12, weight: .heavy, design: .rounded))
+                                .foregroundStyle(PastelTheme.textOnOat)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.85)
+
+                            Text(myRoutines.first != nil ? String(localized: "Today's split") : String(localized: "From catalog"))
+                                .font(.system(size: 10, weight: .medium, design: .rounded))
+                                .foregroundStyle(PastelTheme.textOnOat.opacity(0.8))
+                                .lineLimit(1)
+                        }
+
+                        Spacer(minLength: 0)
+                    }
+                    .padding(.horizontal, 10)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 48)
+                    .background(PastelTheme.pastelOat)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .shadow(color: PastelTheme.pastelOat.opacity(0.18), radius: 6, y: 2)
                 }
-                .foregroundStyle(PastelTheme.textOnOat)
-                .frame(maxWidth: .infinity)
-                .frame(height: PastelTheme.ButtonMetrics.splitHeight)
-                .background(PastelTheme.pastelOat)
-                .clipShape(RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.splitRadius, style: .continuous))
-                .shadow(color: PastelTheme.pastelOat.opacity(0.18), radius: 6, y: 2)
+                .buttonStyle(Tactile3DCardButtonStyle(scale: 0.985, maxTilt: 2.0))
+                .accessibilityIdentifier("wt.hub.chooseWorkout")
+
+                // 2. Build Your Own Best Routine (Right 50% - Replaces Top Bar Create)
+                Button {
+                    HapticManager.shared.impact(.medium)
+                    presetToEdit = nil
+                    showPresetEditor = true
+                } label: {
+                    HStack(spacing: 8) {
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .fill(PastelTheme.pastelAmber.opacity(0.16))
+                                .frame(width: 28, height: 28)
+
+                            Image(systemName: "plus")
+                                .font(.system(size: 12, weight: .black))
+                                .foregroundStyle(PastelTheme.pastelAmber)
+                        }
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Create Routine")
+                                .font(.system(size: 12, weight: .heavy, design: .rounded))
+                                .foregroundStyle(PastelTheme.textPrimary)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.85)
+
+                            Text("Build your own best")
+                                .font(.system(size: 10, weight: .medium, design: .rounded))
+                                .foregroundStyle(PastelTheme.textSecondary)
+                                .lineLimit(1)
+                        }
+
+                        Spacer(minLength: 0)
+                    }
+                    .padding(.horizontal, 10)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 48)
+                    .background(PastelTheme.cardSurfaceSubtle)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .stroke(PastelTheme.cardBorderFocused, lineWidth: 1)
+                    )
+                }
+                .buttonStyle(Tactile3DCardButtonStyle(scale: 0.985, maxTilt: 2.0))
+                .accessibilityIdentifier("wt.hub.create")
             }
-            .buttonStyle(Tactile3DCardButtonStyle(scale: 0.985, maxTilt: 2.0))
         }
         .padding(16)
         .background(PastelTheme.cardSurface)
@@ -1590,19 +1635,33 @@ struct WorkoutHubView: View {
 
 // MARK: - Subcomponents
 
-/// Micro-animated floating, oscillating sparkles icon for Hero Action button
-struct FloatingSparklesIcon: View {
-    @State private var isFloating = false
+/// Micro-animated floating, gliding biceps icon for Hero Action button.
+/// Leisurely patrols horizontally across the corridor towards the letters without touching them,
+/// and gently sways/bobs in 3D space with halved speed.
+struct FloatingBicepsIcon: View {
+    let travelDistance: CGFloat
+    @State private var isPatrolling = false
+    @State private var isBobbing = false
 
     var body: some View {
-        Image(systemName: "sparkles")
-            .font(.system(size: 15, weight: .bold))
-            .offset(y: isFloating ? -2.0 : 2.0)
-            .rotationEffect(.degrees(isFloating ? 6.0 : -6.0))
-            .scaleEffect(isFloating ? 1.08 : 0.94)
-            .animation(.easeInOut(duration: 1.7).repeatForever(autoreverses: true), value: isFloating)
+        Text("💪")
+            .font(.system(size: 18))
+            .shadow(color: PastelTheme.textOnOat.opacity(0.18), radius: 3, y: 2)
+            .offset(x: isPatrolling ? -travelDistance : 0)
+            .offset(y: isBobbing ? -3.5 : 3.5)
+            .rotationEffect(.degrees(isBobbing ? 9.0 : -9.0))
+            .scaleEffect(isBobbing ? 1.07 : 0.94)
+            .animation(
+                .easeInOut(duration: 4.2).repeatForever(autoreverses: true),
+                value: isPatrolling
+            )
+            .animation(
+                .easeInOut(duration: 2.1).repeatForever(autoreverses: true),
+                value: isBobbing
+            )
             .onAppear {
-                isFloating = true
+                isPatrolling = true
+                isBobbing = true
             }
     }
 }
