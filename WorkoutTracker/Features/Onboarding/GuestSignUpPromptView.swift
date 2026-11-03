@@ -44,7 +44,7 @@ struct GuestSignUpPromptView: View {
                         .foregroundStyle(.white)
                         .multilineTextAlignment(.center)
 
-                    Text("You're doing great! Create an account to permanently save your workouts, unlock smart analytics, and sync across devices.")
+                    Text("You're doing great! Sign in to keep a cloud backup and sync workouts across your iPhone and iPad.")
                         .font(.system(size: 15, weight: .medium))
                         .lineSpacing(3)
                         .multilineTextAlignment(.center)
@@ -55,9 +55,9 @@ struct GuestSignUpPromptView: View {
                 Spacer()
 
                 VStack(alignment: .leading, spacing: 12) {
-                    FeatureRow(icon: "cloud.fill", text: "Never lose your data")
-                    FeatureRow(icon: "arrow.triangle.2.circlepath", text: "Sync with your iPad & Watch")
-                    FeatureRow(icon: "chart.xyaxis.line", text: "Advanced AI insights")
+                    FeatureRow(icon: "cloud.fill", text: "Cloud backup if you switch phones")
+                    FeatureRow(icon: "arrow.triangle.2.circlepath", text: "Sync workouts across iPhone and iPad")
+                    FeatureRow(icon: "person.crop.circle.badge.checkmark", text: "Signed-in profile for sharing routines")
                 }
                 .padding(.bottom, 40)
 

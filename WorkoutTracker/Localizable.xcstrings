@@ -76784,6 +76784,261 @@
           }
         }
       }
+    },
+    "1-day streak": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1-day streak"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "серия 1 день"
+          }
+        }
+      }
+    },
+    "Your next routine": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your next routine"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Следующая тренировка"
+          }
+        }
+      }
+    },
+    "Suggested from recovery": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suggested from recovery"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "По восстановлению"
+          }
+        }
+      }
+    },
+    "Post-workout recovery tips": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Post-workout recovery tips"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Советы по восстановлению"
+          }
+        }
+      }
+    },
+    "Not measured": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not measured"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не измерено"
+          }
+        }
+      }
+    },
+    "Log last night's sleep to unlock recommendations.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Log last night's sleep to unlock recommendations."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Укажите сон за прошлую ночь, чтобы открыть рекомендации."
+          }
+        }
+      }
+    },
+    "Programs unavailable": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Programs unavailable"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Программы недоступны"
+          }
+        }
+      }
+    },
+    "Could not load programs from the server. Check your connection and try again.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could not load programs from the server. Check your connection and try again."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось загрузить программы. Проверьте сеть и повторите."
+          }
+        }
+      }
+    },
+    "You're doing great! Sign in to keep a cloud backup and sync workouts across your iPhone and iPad.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You're doing great! Sign in to keep a cloud backup and sync workouts across your iPhone and iPad."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отличная работа! Войдите, чтобы сохранить облачный бэкап и синхронизировать тренировки на iPhone и iPad."
+          }
+        }
+      }
+    },
+    "Cloud backup if you switch phones": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cloud backup if you switch phones"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Облачный бэкап при смене телефона"
+          }
+        }
+      }
+    },
+    "Sync workouts across iPhone and iPad": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sync workouts across iPhone and iPad"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Синхронизация тренировок на iPhone и iPad"
+          }
+        }
+      }
+    },
+    "Signed-in profile for sharing routines": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Signed-in profile for sharing routines"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Профиль для обмена программами"
+          }
+        }
+      }
+    },
+    "No training history yet, so muscular readiness cannot be estimated. Log workouts and sync Health data to unlock recovery analysis.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No training history yet, so muscular readiness cannot be estimated. Log workouts and sync Health data to unlock recovery analysis."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пока нет истории тренировок — готовность мышц оценить нельзя. Запишите подходы и синхронизируйте Health."
+          }
+        }
+      }
+    },
+    "Readiness not measured — start light and log sets to build a recovery map.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Readiness not measured — start light and log sets to build a recovery map."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Готовность не измерена — начните легко и логируйте подходы."
+          }
+        }
+      }
+    },
+    "CNS from vitals": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CNS from vitals"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ЦНС по виталам"
+          }
+        }
+      }
     }
   },
   "version": "1.1"

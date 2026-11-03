@@ -44,15 +44,30 @@ struct WatchActiveWorkoutView: View {
         .task {
             if !viewModel.isInitialized {
                 await viewModel.initializeWorkout()
-                if viewModel.phoneBlockedStart { return }
-                try? await workoutManager.requestAuthorization()
-                await workoutManager.startWorkout()
+                if viewModel.phoneBlockedStart || viewModel.localStoreFailed { return }
+                do {
+                    try await workoutManager.requestAuthorization()
+                    await workoutManager.startWorkout()
+                } catch {
+                    workoutManager.startFailureMessage = String(localized: "Could not start HealthKit workout. Try again.")
+                }
             }
         }
         .alert("Workout in progress", isPresented: $viewModel.phoneBlockedStart) {
             Button("OK", role: .cancel) { dismiss() }
         } message: {
             Text("Finish the iPhone workout before starting another on Apple Watch.")
+        }
+        .alert(
+            "Could not start",
+            isPresented: Binding(
+                get: { viewModel.localStoreFailed || workoutManager.startFailureMessage != nil },
+                set: { if !$0 { viewModel.localStoreFailed = false; workoutManager.startFailureMessage = nil } }
+            )
+        ) {
+            Button("OK", role: .cancel) { dismiss() }
+        } message: {
+            Text(viewModel.localStoreFailureMessage ?? workoutManager.startFailureMessage ?? String(localized: "Try again."))
         }
         .onDisappear { viewModel.cleanup() }
         .sheet(isPresented: $showExerciseList) {

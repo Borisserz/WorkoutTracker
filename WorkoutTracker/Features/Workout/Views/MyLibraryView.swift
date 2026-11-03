@@ -2,13 +2,23 @@ internal import SwiftUI
 import SwiftData
 
 enum LibraryFilter: String, CaseIterable, Identifiable {
-    case all = "All"
-    case programs = "Programs"
-    case saved = "Saved Workouts"
-    case favorites = "Favorites"
-    
-    var id: String { self.rawValue }
-    
+    case all
+    case programs
+    case saved
+    case favorites
+
+    var id: String { rawValue }
+
+    /// Catalog keys — never show English `rawValue` as chrome.
+    var localizedTitleKey: LocalizedStringKey {
+        switch self {
+        case .all: return "All"
+        case .programs: return "Programs"
+        case .saved: return "Saved Workouts"
+        case .favorites: return "Favorites"
+        }
+    }
+
     var icon: String {
         switch self {
         case .all: return "square.grid.2x2.fill"
@@ -25,18 +35,43 @@ struct MyLibraryView: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dismiss) private var dismiss
     
-    @Query(filter: #Predicate<WorkoutPreset> { $0.isSystem == false }, sort: \WorkoutPreset.createdAt, order: .reverse)
-    private var userPresets: [WorkoutPreset]
-    
-    @Query(filter: #Predicate<Workout> { $0.isFavorite == true }, sort: \Workout.date, order: .reverse)
-    private var favoriteWorkouts: [Workout]
-    
+    @Query private var userPresets: [WorkoutPreset]
+    @Query private var favoriteWorkouts: [Workout]
+
     var onItemTapped: (CarouselItemType) -> Void
     var onEdit: ((WorkoutPreset) -> Void)?
     var onDuplicate: ((WorkoutPreset) -> Void)?
     var onDelete: ((CarouselItemType) -> Void)?
     var onLegendaryTapped: ((LegendaryRoutine) -> Void)?
-    
+
+    init(
+        onItemTapped: @escaping (CarouselItemType) -> Void,
+        onEdit: ((WorkoutPreset) -> Void)? = nil,
+        onDuplicate: ((WorkoutPreset) -> Void)? = nil,
+        onDelete: ((CarouselItemType) -> Void)? = nil,
+        onLegendaryTapped: ((LegendaryRoutine) -> Void)? = nil
+    ) {
+        self.onItemTapped = onItemTapped
+        self.onEdit = onEdit
+        self.onDuplicate = onDuplicate
+        self.onDelete = onDelete
+        self.onLegendaryTapped = onLegendaryTapped
+
+        var presets = FetchDescriptor<WorkoutPreset>(
+            predicate: #Predicate<WorkoutPreset> { $0.isSystem == false },
+            sortBy: [SortDescriptor(\.createdAt, order: .reverse)]
+        )
+        presets.fetchLimit = 400
+        _userPresets = Query(presets)
+
+        var favorites = FetchDescriptor<Workout>(
+            predicate: #Predicate<Workout> { $0.isFavorite == true },
+            sortBy: [SortDescriptor(\.date, order: .reverse)]
+        )
+        favorites.fetchLimit = 200
+        _favoriteWorkouts = Query(favorites)
+    }
+
     @State private var selectedFilter: LibraryFilter = .all
     @State private var appearAnimation = false
     
@@ -256,7 +291,7 @@ struct MyLibraryView: View {
                         HStack(spacing: 6) {
                             Image(systemName: filter.icon)
                                 .font(.system(size: 12, weight: .bold))
-                            Text(LocalizedStringKey(filter.rawValue))
+                            Text(filter.localizedTitleKey)
                                 .font(.system(size: 14, weight: .bold, design: .rounded))
                         }
                         .padding(.horizontal, 16)

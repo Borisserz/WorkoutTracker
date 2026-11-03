@@ -32,6 +32,9 @@ final class WatchActiveWorkoutViewModel: Hashable {
     var goBackToWorkoutView = false
     /// Set when iPhone already has an active session — Watch must not create a second local workout.
     var phoneBlockedStart = false
+    /// Local SwiftData insert failed — refuse active UI until resolved.
+    var localStoreFailed = false
+    var localStoreFailureMessage: String? = nil
 
     var restTimeRemaining: Int = 60
     var initialRestTime: Int = 60
@@ -63,6 +66,15 @@ final class WatchActiveWorkoutViewModel: Hashable {
             return
         }
 
+        do {
+            _ = try await store.startNewWorkout(title: workoutTitle, uuidString: workoutID.uuidString)
+        } catch {
+            localStoreFailed = true
+            localStoreFailureMessage = String(localized: "Could not save the workout on Apple Watch.")
+            WatchAppLog.workout.error("Watch local store start failed: \(error.localizedDescription, privacy: .public)")
+            return
+        }
+
         isInitialized = true
         self.startDate = Date()
 
@@ -70,10 +82,9 @@ final class WatchActiveWorkoutViewModel: Hashable {
             action: .startWorkout,
             workoutID: workoutID.uuidString,
             workoutTitle: workoutTitle,
-            exercises: self.exercises 
+            exercises: self.exercises
         )
         WatchSyncManager.shared.sendLiveAction(payload)
-        _ = try? await store.startNewWorkout(title: workoutTitle, uuidString: workoutID.uuidString)
     }
 
     func addExercise(name: String) async {

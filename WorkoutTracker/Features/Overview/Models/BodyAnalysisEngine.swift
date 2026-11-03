@@ -41,12 +41,10 @@ enum BodyAnalysisEngine {
         fullRecoveryHours: Double = 48.0
     ) -> BodyAnalysisReport {
         let hasRecoveryData = !recoveryDict.isEmpty
-        // Empty map = unknown, not "everything is 100% prime".
-        // Empty recovery map: baseline 100 only when there is no training history.
-        // If workouts exist but recovery is missing → -1 (unknown), never invent 0% via clamping.
+        // Empty map = unknown — never invent 100% prime readiness (ADR honesty).
         let avgReadiness = hasRecoveryData
             ? (recoveryDict.values.reduce(0, +) / max(1, recoveryDict.count))
-            : (recentWorkouts.isEmpty ? 100 : -1)
+            : -1
         
         // Group muscles into prime (>= 80%) and recovering (< 80%)
         var prime: [MuscleReadinessItem] = []
@@ -87,30 +85,28 @@ enum BodyAnalysisEngine {
         if recentWorkouts.isEmpty {
             let cnsNote: String
             if cnsScore < 0 {
-                cnsNote = "No accumulated training fatigue. CNS readiness has not been measured yet."
-            } else if cnsScore >= 95 {
-                cnsNote = "No accumulated fatigue. Muscle groups and CNS look fully recovered."
+                cnsNote = String(localized: "No workouts logged yet. CNS readiness has not been measured.")
             } else {
-                cnsNote = "No accumulated training fatigue yet. CNS readiness is \(Int(cnsScore))% — train within that budget."
+                cnsNote = String(localized: "No workouts logged yet. CNS readiness is \(Int(cnsScore))% from vitals — start a first session within that budget.")
             }
             advice = NextWorkoutAdvice(
                 recentStrainSummary: cnsNote,
-                recommendedSplitTitle: "Next session: Progressive strength training",
-                physiologicalRationale: "Muscle fibers and synapses are at peak readiness. Base strength training is recommended.",
+                recommendedSplitTitle: String(localized: "Next session: Full-body introduction"),
+                physiologicalRationale: String(localized: "Without training history, muscle recovery cannot be estimated. Start with a balanced full-body session and build a recovery map from logged sets."),
                 actionableTips: [
-                    "Ideal time to gradually increase working weights",
-                    "Complete 3–4 working sets on foundational compound lifts",
-                    "Intensity: RPE 8.0–8.5 with controlled range of motion"
+                    String(localized: "Log every working set so recovery estimates can unlock"),
+                    String(localized: "Keep intensity moderate (RPE 7–8) on the first sessions"),
+                    String(localized: "Warm up joints for 7–10 minutes before working sets")
                 ],
-                cautionNotes: "Spend 7–10 minutes on quality joint warm-up before your first working sets.",
+                cautionNotes: String(localized: "Treat readiness as not measured until HealthKit vitals and workout history exist."),
                 recommendedExercises: ["Barbell Squat", "Bench Press", "Pull-ups", "Overhead Press"]
             )
         } else if !hasRecoveryData {
             // Workouts exist but recovery map missing — never interpolate "-1%" fatigue copy.
             advice = NextWorkoutAdvice(
-                recentStrainSummary: "Recent sessions are logged, but muscle recovery percentages are not available yet.",
-                recommendedSplitTitle: "Next session: Balanced full-body or preferred split",
-                physiologicalRationale: "Without a recovery map, default to technique-focused work and moderate volume.",
+                recentStrainSummary: String(localized: "Recent sessions are logged, but muscle recovery percentages are not available yet."),
+                recommendedSplitTitle: String(localized: "Next session: Balanced full-body or preferred split"),
+                physiologicalRationale: String(localized: "Without a recovery map, default to technique-focused work and moderate volume."),
                 actionableTips: [
                     "Keep intensity around RPE 7.0–7.5",
                     "Favor compounds you know well",
@@ -193,14 +189,16 @@ enum BodyAnalysisEngine {
             )
         }
 
-        // Fallback if no workouts logged yet
+        // Fallback if no workouts logged yet — readiness unknown, not invented 100%.
         if recentWorkouts.isEmpty {
             return BodyAnalysisReport(
-                overallReadiness: 100,
-                cnsStatusTitle: cnsScore < 0 ? "CNS not measured" : "Baseline homeostasis",
-                executiveAssessment: "Muscle fibers are fully rested from training load. Neuromuscular synapses are ready for maximum training volume and strength progression.",
-                recommendedTargetTitle: "Base strength training / Full Body",
-                recommendedRestrictions: "No restrictions. Muscular system is at peak readiness.",
+                overallReadiness: -1,
+                cnsStatusTitle: cnsScore < 0
+                    ? String(localized: "CNS not measured")
+                    : String(localized: "CNS from vitals"),
+                executiveAssessment: String(localized: "No training history yet, so muscular readiness cannot be estimated. Log workouts and sync Health data to unlock recovery analysis."),
+                recommendedTargetTitle: String(localized: "Base strength training / Full Body"),
+                recommendedRestrictions: String(localized: "Readiness not measured — start light and log sets to build a recovery map."),
                 primeMuscles: prime,
                 recoveringMuscles: [],
                 nextWorkoutAdvice: advice,
@@ -211,24 +209,24 @@ enum BodyAnalysisEngine {
         // Executive assessment synthesis
         let cnsNarrative: String
         if cnsScore < 0 {
-            cnsNarrative = "CNS readiness has not been measured from HealthKit vitals yet."
+            cnsNarrative = String(localized: "CNS readiness has not been measured from HealthKit vitals yet.")
         } else if cnsScore >= 85 {
-            cnsNarrative = "The autonomic nervous system shows high parasympathetic tone and optimal central recovery."
+            cnsNarrative = String(localized: "The autonomic nervous system shows high parasympathetic tone and optimal central recovery.")
         } else if cnsScore >= 70 {
-            cnsNarrative = "The central nervous system is under moderate cumulative load from recent training sessions."
+            cnsNarrative = String(localized: "The central nervous system is under moderate cumulative load from recent training sessions.")
         } else {
-            cnsNarrative = "Marked sympathetic activation and accumulated neuromuscular fatigue detected."
+            cnsNarrative = String(localized: "Marked sympathetic activation and accumulated neuromuscular fatigue detected.")
         }
         
         let muscularNarrative: String
         if !hasRecoveryData {
-            muscularNarrative = "Muscle-group recovery percentages are unavailable, so intensity should stay conservative until the map refreshes."
+            muscularNarrative = String(localized: "Muscle-group recovery percentages are unavailable, so intensity should stay conservative until the map refreshes.")
         } else if lowBackPct < 70 || hamsPct < 70 {
-            muscularNarrative = "The posterior chain is actively regenerating fiber microstructure after pulling work. The anterior chain has fully restored glycogen stores."
+            muscularNarrative = String(localized: "The posterior chain is actively regenerating fiber microstructure after pulling work. The anterior chain has fully restored glycogen stores.")
         } else if chestPct < 70 {
-            muscularNarrative = "Chest and front delt bundles are in protein synthesis and supercompensation. Back and legs are fully ready to train."
+            muscularNarrative = String(localized: "Chest and front delt bundles are in protein synthesis and supercompensation. Back and legs are fully ready to train.")
         } else {
-            muscularNarrative = "Major muscle groups and stabilizers maintain high cellular readiness across movement planes."
+            muscularNarrative = String(localized: "Major muscle groups and stabilizers maintain high cellular readiness across movement planes.")
         }
         
         let assessment = "\(cnsNarrative) \(muscularNarrative)"
@@ -238,35 +236,35 @@ enum BodyAnalysisEngine {
         let restrictions: String
         
         if !hasRecoveryData {
-            targetTitle = "Moderate technique work / preferred split"
-            restrictions = "Keep volume moderate until muscle recovery data is available."
+            targetTitle = String(localized: "Moderate technique work / preferred split")
+            restrictions = String(localized: "Keep volume moderate until muscle recovery data is available.")
         } else if chestPct >= 85, let tri = recoveryDict["triceps"], tri >= 80 {
-            targetTitle = "Push complex (Chest, Shoulders, Triceps)"
+            targetTitle = String(localized: "Push complex (Chest, Shoulders, Triceps)")
             if lowBackPct < 75 {
-                restrictions = "Avoid spinal axial loading and weighted bends for ~18 h."
+                restrictions = String(localized: "Avoid spinal axial loading and weighted bends for ~18 h.")
             } else {
-                restrictions = "Standard training volume. Focus on a controlled eccentric phase."
+                restrictions = String(localized: "Standard training volume. Focus on a controlled eccentric phase.")
             }
         } else if backPct >= 85, let bi = recoveryDict["biceps"], bi >= 80 {
-            targetTitle = "Pull complex (Lats, Back, Biceps)"
-            restrictions = "Keep a neutral lumbar spine; avoid fatiguing spinal extensors."
+            targetTitle = String(localized: "Pull complex (Lats, Back, Biceps)")
+            restrictions = String(localized: "Keep a neutral lumbar spine; avoid fatiguing spinal extensors.")
         } else if quadsPct >= 85 {
-            targetTitle = "Lower body (Quads, Hamstrings)"
-            restrictions = "Prioritize machines with a stable path (leg press, hack squat)."
+            targetTitle = String(localized: "Lower body (Quads, Hamstrings)")
+            restrictions = String(localized: "Prioritize machines with a stable path (leg press, hack squat).")
         } else {
-            targetTitle = "Active recovery and mobility"
-            restrictions = "Cap intensity at RPE 6; prioritize foam rolling and hydration."
+            targetTitle = String(localized: "Active recovery and mobility")
+            restrictions = String(localized: "Cap intensity at RPE 6; prioritize foam rolling and hydration.")
         }
         
         let cnsTitle: String
         if cnsScore < 0 {
-            cnsTitle = "CNS not measured"
+            cnsTitle = String(localized: "CNS not measured")
         } else if cnsScore >= 85 {
-            cnsTitle = "Optimal balance"
+            cnsTitle = String(localized: "Optimal balance")
         } else if cnsScore >= 70 {
-            cnsTitle = "Moderate load"
+            cnsTitle = String(localized: "Moderate load")
         } else {
-            cnsTitle = "CNS fatigue"
+            cnsTitle = String(localized: "CNS fatigue")
         }
         
         return BodyAnalysisReport(

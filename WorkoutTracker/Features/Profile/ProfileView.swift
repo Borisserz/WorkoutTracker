@@ -11,7 +11,16 @@ struct ProfileView: View {
     @Environment(ThemeManager.self) private var themeManager
 
     @Query private var userStats: [UserStats]
-    @Query(sort: \WeightEntry.date, order: .reverse) private var weightHistory: [WeightEntry]
+    @Query private var weightHistory: [WeightEntry]
+
+    init() {
+        var stats = FetchDescriptor<UserStats>()
+        stats.fetchLimit = 1
+        _userStats = Query(stats)
+        var weights = FetchDescriptor<WeightEntry>(sortBy: [SortDescriptor(\.date, order: .reverse)])
+        weights.fetchLimit = 400
+        _weightHistory = Query(weights)
+    }
 
     @AppStorage(Constants.UserDefaultsKeys.userName.rawValue) private var userName = ""
     @AppStorage(Constants.UserDefaultsKeys.userAvatar.rawValue) private var userAvatar = ""

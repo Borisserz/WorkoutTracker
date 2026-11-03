@@ -232,9 +232,10 @@ actor WorkoutStore: WorkoutStoreProtocol {
                 return
             }
 
-            if workout.endTime == nil { workout.endTime = Date() }
+            let end = workout.endTime ?? Date()
+            workout.endTime = end
             // Floor at 1s so delete can tell "processed" apart from finish-snackbar (endTime set, duration still 0).
-            workout.durationSeconds = max(1, Int(workout.endTime!.timeIntervalSince(workout.date)))
+            workout.durationSeconds = max(1, Int(end.timeIntervalSince(workout.date)))
 
             var totalEffort = 0
             var exercisesWithCompletedSets = 0

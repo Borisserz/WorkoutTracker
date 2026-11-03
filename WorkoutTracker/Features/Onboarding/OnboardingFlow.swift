@@ -1071,7 +1071,9 @@ struct OnboardingPrimaryButtonStyle: ButtonStyle {
             .opacity(isEnabled ? (configuration.isPressed ? 0.85 : 1) : 0.6)
             .scaleEffect(configuration.isPressed ? 0.97 : 1)
             .animation(.spring(response: 0.3, dampingFraction: 0.7), value: configuration.isPressed)
-            .sensoryFeedback(.impact(weight: .medium), trigger: configuration.isPressed) { _, pressed in pressed }
+            .sensoryFeedback(.impact(weight: .medium), trigger: configuration.isPressed) { _, pressed in
+                pressed && HapticManager.areHapticsEnabled()
+            }
     }
 }
 

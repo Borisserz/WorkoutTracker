@@ -139,16 +139,29 @@ struct ExploreRoutinesView: View {
 
                         if viewModel.filteredPrograms.isEmpty {
                             EmptyStateView(
-                                icon: "magnifyingglass",
-                                title: "No routines found",
-                                message: "Try adjusting your search or clearing your filters.",
+                                icon: viewModel.allPrograms.isEmpty ? "wifi.exclamationmark" : "magnifyingglass",
+                                title: viewModel.allPrograms.isEmpty
+                                    ? "Programs unavailable"
+                                    : "No routines found",
+                                message: viewModel.allPrograms.isEmpty
+                                    ? "Could not load programs from the server. Check your connection and try again."
+                                    : "Try adjusting your search or clearing your filters.",
                                 iconColor: PastelTheme.pastelLavender,
-                                actionTitle: "Clear Filters"
+                                actionTitle: viewModel.allPrograms.isEmpty
+                                    ? "Retry"
+                                    : "Clear Filters"
                             ) {
-                                viewModel.searchDebouncer.inputText = ""
-                                viewModel.selectedLevel = nil
-                                viewModel.selectedGoal = nil
-                                viewModel.selectedEquipment = nil
+                                if viewModel.allPrograms.isEmpty {
+                                    Task {
+                                        await FirestoreProgramService.shared.fetchAllPrograms()
+                                        viewModel.allPrograms = FirestoreProgramService.shared.explorePrograms
+                                    }
+                                } else {
+                                    viewModel.searchDebouncer.inputText = ""
+                                    viewModel.selectedLevel = nil
+                                    viewModel.selectedGoal = nil
+                                    viewModel.selectedEquipment = nil
+                                }
                             }
                             .padding(.top, 40)
                         } else {

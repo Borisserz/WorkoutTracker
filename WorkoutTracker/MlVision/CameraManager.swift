@@ -295,7 +295,10 @@ struct CameraPreview: UIViewRepresentable {
 
     class VideoPreviewView: UIView {
         override class var layerClass: AnyClass { AVCaptureVideoPreviewLayer.self }
-        var videoPreviewLayer: AVCaptureVideoPreviewLayer { layer as! AVCaptureVideoPreviewLayer }
+        var videoPreviewLayer: AVCaptureVideoPreviewLayer {
+            // `layerClass` guarantees the concrete type; fall back only if UIKit misconfigured.
+            (layer as? AVCaptureVideoPreviewLayer) ?? AVCaptureVideoPreviewLayer()
+        }
     }
 
     func makeUIView(context: Context) -> VideoPreviewView {

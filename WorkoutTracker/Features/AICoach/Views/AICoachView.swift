@@ -37,7 +37,6 @@ struct AICoachView: View {
     @State private var isLevitating = false
     @State private var userQuery: String = ""
 
-    @State private var showSyncToast = false
     @State private var readinessValue: CGFloat = 0.0
     @State private var sphereDragOffset: CGSize = .zero
     @State private var shimmerOffset: CGFloat = -1.0
@@ -55,12 +54,21 @@ struct AICoachView: View {
         let text: String
     }
 
+    /// Catalog-facing prompt labels — no fake in-app nutrition product.
+    static let defaultQuickPromptTexts = [
+        "What should I train today?",
+        "Check readiness",
+        "Warm-up before training",
+        "How do I break a plateau?",
+        "Post-workout recovery tips"
+    ]
+
     let quickPrompts = [
-        QuickPromptItem(icon: "dumbbell.fill", text: "What should I train today?"),
-        QuickPromptItem(icon: "bolt.heart.fill", text: "Check readiness"),
-        QuickPromptItem(icon: "flame.fill", text: "Warm-up before training"),
-        QuickPromptItem(icon: "chart.line.uptrend.xyaxis", text: "How do I break a plateau?"),
-        QuickPromptItem(icon: "leaf.fill", text: "Nutrition tip")
+        QuickPromptItem(icon: "dumbbell.fill", text: Self.defaultQuickPromptTexts[0]),
+        QuickPromptItem(icon: "bolt.heart.fill", text: Self.defaultQuickPromptTexts[1]),
+        QuickPromptItem(icon: "flame.fill", text: Self.defaultQuickPromptTexts[2]),
+        QuickPromptItem(icon: "chart.line.uptrend.xyaxis", text: Self.defaultQuickPromptTexts[3]),
+        QuickPromptItem(icon: "bed.double.fill", text: Self.defaultQuickPromptTexts[4])
     ]
 
     // AI Hub states
@@ -103,23 +111,6 @@ struct AICoachView: View {
                                     Text("AI Hub")
                                         .font(.system(size: 32, weight: .bold, design: .rounded))
                                         .foregroundStyle(PastelTheme.textPrimary)
-
-                                    if showSyncToast {
-                                        HStack(spacing: 4) {
-                                            Image(systemName: "waveform.path.ecg")
-                                                .font(.caption2)
-                                                .foregroundStyle(PastelTheme.pastelSage)
-                                                .symbolEffect(.pulse, options: .repeating)
-                                            Text("Synced")
-                                                .font(.system(size: 11, weight: .semibold, design: .rounded))
-                                                .foregroundStyle(PastelTheme.pastelSage)
-                                        }
-                                        .padding(.horizontal, 8)
-                                        .padding(.vertical, 4)
-                                        .background(PastelTheme.pastelSage.opacity(0.12))
-                                        .clipShape(Capsule())
-                                        .transition(.opacity.combined(with: .scale))
-                                    }
                                 }
 
                                 Text("Biomechanics and CNS readiness")
@@ -334,12 +325,9 @@ struct AICoachView: View {
                 TrackingManager.shared.track(.aiCoachOpened(source: "tab"))
                 speechRecognizer.requestPermission()
 
-                Task {
-                    withAnimation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.3)) { showSyncToast = true }
-                    try? await Task.sleep(nanoseconds: 2_500_000_000)
-                    withAnimation(.easeOut) { showSyncToast = false }
+                withAnimation(.easeOut(duration: 2.5).delay(0.5)) {
+                    readinessValue = cnsScore < 0 ? 0 : cnsScore / 100
                 }
-                withAnimation(.easeOut(duration: 2.5).delay(0.5)) { readinessValue = cnsScore / 100 }
                 withAnimation(.easeInOut(duration: 3).repeatForever(autoreverses: true)) { isBreathing = true }
                 withAnimation(.easeInOut(duration: 4).repeatForever(autoreverses: true)) { isLevitating = true }
                 withAnimation(.linear(duration: 2.5).repeatForever(autoreverses: false)) { shimmerOffset = 2.0 }
@@ -463,8 +451,6 @@ struct PastelBentoCard: View {
     }
 }
 
-typealias CyberBentoCard = PastelBentoCard
-
 struct PastelReadinessCard: View {
     let score: Double
     let hrv: Double?
@@ -574,8 +560,6 @@ struct PastelReadinessCard: View {
     }
 }
 
-typealias CyberReadinessCard = PastelReadinessCard
-
 struct PastelMetricItem: View {
     let title: String
     let value: String
@@ -600,8 +584,6 @@ struct PastelMetricItem: View {
         }
     }
 }
-
-typealias CyberMetric = PastelMetricItem
 
 struct SectionHeaderView: View {
     let title: String
@@ -815,8 +797,6 @@ struct PastelAssistantCard: View {
         )
     }
 }
-
-typealias CyberAssistantCard = PastelAssistantCard
 
 struct SiriWaveformView: View {
     @State private var phase: CGFloat = 0.0
@@ -1630,17 +1610,25 @@ struct RestAnalysisSheet: View {
     @AppStorage("hasSleepData") private var hasSleepData = false
     @AppStorage("sleepHours") private var sleepHours: Double = 7.5
     @AppStorage("waterCups") private var waterCups: Int = 4
-    @AppStorage("cnsScore") private var cnsScore: Double = Constants.CNS.unmeasuredAppStorageDefault
-    @Environment(\.colorScheme) private var colorScheme 
+    /// Local estimate only — never overwrite Overview `cnsScore` AppStorage (ADR honesty).
+    @Environment(\.colorScheme) private var colorScheme
 
     var cnsLoad: Double {
-        let sleepFactor = max(0, (8.0 - sleepHours) * 10)
-        let waterFactor = max(0, (8 - waterCups) * 2)
-        return min(100, 20 + sleepFactor + Double(waterFactor))
+        RestFatigueEstimator.cnsLoad(sleepHours: sleepHours, waterCups: waterCups)
     }
-    /// Rest tips only after sleep/vitals are measured — never invent recovery advice from defaults.
-    private var showsMeasuredFatigue: Bool { hasSleepData }
+    /// Rest tips + ring only after sleep is measured — water alone must not invent readiness.
+    private var showsMeasuredFatigue: Bool {
+        RestFatigueEstimator.showsMeasuredFatigue(hasSleepData: hasSleepData)
+    }
+    private var displayLoadPercent: Int? {
+        RestFatigueEstimator.displayLoadPercent(
+            hasSleepData: hasSleepData,
+            sleepHours: sleepHours,
+            waterCups: waterCups
+        )
+    }
     var cnsColor: Color {
+        guard showsMeasuredFatigue else { return PastelTheme.textSecondary }
         switch cnsLoad {
         case 0..<40: return PastelTheme.pastelSage
         case 40..<75: return PastelTheme.pastelAmber
@@ -1667,18 +1655,22 @@ struct RestAnalysisSheet: View {
                                     .stroke(colorScheme == .dark ? PastelTheme.cardBorder : Color.black.opacity(0.06), lineWidth: 14)
                                     .frame(width: 150, height: 150)
                                 Circle()
-                                    .trim(from: 0, to: cnsLoad / 100)
+                                    .trim(from: 0, to: displayLoadPercent.map { CGFloat($0) / 100 } ?? 0)
                                     .stroke(cnsColor, style: StrokeStyle(lineWidth: 14, lineCap: .round))
                                     .frame(width: 150, height: 150)
                                     .rotationEffect(.degrees(-90))
-                                    .animation(.spring(response: 0.6, dampingFraction: 0.7), value: cnsLoad)
+                                    .animation(.spring(response: 0.6, dampingFraction: 0.7), value: displayLoadPercent)
 
                                 VStack(spacing: 4) {
-                                    Text("\(Int(cnsLoad))%")
+                                    Text(displayLoadPercent.map { "\($0)%" } ?? "—")
                                         .font(.system(size: 34, weight: .black, design: .rounded).monospacedDigit())
                                         .foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black)
                                         .contentTransition(.numericText())
-                                    Text(cnsLoad < 40 ? "Low" : (cnsLoad < 75 ? "Moderate" : "High"))
+                                    Text(
+                                        displayLoadPercent == nil
+                                            ? String(localized: "Not measured")
+                                            : (cnsLoad < 40 ? String(localized: "Low") : (cnsLoad < 75 ? String(localized: "Moderate") : String(localized: "High")))
+                                    )
                                         .font(.system(size: 14, weight: .bold, design: .rounded))
                                         .foregroundColor(cnsColor)
                                 }
@@ -1708,7 +1700,6 @@ struct RestAnalysisSheet: View {
                                 Slider(value: $sleepHours, in: 3...12, step: 0.5) { _ in
                                     HapticManager.shared.selection()
                                     hasSleepData = true
-                                    updateCNS()
                                 }
                                 .tint(PastelTheme.pastelLavender)
                             }
@@ -1733,7 +1724,6 @@ struct RestAnalysisSheet: View {
                                 }
                                 Slider(value: Binding(get: { Double(waterCups) }, set: { waterCups = Int($0) }), in: 0...15, step: 1) { _ in
                                     HapticManager.shared.selection()
-                                    updateCNS()
                                 }
                                 .tint(PastelTheme.pastelSlate)
                             }
@@ -1766,7 +1756,7 @@ struct RestAnalysisSheet: View {
                                         }
                                     }
                                 } else {
-                                    Text("Log more sleep or water to unlock recommendations.")
+                                    Text("Log last night's sleep to unlock recommendations.")
                                         .font(.footnote)
                                         .foregroundStyle(PastelTheme.textSecondary)
                                 }
@@ -1806,7 +1796,6 @@ struct RestAnalysisSheet: View {
             }
         }
     }
-    private func updateCNS() { cnsScore = 100 - cnsLoad }
 }
 
 struct MicroMetric: View {

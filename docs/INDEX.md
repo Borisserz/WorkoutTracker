@@ -14,6 +14,8 @@ Last updated: **2026-11-03** (full-app audit + P1 fix pass)
 | Doc | Status |
 |-----|--------|
 | [`audits/2026-11-03-full-audit.md`](audits/2026-11-03-full-audit.md) | Full-app audit + P1 fixes (**closed**, tests green) |
+| [`audits/2026-11-03-p1-honesty-fix.md`](audits/2026-11-03-p1-honesty-fix.md) | Residual P1 honesty/UX pass (**closed**, tests green) |
+| [`audits/2026-11-03-p2-polish-fix.md`](audits/2026-11-03-p2-polish-fix.md) | Residual P2 polish pass (**closed**, tests green) |
 
 ## Audits (2026-11-02)
 

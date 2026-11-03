@@ -14,15 +14,27 @@ final class WatchWorkoutManager: NSObject {
     var isRunning: Bool = false
     var heartRate: Double = 0.0
     var activeEnergy: Double = 0.0
+    /// Set when HK session fails to start — UI must surface this (no silent soft-fail).
+    var startFailureMessage: String? = nil
 
     func requestAuthorization() async throws {
+        guard
+            let energyType = HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned),
+            let heartType = HKQuantityType.quantityType(forIdentifier: .heartRate)
+        else {
+            throw NSError(
+                domain: "WatchWorkoutManager",
+                code: 1,
+                userInfo: [NSLocalizedDescriptionKey: String(localized: "HealthKit types unavailable on this device.")]
+            )
+        }
         let typesToShare: Set = [
             HKQuantityType.workoutType(),
-            HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned)!
+            energyType
         ]
         let typesToRead: Set = [
-            HKQuantityType.quantityType(forIdentifier: .heartRate)!,
-            HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned)!
+            heartType,
+            energyType
         ]
         try await healthStore.requestAuthorization(toShare: typesToShare, read: typesToRead)
     }
@@ -30,6 +42,8 @@ final class WatchWorkoutManager: NSObject {
     func startWorkout() async {
         self.activeEnergy = 0.0
         self.heartRate = 0.0
+        self.startFailureMessage = nil
+        self.isRunning = false
 
         let configuration = HKWorkoutConfiguration()
         configuration.activityType = .traditionalStrengthTraining
@@ -49,6 +63,10 @@ final class WatchWorkoutManager: NSObject {
 
             self.isRunning = true
         } catch {
+            self.isRunning = false
+            self.session = nil
+            self.builder = nil
+            self.startFailureMessage = String(localized: "Could not start HealthKit workout. Try again.")
             WatchAppLog.workout.error("WatchWorkoutManager: Failed to start session - \(error.localizedDescription, privacy: .public)")
         }
     }

@@ -484,9 +484,9 @@ actor AnalyticsService {
         let groupedWorkouts: [DateInterval: [Workout]]
 
         switch periodType {
-        case .week: groupedWorkouts = Dictionary(grouping: workouts, by: { calendar.dateInterval(of: .weekOfYear, for: $0.date)! })
-        case .month: groupedWorkouts = Dictionary(grouping: workouts, by: { calendar.dateInterval(of: .month, for: $0.date)! })
-        case .year: groupedWorkouts = Dictionary(grouping: workouts, by: { calendar.dateInterval(of: .year, for: $0.date)! })
+        case .week: groupedWorkouts = CalendarDateIntervals.groupWorkouts(workouts, by: .weekOfYear, calendar: calendar)
+        case .month: groupedWorkouts = CalendarDateIntervals.groupWorkouts(workouts, by: .month, calendar: calendar)
+        case .year: groupedWorkouts = CalendarDateIntervals.groupWorkouts(workouts, by: .year, calendar: calendar)
         }
 
         for (interval, _) in groupedWorkouts {
@@ -609,14 +609,14 @@ actor AnalyticsService {
 
             switch period {
             case .week:
-                currentInterval = calendar.dateInterval(of: .weekOfYear, for: now)!
-                previousInterval = calendar.dateInterval(of: .weekOfYear, for: calendar.date(byAdding: .day, value: -7, to: now)!)!
+                currentInterval = CalendarDateIntervals.intervalOrFallback(.weekOfYear, containing: now, calendar: calendar)
+                previousInterval = CalendarDateIntervals.previousInterval(.weekOfYear, before: now, calendar: calendar)
             case .month:
-                currentInterval = calendar.dateInterval(of: .month, for: now)!
-                previousInterval = calendar.dateInterval(of: .month, for: calendar.date(byAdding: .month, value: -1, to: now)!)!
+                currentInterval = CalendarDateIntervals.intervalOrFallback(.month, containing: now, calendar: calendar, fallbackDays: 31)
+                previousInterval = CalendarDateIntervals.previousInterval(.month, before: now, calendar: calendar, fallbackDays: 31)
             case .year:
-                currentInterval = calendar.dateInterval(of: .year, for: now)!
-                previousInterval = calendar.dateInterval(of: .year, for: calendar.date(byAdding: .year, value: -1, to: now)!)!
+                currentInterval = CalendarDateIntervals.intervalOrFallback(.year, containing: now, calendar: calendar, fallbackDays: 365)
+                previousInterval = CalendarDateIntervals.previousInterval(.year, before: now, calendar: calendar, fallbackDays: 365)
             }
 
             let currentWorkouts = workouts.filter { currentInterval.contains($0.date) }
@@ -775,9 +775,15 @@ actor AnalyticsService {
         let cal = Calendar.current; let now = Date()
         var curInt: DateInterval, prevInt: DateInterval
         switch period {
-        case .week: curInt = cal.dateInterval(of: .weekOfYear, for: now)!; prevInt = cal.dateInterval(of: .weekOfYear, for: cal.date(byAdding: .day, value: -7, to: now)!)!
-        case .month: curInt = cal.dateInterval(of: .month, for: now)!; prevInt = cal.dateInterval(of: .month, for: cal.date(byAdding: .month, value: -1, to: now)!)!
-        case .year: curInt = cal.dateInterval(of: .year, for: now)!; prevInt = cal.dateInterval(of: .year, for: cal.date(byAdding: .year, value: -1, to: now)!)!
+        case .week:
+            curInt = CalendarDateIntervals.intervalOrFallback(.weekOfYear, containing: now, calendar: cal)
+            prevInt = CalendarDateIntervals.previousInterval(.weekOfYear, before: now, calendar: cal)
+        case .month:
+            curInt = CalendarDateIntervals.intervalOrFallback(.month, containing: now, calendar: cal, fallbackDays: 31)
+            prevInt = CalendarDateIntervals.previousInterval(.month, before: now, calendar: cal, fallbackDays: 31)
+        case .year:
+            curInt = CalendarDateIntervals.intervalOrFallback(.year, containing: now, calendar: cal, fallbackDays: 365)
+            prevInt = CalendarDateIntervals.previousInterval(.year, before: now, calendar: cal, fallbackDays: 365)
         }
         let cur = getStats(for: curInt, workouts: workouts)
         let prev = getStats(for: prevInt, workouts: workouts)
@@ -991,9 +997,9 @@ actor AnalyticsService {
 
             let interval: DateInterval
             switch period {
-            case .week: interval = calendar.dateInterval(of: .weekOfYear, for: now)!
-            case .month: interval = calendar.dateInterval(of: .month, for: now)!
-            case .year: interval = calendar.dateInterval(of: .year, for: now)!
+            case .week: interval = CalendarDateIntervals.intervalOrFallback(.weekOfYear, containing: now, calendar: calendar)
+            case .month: interval = CalendarDateIntervals.intervalOrFallback(.month, containing: now, calendar: calendar, fallbackDays: 31)
+            case .year: interval = CalendarDateIntervals.intervalOrFallback(.year, containing: now, calendar: calendar, fallbackDays: 365)
             }
 
             let filteredWorkouts = workouts.filter { interval.contains($0.date) }

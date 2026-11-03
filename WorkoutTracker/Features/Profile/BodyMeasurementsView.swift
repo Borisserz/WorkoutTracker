@@ -7,11 +7,17 @@ import Charts
 struct BodyMeasurementsView: View {
     @Environment(UserStatsViewModel.self) var userStatsViewModel
     @Environment(\.modelContext) private var context
-    @Query(sort: \BodyMeasurement.date, order: .reverse) private var measurements: [BodyMeasurement]
+    @Query private var measurements: [BodyMeasurement]
     @Environment(UnitsManager.self) var unitsManager
     @Environment(\.dismiss) var dismiss
     @Environment(ThemeManager.self) private var themeManager
-    @Environment(\.colorScheme) private var colorScheme 
+    @Environment(\.colorScheme) private var colorScheme
+
+    init() {
+        var descriptor = FetchDescriptor<BodyMeasurement>(sortBy: [SortDescriptor(\.date, order: .reverse)])
+        descriptor.fetchLimit = 400
+        _measurements = Query(descriptor)
+    }
 
     @State private var selectedMetric: MeasurementType = .bodyFat
     @State private var selectedPeriod: PeriodFilter = .sixMonths

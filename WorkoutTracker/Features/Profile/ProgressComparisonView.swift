@@ -1,6 +1,7 @@
 
 
 internal import SwiftUI
+import UIKit
 
 struct ProgressComparisonView: View {
     @Environment(\.dismiss) private var dismiss
@@ -18,6 +19,8 @@ struct ProgressComparisonView: View {
     @State private var showLeftPicker = false
     @State private var showRightPicker = false
     @State private var showAddWeightSheet = false
+    @State private var shareItems: [Any] = []
+    @State private var showShareSheet = false
 
         @Environment(ThemeManager.self) private var themeManager
 
@@ -65,12 +68,17 @@ struct ProgressComparisonView: View {
                         
                         Button {
                             HapticManager.shared.impact(.medium)
+                            prepareShare()
                         } label: {
                             Image(systemName: "square.and.arrow.up")
                                 .fontWeight(.semibold)
                         }
+                        .disabled(leftImage == nil && rightImage == nil)
                     }
                 }
+            }
+            .sheet(isPresented: $showShareSheet) {
+                ActivityViewController(activityItems: shareItems)
             }
             .onAppear { setupInitialEntries() }
             .onChange(of: leftEntry) { _, newEntry in loadLeftImage(for: newEntry) }
@@ -314,6 +322,42 @@ struct ProgressComparisonView: View {
     private func loadRightImage(for entry: WeightEntry?) {
         guard let fileName = entry?.imageFileNames.first else { rightImage = nil; return }
         Task { rightImage = await LocalImageStore.shared.loadImage(named: fileName) }
+    }
+
+    private func prepareShare() {
+        var items: [Any] = []
+        if let composed = ProgressComparisonShareComposer.compose(before: leftImage, after: rightImage) {
+            items.append(composed)
+        } else if let leftImage {
+            items.append(leftImage)
+        } else if let rightImage {
+            items.append(rightImage)
+        }
+        guard !items.isEmpty else { return }
+        shareItems = items
+        showShareSheet = true
+    }
+}
+
+enum ProgressComparisonShareComposer {
+    /// Side-by-side before/after JPEG for the system share sheet.
+    static func compose(before: UIImage?, after: UIImage?, size: CGSize = CGSize(width: 900, height: 1200)) -> UIImage? {
+        guard before != nil || after != nil else { return nil }
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { _ in
+            let half = CGRect(x: 0, y: 0, width: size.width / 2, height: size.height)
+            let right = CGRect(x: size.width / 2, y: 0, width: size.width / 2, height: size.height)
+            UIColor.black.setFill()
+            UIRectFill(CGRect(origin: .zero, size: size))
+            before?.draw(in: half)
+            after?.draw(in: right)
+            UIColor.white.setStroke()
+            let path = UIBezierPath()
+            path.move(to: CGPoint(x: size.width / 2, y: 0))
+            path.addLine(to: CGPoint(x: size.width / 2, y: size.height))
+            path.lineWidth = 3
+            path.stroke()
+        }
     }
 }
 

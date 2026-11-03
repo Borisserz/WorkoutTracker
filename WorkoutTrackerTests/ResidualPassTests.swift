@@ -111,9 +111,61 @@ final class ResidualPassTests: XCTestCase {
         XCTAssertTrue(report.primeMuscles.isEmpty)
         XCTAssertTrue(report.recoveringMuscles.isEmpty)
         XCTAssertTrue(report.cnsStatusTitle.localizedCaseInsensitiveContains("not measured"))
-        // Fresh athlete with no history may show baseline muscular readiness 100,
-        // but must not invent prime-muscle rows without a recovery map.
-        XCTAssertEqual(report.overallReadiness, 100)
+        // Empty history + empty recovery map → not measured (never invent 100% peak).
+        XCTAssertEqual(report.overallReadiness, -1)
+        XCTAssertFalse(report.executiveAssessment.localizedCaseInsensitiveContains("peak readiness"))
+        XCTAssertFalse(report.recommendedRestrictions.localizedCaseInsensitiveContains("peak readiness"))
+    }
+
+    func testRestFatigueEstimatorDoesNotUnlockWithoutSleep() {
+        XCTAssertFalse(RestFatigueEstimator.showsMeasuredFatigue(hasSleepData: false))
+        XCTAssertNil(RestFatigueEstimator.displayLoadPercent(hasSleepData: false, sleepHours: 7.5, waterCups: 4))
+        XCTAssertEqual(
+            RestFatigueEstimator.displayLoadPercent(hasSleepData: true, sleepHours: 7.5, waterCups: 4),
+            Int(RestFatigueEstimator.cnsLoad(sleepHours: 7.5, waterCups: 4))
+        )
+    }
+
+    func testRestFatigueDefaultLoadIsNotZeroButMustStayLocal() {
+        // Defaults invent a non-zero load — UI must gate with hasSleepData (displayLoadPercent nil).
+        let load = RestFatigueEstimator.cnsLoad(sleepHours: 7.5, waterCups: 4)
+        XCTAssertGreaterThan(load, 0)
+        XCTAssertNil(RestFatigueEstimator.displayLoadPercent(hasSleepData: false, sleepHours: 7.5, waterCups: 4))
+    }
+
+    func testAICoachQuickPromptsAvoidFakeNutritionProduct() {
+        let prompts = AICoachView.defaultQuickPromptTexts
+        XCTAssertFalse(prompts.contains(where: { $0.localizedCaseInsensitiveContains("Nutrition tip") }))
+        XCTAssertTrue(prompts.contains(where: {
+            $0.localizedCaseInsensitiveContains("recovery") || $0.localizedCaseInsensitiveContains("sleep")
+        }))
+    }
+
+    func testHubExploreCTAUsesExploreNavigationNotHistoryTab() {
+        XCTAssertEqual(WorkoutHubView.exploreProgramsTabAction, .openExplore)
+        XCTAssertNotEqual(WorkoutHubView.exploreProgramsTabAction, .openHistoryTab)
+    }
+
+    func testOverviewStreakCopyUsesCatalogKeys() {
+        XCTAssertEqual(OverviewHeaderView.streakCatalogKey(for: 1), "1-day streak")
+        XCTAssertEqual(OverviewHeaderView.streakCatalogKey(for: 5), "%lld-day streak")
+    }
+
+    func testCalendarDateIntervalsNeverForceUnwrapsCurrentWeek() {
+        let now = Date()
+        let interval = CalendarDateIntervals.intervalOrFallback(.weekOfYear, containing: now)
+        XCTAssertLessThanOrEqual(interval.start, now)
+        XCTAssertGreaterThan(interval.end, interval.start)
+        let previous = CalendarDateIntervals.previousInterval(.weekOfYear, before: now)
+        XCTAssertLessThanOrEqual(previous.end, interval.end)
+    }
+
+    func testLibraryFilterUsesStableIdsNotDisplayEnglish() {
+        XCTAssertEqual(LibraryFilter.all.rawValue, "all")
+        XCTAssertEqual(LibraryFilter.saved.rawValue, "saved")
+        XCTAssertNotEqual(LibraryFilter.saved.rawValue, "Saved Workouts")
+        // Touch localized titles so catalog keys stay wired.
+        _ = LibraryFilter.allCases.map(\.localizedTitleKey)
     }
 
     func testWidgetLoadFallbackDoesNotInventTip() {

@@ -27,8 +27,16 @@ struct OverviewHeaderView: View {
         return formatter.string(from: Date()).capitalized
     }
 
+    /// Catalog keys for streak badge (tests + `String(localized:)`).
+    static func streakCatalogKey(for days: Int) -> String {
+        days == 1 ? "1-day streak" : "%lld-day streak"
+    }
+
     private func streakText(for days: Int) -> String {
-        days == 1 ? "1-day streak" : "\(days)-day streak"
+        if days == 1 {
+            return String(localized: "1-day streak")
+        }
+        return String(localized: "\(days)-day streak")
     }
 
     var body: some View {

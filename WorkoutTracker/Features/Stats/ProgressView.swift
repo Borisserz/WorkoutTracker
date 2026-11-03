@@ -59,9 +59,9 @@ final class StatsViewModel {
         let now = Date()
         let calendar = Calendar.current
         switch selectedPeriod {
-        case .week: return calendar.dateInterval(of: .weekOfYear, for: now)!
-        case .month: return calendar.dateInterval(of: .month, for: now)!
-        case .year: return calendar.dateInterval(of: .year, for: now)!
+        case .week: return CalendarDateIntervals.intervalOrFallback(.weekOfYear, containing: now, calendar: calendar)
+        case .month: return CalendarDateIntervals.intervalOrFallback(.month, containing: now, calendar: calendar, fallbackDays: 31)
+        case .year: return CalendarDateIntervals.intervalOrFallback(.year, containing: now, calendar: calendar, fallbackDays: 365)
         }
     }
 
@@ -69,15 +69,9 @@ final class StatsViewModel {
         let now = Date()
         let calendar = Calendar.current
         switch selectedPeriod {
-        case .week:
-            let lastWeek = calendar.date(byAdding: .day, value: -7, to: now)!
-            return calendar.dateInterval(of: .weekOfYear, for: lastWeek)!
-        case .month:
-            let lastMonth = calendar.date(byAdding: .month, value: -1, to: now)!
-            return calendar.dateInterval(of: .month, for: lastMonth)!
-        case .year:
-            let lastYear = calendar.date(byAdding: .year, value: -1, to: now)!
-            return calendar.dateInterval(of: .year, for: lastYear)!
+        case .week: return CalendarDateIntervals.previousInterval(.weekOfYear, before: now, calendar: calendar)
+        case .month: return CalendarDateIntervals.previousInterval(.month, before: now, calendar: calendar, fallbackDays: 31)
+        case .year: return CalendarDateIntervals.previousInterval(.year, before: now, calendar: calendar, fallbackDays: 365)
         }
     }
 
@@ -413,11 +407,9 @@ struct StatsContentView: View {
         isFetchingReviewData = true
 
         Task {
-            let calendar = Calendar.current
             let now = Date()
-            let currentInterval = calendar.dateInterval(of: .weekOfYear, for: now)!
-            let lastWeek = calendar.date(byAdding: .day, value: -7, to: now)!
-            let previousInterval = calendar.dateInterval(of: .weekOfYear, for: lastWeek)!
+            let currentInterval = CalendarDateIntervals.intervalOrFallback(.weekOfYear, containing: now)
+            let previousInterval = CalendarDateIntervals.previousInterval(.weekOfYear, before: now)
 
             let data = await di.analyticsService.fetchStatsData(
                 period: .week,
@@ -735,9 +727,15 @@ struct DesignerGoalCard: View {
 // MARK: - Body Transform Banner Card
 
 struct ProgressComparisonWrapper: View {
-    @Query(sort: \WeightEntry.date, order: .reverse) private var weightHistory: [WeightEntry]
+    @Query private var weightHistory: [WeightEntry]
     @Environment(UnitsManager.self) private var unitsManager
     @Environment(ThemeManager.self) private var themeManager
+
+    init() {
+        var descriptor = FetchDescriptor<WeightEntry>(sortBy: [SortDescriptor(\.date, order: .reverse)])
+        descriptor.fetchLimit = 400
+        _weightHistory = Query(descriptor)
+    }
 
     var body: some View {
         ProgressComparisonView(entriesWithPhotos: weightHistory.filter { !$0.imageFileNames.isEmpty })
@@ -748,12 +746,19 @@ struct ProgressComparisonWrapper: View {
 
 struct BodyTransformBannerCard: View {
     let onTap: () -> Void
-    @Query(sort: \WeightEntry.date, order: .reverse) private var weightHistory: [WeightEntry]
+    @Query private var weightHistory: [WeightEntry]
     @Environment(\.colorScheme) private var colorScheme
     @Environment(ThemeManager.self) private var themeManager
 
     @State private var isPressed = false
     @State private var shimmerOffset: CGFloat = -200
+
+    init(onTap: @escaping () -> Void) {
+        self.onTap = onTap
+        var descriptor = FetchDescriptor<WeightEntry>(sortBy: [SortDescriptor(\.date, order: .reverse)])
+        descriptor.fetchLimit = 400
+        _weightHistory = Query(descriptor)
+    }
 
     private var photoCount: Int {
         weightHistory.filter { !$0.imageFileNames.isEmpty }.count
@@ -920,10 +925,17 @@ struct AIIslandView: View {
 
 struct BodyTransformSquareCard: View {
     let onTap: () -> Void
-    @Query(sort: \WeightEntry.date, order: .reverse) private var weightHistory: [WeightEntry]
+    @Query private var weightHistory: [WeightEntry]
     @Environment(\.colorScheme) private var colorScheme
     @State private var isPressed = false
     @State private var shimmerOffset: CGFloat = -200
+
+    init(onTap: @escaping () -> Void) {
+        self.onTap = onTap
+        var descriptor = FetchDescriptor<WeightEntry>(sortBy: [SortDescriptor(\.date, order: .reverse)])
+        descriptor.fetchLimit = 400
+        _weightHistory = Query(descriptor)
+    }
 
     private var photoCount: Int {
         weightHistory.filter { !$0.imageFileNames.isEmpty }.count
@@ -3914,11 +3926,11 @@ struct StorySlideOutro: View {
 
                 let cal = Calendar.current
                 let now = Date()
-                let startOfMonth = cal.date(from: cal.dateComponents([.year, .month], from: now))!
-                let range = cal.range(of: .day, in: .month, for: startOfMonth)!
+                let startOfMonth = cal.date(from: cal.dateComponents([.year, .month], from: now)) ?? cal.startOfDay(for: now)
+                let range = cal.range(of: .day, in: .month, for: startOfMonth) ?? 1..<29
                 let firstWeekday = cal.component(.weekday, from: startOfMonth)
                 let offset = (firstWeekday - cal.firstWeekday + 7) % 7
-                let days = range.map { cal.date(byAdding: .day, value: $0 - 1, to: startOfMonth)! }
+                let days = range.compactMap { cal.date(byAdding: .day, value: $0 - 1, to: startOfMonth) }
 
                 VStack(spacing: 8) {
                     HStack {

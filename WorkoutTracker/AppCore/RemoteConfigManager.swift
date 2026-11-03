@@ -12,9 +12,11 @@ import FirebaseRemoteConfig
 actor RemoteConfigManager: Sendable {
     static let shared = RemoteConfigManager()
     private let remoteConfig = RemoteConfig.remoteConfig()
-    
-   
+
     private var cachedPersonas: [AIPersona] = []
+    /// True after the last `fetchCloudValues` failed — callers can degrade UI honestly.
+    private(set) var lastFetchFailed = false
+    private(set) var lastFetchErrorDescription: String?
 
     private init() {
         let settings = RemoteConfigSettings()
@@ -30,24 +32,28 @@ actor RemoteConfigManager: Sendable {
     func fetchCloudValues() async {
         do {
             let status = try await remoteConfig.fetchAndActivate()
+            lastFetchFailed = false
+            lastFetchErrorDescription = nil
             #if DEBUG
             if status == .successFetchedFromRemote {
                 AppLog.remoteConfig.info("☁️✅ Remote Config: Fresh data downloaded from the cloud!")
             }
             #endif
-            
+
             let showPromo = Self.isSisterAppsPromoEnabled(remoteConfig: remoteConfig, getString: getString(forKey:))
             if let sharedDefaults = UserDefaults(suiteName: "group.com.borisdev.WorkoutTracker") {
                 sharedDefaults.set(showPromo, forKey: "show_foodtracker_promo_enabled")
             }
-        
+
             let jsonString = remoteConfig.configValue(forKey: "ai_personas_config").stringValue
             if let data = jsonString.data(using: .utf8),
                let config = try? JSONDecoder().decode(AIPersonasConfig.self, from: data) {
                 self.cachedPersonas = config.personas
             }
-            
+
         } catch {
+            lastFetchFailed = true
+            lastFetchErrorDescription = error.localizedDescription
             AppLog.remoteConfig.error("☁️❌ Error Remote Config: \(error.localizedDescription)")
         }
     }

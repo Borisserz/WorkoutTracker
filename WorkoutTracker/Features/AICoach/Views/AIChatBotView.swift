@@ -285,7 +285,14 @@ struct AIChatHistorySheet: View {
 
     @Bindable var viewModel: AICoachViewModel
 
-    @Query(sort: \AIChatSession.date, order: .reverse) private var sessions: [AIChatSession]
+    @Query private var sessions: [AIChatSession]
+
+    init(viewModel: AICoachViewModel) {
+        self.viewModel = viewModel
+        var descriptor = FetchDescriptor<AIChatSession>(sortBy: [SortDescriptor(\.date, order: .reverse)])
+        descriptor.fetchLimit = 100
+        _sessions = Query(descriptor)
+    }
 
     var body: some View {
         NavigationStack {

@@ -34,12 +34,30 @@ struct HistoryView: View {
     @Environment(UnitsManager.self) var unitsManager
 
     /// Active sessions only — tiny set, used for dual-start guards.
-    @Query(filter: #Predicate<Workout> { $0.endTime == nil }, sort: \Workout.date, order: .reverse)
-    private var activeWorkouts: [Workout]
-    /// Favorites are typically few — unbounded so older starred sessions stay visible past the main page.
-    @Query(filter: #Predicate<Workout> { $0.isFavorite == true }, sort: \Workout.date, order: .reverse)
-    private var favoriteWorkouts: [Workout]
-    @Query(sort: \WorkoutPreset.name) private var allPresets: [WorkoutPreset]
+    @Query private var activeWorkouts: [Workout]
+    /// Favorites capped — still above typical starred history.
+    @Query private var favoriteWorkouts: [Workout]
+    @Query private var allPresets: [WorkoutPreset]
+
+    init() {
+        var active = FetchDescriptor<Workout>(
+            predicate: #Predicate<Workout> { $0.endTime == nil },
+            sortBy: [SortDescriptor(\.date, order: .reverse)]
+        )
+        active.fetchLimit = 5
+        _activeWorkouts = Query(active)
+
+        var favorites = FetchDescriptor<Workout>(
+            predicate: #Predicate<Workout> { $0.isFavorite == true },
+            sortBy: [SortDescriptor(\.date, order: .reverse)]
+        )
+        favorites.fetchLimit = 200
+        _favoriteWorkouts = Query(favorites)
+
+        var presets = FetchDescriptor<WorkoutPreset>(sortBy: [SortDescriptor(\.name)])
+        presets.fetchLimit = 400
+        _allPresets = Query(presets)
+    }
 
     /// Finished workouts loaded in pages (not one giant `@Query`).
     @State private var finishedPage: [Workout] = []

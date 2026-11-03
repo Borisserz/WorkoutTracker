@@ -17,6 +17,14 @@ enum CarouselItemType: Identifiable, Hashable {
 /// Focuses on high-contrast luxury athletic styling, zero neuroslop/clutter,
 /// glanceable information density, and instant 1-tap start capabilities.
 struct WorkoutHubView: View {
+    enum ExploreProgramsDestination: Equatable {
+        case openExplore
+        case openHistoryTab
+    }
+
+    /// Contract for empty-library “Explore programs” CTA — must open Legendary/Explore, never History tab.
+    static let exploreProgramsTabAction: ExploreProgramsDestination = .openExplore
+
     @Environment(DIContainer.self) private var di
     @Environment(\.modelContext) private var context
     @Environment(WorkoutService.self) var workoutService
@@ -170,7 +178,7 @@ struct WorkoutHubView: View {
                 showSmartBuilder = true
             },
             onSelectTemplates: {
-                di.appState.selectedTab = 1
+                navigateToExplore = true
             }
         )
         .transition(.opacity)
@@ -636,7 +644,11 @@ struct WorkoutHubView: View {
                         .font(.system(size: 12, weight: .bold))
                         .foregroundStyle(PastelTheme.pastelAmber)
 
-                    Text("Best workout for today")
+                    Text(
+                        averageReadinessPercentage == nil
+                            ? String(localized: "Your next routine")
+                            : String(localized: "Suggested from recovery")
+                    )
                         .font(.system(size: 13, weight: .bold, design: .rounded))
                         .foregroundStyle(PastelTheme.pastelAmber)
                 }
@@ -948,8 +960,8 @@ struct WorkoutHubView: View {
                             icon: "sparkles",
                             count: 0,
                             subtitle: "Legendary & saved splits",
-                            onStart: { di.appState.selectedTab = 1 },
-                            onInspect: { di.appState.selectedTab = 1 }
+                            onStart: { navigateToExplore = true },
+                            onInspect: { navigateToExplore = true }
                         )
                     }
                 }

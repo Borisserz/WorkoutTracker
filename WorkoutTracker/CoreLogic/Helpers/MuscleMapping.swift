@@ -7,7 +7,9 @@ struct MuscleMapping: Sendable {
     private static let customMappingKey = "CustomExerciseMappings"
 
     nonisolated private static var customMappingsFileURL: URL {
-        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!.appendingPathComponent("CustomExerciseMappings.json")
+        let base = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
+            ?? URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
+        return base.appendingPathComponent("CustomExerciseMappings.json")
     }
 
     private static let cacheLock = NSLock()

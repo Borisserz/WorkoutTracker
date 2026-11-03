@@ -30,7 +30,7 @@ actor WidgetSyncService {
         let cal = Calendar.current
         for i in (0...5).reversed() {
             if let date = cal.date(byAdding: .weekOfYear, value: -i, to: Date()) {
-                let interval = cal.dateInterval(of: .weekOfYear, for: date)!
+                let interval = CalendarDateIntervals.intervalOrFallback(.weekOfYear, containing: date, calendar: cal)
                 let count = workouts.filter { interval.contains($0.date) }.count
                 let fmt = DateFormatter()
                 fmt.dateFormat = "M/d"
