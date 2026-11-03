@@ -555,10 +555,11 @@ struct WorkoutHubView: View {
                         .lineLimit(1)
                 }
 
-                Spacer(minLength: 8)
+                Spacer(minLength: 12)
 
                 HStack(spacing: 8) {
                     FloatingBicepsIcon()
+                        .frame(width: 44, height: 36)
 
                     ZStack {
                         Circle()
@@ -1461,31 +1462,24 @@ struct WorkoutHubView: View {
 
 // MARK: - Subcomponents
 
-/// Micro-animated floating, gliding biceps icon for Hero Action button.
-/// Leisurely patrols horizontally across the corridor towards the letters without touching them,
-/// and gently sways/bobs in 3D space with halved speed.
+/// Micro-animated biceps mark on the Start workout hero.
+/// Stays inside a 44pt lane so the sway never covers the title or the arrow.
 struct FloatingBicepsIcon: View {
-    @State private var isPatrolling = false
     @State private var isBobbing = false
 
     var body: some View {
         Text("💪")
             .font(.system(size: 20))
             .shadow(color: PastelTheme.textOnOat.opacity(0.18), radius: 2, y: 1.5)
-            .offset(x: isPatrolling ? -50 : 0)
-            .offset(y: isBobbing ? -3.5 : 3.5)
-            .rotationEffect(.degrees(isBobbing ? 9.0 : -9.0))
-            .scaleEffect(isBobbing ? 1.07 : 0.94)
+            .offset(x: isBobbing ? -6 : 6)
+            .offset(y: isBobbing ? -2 : 2)
+            .rotationEffect(.degrees(isBobbing ? 6 : -6))
+            .scaleEffect(isBobbing ? 1.05 : 0.96)
             .animation(
-                .easeInOut(duration: 4.2).repeatForever(autoreverses: true),
-                value: isPatrolling
-            )
-            .animation(
-                .easeInOut(duration: 2.1).repeatForever(autoreverses: true),
+                .easeInOut(duration: 2.4).repeatForever(autoreverses: true),
                 value: isBobbing
             )
             .onAppear {
-                isPatrolling = true
                 isBobbing = true
             }
     }
