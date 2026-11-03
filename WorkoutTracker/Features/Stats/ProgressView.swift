@@ -4135,7 +4135,7 @@ struct PremiumStatsEmptyState: View {
                     .frame(width: 80, height: 80)
                     .overlay(Circle().stroke(PastelTheme.cardBorder, lineWidth: 1))
 
-                Image(systemName: "lock.shield.fill")
+                Image(systemName: "chart.line.uptrend.xyaxis")
                     .font(.system(size: 38))
                     .foregroundColor(PastelTheme.pastelOat)
             }
@@ -4143,11 +4143,11 @@ struct PremiumStatsEmptyState: View {
             .opacity(appear ? 1.0 : 0)
 
             VStack(spacing: 8) {
-                Text("Analytics Locked")
+                Text("No analytics yet")
                     .font(.system(size: 24, weight: .heavy, design: .rounded))
                     .foregroundColor(PastelTheme.textPrimary)
 
-                Text("Your journey starts here. Complete your first workout to unlock deep muscle analytics, AI insights, and progress charts.")
+                Text("Log your first workout to see muscle charts, volume trends, and progress insights. Nothing is paywalled here.")
                     .font(.system(size: 14))
                     .foregroundColor(PastelTheme.textSecondary)
                     .multilineTextAlignment(.center)

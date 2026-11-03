@@ -16,6 +16,8 @@ struct LegendaryRoutinesView: View {
     @State private var hasPavedScreen: Bool = false
     @State private var isStartingWorkout: Bool = false
     @State private var showActiveWorkoutAlert: Bool = false
+    /// True when Firestore was empty and we fell back to `LegendaryFallbackCatalog`.
+    @State private var usingSampleCatalog: Bool = false
 
     private var availableEras: [String] {
         var eras = ["All"]
@@ -50,6 +52,10 @@ struct LegendaryRoutinesView: View {
 
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 18) {
+                    if usingSampleCatalog {
+                        sampleCatalogBanner
+                    }
+
                     // 1. Header Telemetry Card
                     headerTelemetryCard
 
@@ -94,7 +100,9 @@ struct LegendaryRoutinesView: View {
                 await FirestoreProgramService.shared.fetchAllPrograms()
             }
             let remote = FirestoreProgramService.shared.legendaryRoutines
-            self.routines = remote.isEmpty ? LegendaryFallbackCatalog.routines : remote
+            let offline = remote.isEmpty
+            self.usingSampleCatalog = offline
+            self.routines = offline ? LegendaryFallbackCatalog.routines : remote
             withAnimation(.spring(response: 0.48, dampingFraction: 0.78)) {
                 hasPavedScreen = true
             }
@@ -131,11 +139,19 @@ struct LegendaryRoutinesView: View {
                     .font(.system(size: 20, weight: .heavy, design: .rounded))
                     .foregroundStyle(PastelTheme.textPrimary)
 
-                Text("Train like the legends of every era")
+                Text(
+                    usingSampleCatalog
+                        ? String(localized: "Sample sessions inspired by classic training styles")
+                        : String(localized: "Train like the legends of every era")
+                )
                     .font(.system(size: 12, weight: .medium, design: .rounded))
                     .foregroundStyle(PastelTheme.textSecondary)
 
-                Text(String(localized: "\(routines.count) master protocols archived"))
+                Text(
+                    usingSampleCatalog
+                        ? String(localized: "\(routines.count) bundled sample protocols")
+                        : String(localized: "\(routines.count) master protocols archived")
+                )
                     .font(.system(size: 11, weight: .bold, design: .rounded))
                     .foregroundStyle(PastelTheme.pastelAmber)
             }
@@ -150,6 +166,26 @@ struct LegendaryRoutinesView: View {
                 .stroke(PastelTheme.cardBorder, lineWidth: 1)
         )
         .padding(.horizontal, 16)
+    }
+
+    private var sampleCatalogBanner: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "icloud.slash")
+                .foregroundStyle(PastelTheme.pastelAmber)
+            Text("Showing bundled sample programs. Connect to refresh the live catalog.")
+                .font(.footnote)
+                .foregroundStyle(PastelTheme.textSecondary)
+            Spacer(minLength: 0)
+        }
+        .padding(14)
+        .background(PastelTheme.cardSurfaceSubtle)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(PastelTheme.pastelAmber.opacity(0.35), lineWidth: 1)
+        )
+        .padding(.horizontal, 16)
+        .accessibilityIdentifier("wt.halloffame.sampleBanner")
     }
 
     // MARK: - Era Filter Pills

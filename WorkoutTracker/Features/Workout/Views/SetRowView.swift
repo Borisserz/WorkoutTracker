@@ -17,6 +17,8 @@ struct SetRowView: View {
     let exerciseName: String
     let cached1RM: Double
     let effort: Int
+    /// Template / AI rest preference; wins over effort heuristic when > 0.
+    var templateRestSeconds: Int? = nil
 
     let exerciseType: ExerciseType
     let isLastSet: Bool
@@ -324,10 +326,11 @@ struct SetRowView: View {
            if set.isCompleted {
                HapticManager.shared.impact(.medium)
 
-               var suggestedDuration: Int? = nil
-               if exerciseType == .strength {
-                   if effort >= 8 { suggestedDuration = 180 } else if effort >= 6 { suggestedDuration = 120 } else { suggestedDuration = 90 }
-               }
+               let suggestedDuration = RestDurationPolicy.suggestedSeconds(
+                   templateRestSeconds: templateRestSeconds,
+                   effort: effort,
+                   exerciseType: exerciseType
+               )
                onCheck(set, autoStartTimer && !isLastSet, autoStartTimer && !isLastSet ? suggestedDuration : nil)
            } else {
                onCheck(set, false, nil)

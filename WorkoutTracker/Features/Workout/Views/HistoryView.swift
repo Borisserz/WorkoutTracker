@@ -33,20 +33,11 @@ struct HistoryView: View {
     @Environment(WorkoutService.self) var workoutService
     @Environment(UnitsManager.self) var unitsManager
 
-    /// Active sessions only — tiny set, used for dual-start guards.
-    @Query private var activeWorkouts: [Workout]
     /// Favorites capped — still above typical starred history.
     @Query private var favoriteWorkouts: [Workout]
     @Query private var allPresets: [WorkoutPreset]
 
     init() {
-        var active = FetchDescriptor<Workout>(
-            predicate: #Predicate<Workout> { $0.endTime == nil },
-            sortBy: [SortDescriptor(\.date, order: .reverse)]
-        )
-        active.fetchLimit = 5
-        _activeWorkouts = Query(active)
-
         var favorites = FetchDescriptor<Workout>(
             predicate: #Predicate<Workout> { $0.isFavorite == true },
             sortBy: [SortDescriptor(\.date, order: .reverse)]
@@ -88,10 +79,6 @@ struct HistoryView: View {
         f.locale = .autoupdatingCurrent
         return f
     }()
-
-    private var hasActiveWorkout: Bool {
-        workoutService.isStartBlocked || !activeWorkouts.isEmpty
-    }
 
     private var displayTemplates: [WorkoutPreset] {
         // Only persisted presets — never invent unsaved mock templates.
@@ -230,14 +217,18 @@ struct HistoryView: View {
 
     private func replayWorkout(_ workout: Workout) {
         HapticManager.shared.impact(.medium)
-        guard !hasActiveWorkout else {
-            di.appState.showError(
-                title: String(localized: "Workout in progress"),
-                message: String(localized: "Finish or delete the current workout before starting another.")
-            )
-            return
-        }
         Task { @MainActor in
+            // Heal stale actives (>12h) before the @Query gate — History previously blocked forever on zombies.
+            let blocked = workoutService.isStartBlocked
+                ? true
+                : await workoutService.hasActiveWorkout()
+            if blocked {
+                di.appState.showError(
+                    title: String(localized: "Workout in progress"),
+                    message: String(localized: "Finish or delete the current workout before starting another.")
+                )
+                return
+            }
             let title = workout.title.isEmpty ? String(localized: "Replay workout") : workout.title
             guard let newID = await workoutService.createWorkout(title: title, presetID: nil, isAIGenerated: false),
                   let newWorkout = context.model(for: newID) as? Workout else { return }
@@ -267,14 +258,17 @@ struct HistoryView: View {
 
     private func startPreset(_ preset: WorkoutPreset) {
         HapticManager.shared.impact(.medium)
-        guard !hasActiveWorkout else {
-            di.appState.showError(
-                title: String(localized: "Workout in progress"),
-                message: String(localized: "Finish or delete the current workout before starting another.")
-            )
-            return
-        }
         Task { @MainActor in
+            let blocked = workoutService.isStartBlocked
+                ? true
+                : await workoutService.hasActiveWorkout()
+            if blocked {
+                di.appState.showError(
+                    title: String(localized: "Workout in progress"),
+                    message: String(localized: "Finish or delete the current workout before starting another.")
+                )
+                return
+            }
             guard let newID = await workoutService.createWorkout(
                 title: preset.name,
                 presetID: preset.persistentModelID,

@@ -43,7 +43,8 @@ actor WorkoutStore: WorkoutStoreProtocol {
                 category: category,
                 sets: exDTO.sets, 
                 reps: exDTO.reps,
-                weight: exDTO.recommendedWeightKg ?? 0
+                weight: exDTO.recommendedWeightKg ?? 0,
+                restSeconds: exDTO.restSeconds
             )
 
             modelContext.insert(exercise)
@@ -388,15 +389,31 @@ actor WorkoutStore: WorkoutStoreProtocol {
                 try await healOrDiscardAbandonedActive(duplicate)
             }
         } else if let only = freshActives.first {
-            remainingActiveIDs.append(only.persistentModelID)
+            // Zombie preset/empty: exercises may exist but zero completed sets + abandoned ≥30m → discard.
+            let hasCompletedSets = only.exercises.contains { ex in
+                ex.setsList.contains(where: \.isCompleted)
+                || ex.subExercises.contains { $0.setsList.contains(where: \.isCompleted) }
+            }
+            let abandonedMinutes = Date().timeIntervalSince(only.date) / 60
+            if !hasCompletedSets && abandonedMinutes >= 30 {
+                try await healOrDiscardAbandonedActive(only)
+            } else {
+                remainingActiveIDs.append(only.persistentModelID)
+            }
         }
 
         // Finish-snackbar orphans (app killed after endTime, before process): finalize or discard.
+        // Skip recent orphans — undo window sets endTime with durationSeconds==0 for ~3.5s.
         let orphanDesc = FetchDescriptor<Workout>(
             predicate: #Predicate<Workout> { $0.endTime != nil && $0.durationSeconds == 0 }
         )
         let orphans = (try? modelContext.fetch(orphanDesc)) ?? []
+        let now = Date()
         for orphan in orphans {
+            guard let endTime = orphan.endTime,
+                  WatchSessionPolicy.shouldProcessFinishOrphan(endTime: endTime, now: now) else {
+                continue
+            }
             let hasCompletedSets = orphan.exercises.contains { ex in
                 ex.setsList.contains(where: \.isCompleted)
                 || ex.subExercises.contains { $0.setsList.contains(where: \.isCompleted) }

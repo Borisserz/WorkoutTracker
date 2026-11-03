@@ -41,4 +41,20 @@ enum WatchSessionPolicy {
         case allowStandalone
         case askPhone
     }
+
+    /// Keep in sync with phone `WatchSessionPolicy` (separate Watch target root).
+    static func shouldProcessFinishOrphan(
+        endTime: Date,
+        now: Date = Date(),
+        graceSeconds: TimeInterval = 15
+    ) -> Bool {
+        now.timeIntervalSince(endTime) >= graceSeconds
+    }
+
+    static func isWatchStartReservationActive(until: Date?, now: Date = Date()) -> Bool {
+        guard let until else { return false }
+        return now < until
+    }
+
+    static let watchStartReservationSeconds: TimeInterval = 8
 }

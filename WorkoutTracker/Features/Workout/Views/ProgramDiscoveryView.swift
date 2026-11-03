@@ -21,7 +21,7 @@ struct ProgramDiscoveryView: View {
                 title: "Arnold's Golden Split",
                 eraTitle: "Golden Era",
                 shortVibe: "High Volume, Classic V-Taper focus",
-                loreDescription: "The exact weekly protocol Arnold used to dominate the stage. Focused heavily on chest, back, and building the classic aesthetic proportion.",
+                loreDescription: "Golden Era–inspired sample focused on chest, back, and classic proportions — not Arnold's full weekly protocol.",
                 gradientColors: [PastelTheme.pastelAmber, PastelTheme.pastelPeach],
                 difficulty: .advanced,
                 estimatedMinutes: 75,

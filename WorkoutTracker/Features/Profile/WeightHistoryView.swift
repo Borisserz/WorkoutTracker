@@ -5,7 +5,7 @@ import SwiftData
 import Charts
 
 struct WeightHistoryView: View {
-    @Query(sort: \WeightEntry.date, order: .reverse) private var weightHistory: [WeightEntry]
+    @Query private var weightHistory: [WeightEntry]
     @Environment(UserStatsViewModel.self) var userStatsViewModel
     @Environment(UnitsManager.self) var unitsManager
     @Environment(ThemeManager.self) private var themeManager
@@ -17,6 +17,12 @@ struct WeightHistoryView: View {
     @State private var showingComparisonView = false
 
     @State private var selectedEntryForGallery: WeightEntry? = nil
+
+    init() {
+        var desc = FetchDescriptor<WeightEntry>(sortBy: [SortDescriptor(\.date, order: .reverse)])
+        desc.fetchLimit = 400
+        _weightHistory = Query(desc)
+    }
 
     enum PeriodFilter: String, CaseIterable {
         case week = "Week", month = "Month", threeMonths = "3 Months"

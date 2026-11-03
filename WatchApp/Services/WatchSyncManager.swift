@@ -34,14 +34,15 @@ final class WatchSyncManager: NSObject, WCSessionDelegate {
 
     func sendLiveAction(_ payload: LiveSyncPayload) {
         guard let data = try? JSONEncoder().encode(payload) else { return }
+        let envelope = WatchSyncEnvelope.userInfo(carrying: data)
         let session = WCSession.default
         if session.isReachable {
-            session.sendMessage(["syncPayload": data], replyHandler: nil) { _ in
+            session.sendMessage(envelope, replyHandler: nil) { _ in
                 // Fall back to guaranteed delivery if live message fails.
-                session.transferUserInfo(["guaranteedSyncPayload": data])
+                session.transferUserInfo(envelope)
             }
         } else {
-            session.transferUserInfo(["guaranteedSyncPayload": data])
+            session.transferUserInfo(envelope)
         }
     }
 
@@ -69,15 +70,15 @@ final class WatchSyncManager: NSObject, WCSessionDelegate {
     func requestActiveStateFromPhone() {
         let payload = LiveSyncPayload(action: .requestActiveState, workoutID: "")
         guard let data = try? JSONEncoder().encode(payload) else { return }
-        let message = ["syncPayload": data]
+        let envelope = WatchSyncEnvelope.userInfo(carrying: data)
         let session = WCSession.default
         if session.isReachable {
-            session.sendMessage(message, replyHandler: nil) { error in
+            session.sendMessage(envelope, replyHandler: nil) { error in
                 SyncLog.logger.error("⌚️ active-state sendMessage failed → transferUserInfo: \(error.localizedDescription)")
-                session.transferUserInfo(message)
+                session.transferUserInfo(envelope)
             }
         } else {
-            session.transferUserInfo(message)
+            session.transferUserInfo(envelope)
         }
     }
 
@@ -125,7 +126,7 @@ final class WatchSyncManager: NSObject, WCSessionDelegate {
 
     func transferGuaranteedPayload(_ payload: LiveSyncPayload) {
         if let data = try? JSONEncoder().encode(payload) {
-            WCSession.default.transferUserInfo(["guaranteedSyncPayload": data])
+            WCSession.default.transferUserInfo(WatchSyncEnvelope.userInfo(carrying: data))
         }
     }
 
@@ -160,7 +161,7 @@ final class WatchSyncManager: NSObject, WCSessionDelegate {
     }
 
     nonisolated private func handleIncoming(_ dict: [String : Any]) {
-        let syncData = dict["syncPayload"] as? Data
+        let syncData = WatchSyncEnvelope.liveSyncData(from: dict)
         let presetsData = dict["presetsBatch"] as? Data
 
         Task { @MainActor in

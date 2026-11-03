@@ -167,6 +167,7 @@ struct ExerciseCardView: View {
                 exerciseName: exercise.name,
                 cached1RM: detailViewModel.personalRecordsCache[exercise.name] ?? 0.0,
                 effort: exercise.effort,
+                templateRestSeconds: exercise.restSeconds,
                 exerciseType: exercise.type,
                 isLastSet: isLast,
                 isExerciseCompleted: exercise.isCompleted,
@@ -308,7 +309,11 @@ struct ExerciseCardView: View {
                         // Match SetRowView.onCheck: rest timer + completion pipeline.
                         detailViewModel.startTimerIfNeeded(
                             shouldStartTimer: true,
-                            suggestedDuration: nil,
+                            suggestedDuration: RestDurationPolicy.suggestedSeconds(
+                                templateRestSeconds: exercise.restSeconds,
+                                effort: exercise.effort,
+                                exerciseType: exercise.type
+                            ),
                             exerciseName: exercise.name,
                             upcomingWeight: upcomingWeightStr
                         )

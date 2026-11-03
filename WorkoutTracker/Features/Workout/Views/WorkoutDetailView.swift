@@ -296,10 +296,16 @@ struct WorkoutDetailContentView: View {
             timerManager.stopRestTimer()
         } else if let pending = nextPendingSetInfo {
             let saved = UserDefaults.standard.integer(forKey: Constants.UserDefaultsKeys.defaultRestTime.rawValue)
-            let rest = saved > 0 ? saved : 90
+            let rest = RestDurationPolicy.resolveSeconds(
+                templateRestSeconds: pending.exercise.restSeconds,
+                effort: pending.exercise.effort,
+                exerciseType: pending.exercise.type,
+                userDefaultRest: saved
+            )
             timerManager.startRestTimer(duration: rest, exerciseName: pending.exercise.name)
         } else {
-            timerManager.startRestTimer(duration: 90)
+            let saved = UserDefaults.standard.integer(forKey: Constants.UserDefaultsKeys.defaultRestTime.rawValue)
+            timerManager.startRestTimer(duration: saved > 0 ? saved : 60)
         }
     }
 

@@ -84,6 +84,8 @@ final class WatchActiveWorkoutViewModel: Hashable {
             workoutTitle: workoutTitle,
             exercises: self.exercises
         )
+        // Guaranteed delivery — live sendMessage alone can drop after canStart reservation expires.
+        WatchSyncManager.shared.transferGuaranteedPayload(payload)
         WatchSyncManager.shared.sendLiveAction(payload)
     }
 
@@ -328,6 +330,8 @@ final class WatchActiveWorkoutViewModel: Hashable {
 
     func cancelWorkout() async {
         let payload = LiveSyncPayload(action: .discardWorkout, workoutID: workoutID.uuidString)
+        // Must survive reachability gaps — same path as saveToHistory.
+        WatchSyncManager.shared.transferGuaranteedPayload(payload)
         WatchSyncManager.shared.sendLiveAction(payload)
     }
 

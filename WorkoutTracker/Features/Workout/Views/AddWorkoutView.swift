@@ -9,13 +9,21 @@ struct AddWorkoutView: View {
     @Environment(DIContainer.self) private var di
     @Environment(UnitsManager.self) var unitsManager
 
-    @Query(sort: \WorkoutPreset.name) private var presets: [WorkoutPreset]
+    @Query private var presets: [WorkoutPreset]
 
     @State private var viewModel = AddWorkoutViewModel()
 
-    var onWorkoutCreated: (() -> Void)?
+    /// Prefer returned create ID over fetch-latest races (ADR).
+    var onWorkoutCreated: ((PersistentIdentifier) -> Void)?
 
-        @Environment(ThemeManager.self) private var themeManager
+    @Environment(ThemeManager.self) private var themeManager
+
+    init(onWorkoutCreated: ((PersistentIdentifier) -> Void)? = nil) {
+        self.onWorkoutCreated = onWorkoutCreated
+        var presetsDesc = FetchDescriptor<WorkoutPreset>(sortBy: [SortDescriptor(\.name)])
+        presetsDesc.fetchLimit = 400
+        _presets = Query(presetsDesc)
+    }
 
     var body: some View {
         NavigationStack {
@@ -54,12 +62,12 @@ struct AddWorkoutView: View {
                             await viewModel.checkAndStartWorkout(
                                 workoutService: di.workoutService,
                                 liveActivityManager: di.liveActivityManager
-                            ) {
+                            ) { newID in
                                 dismiss()
                                 if tutorialManager.currentStep == .tapStartNow {
                                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { tutorialManager.setStep(.addExercise) }
                                 }
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { onWorkoutCreated?() }
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { onWorkoutCreated?(newID) }
                             }
                         }
                     }

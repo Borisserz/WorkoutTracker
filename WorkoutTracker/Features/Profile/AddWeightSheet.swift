@@ -11,8 +11,15 @@ struct AddWeightSheet: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(ThemeManager.self) private var themeManager
 
-    @Query(sort: \WeightEntry.date, order: .reverse) private var weightHistory: [WeightEntry]
+    @Query private var weightHistory: [WeightEntry]
     let latestWeight: Double?
+
+    init(latestWeight: Double?) {
+        self.latestWeight = latestWeight
+        var desc = FetchDescriptor<WeightEntry>(sortBy: [SortDescriptor(\.date, order: .reverse)])
+        desc.fetchLimit = 50
+        _weightHistory = Query(desc)
+    }
 
     @State private var date = Date()
     @State private var weightString = ""

@@ -360,7 +360,7 @@ struct LegendaryTemplatePreviewSheet: View {
                 muscleGroup: genDTO.muscleGroup,
                 type: ExerciseType(rawValue: genDTO.type) ?? .strength,
                 category: ExerciseCategory.determine(from: genDTO.name),
-                effort: 50,
+                effort: 5,
                 isCompleted: false,
                 setsList: (1...max(1, genDTO.sets)).map { i in
                     WorkoutSetDTO(
@@ -376,7 +376,8 @@ struct LegendaryTemplatePreviewSheet: View {
                 subExercises: nil,
                 sets: genDTO.sets,
                 reps: genDTO.reps,
-                recommendedWeightKg: genDTO.recommendedWeightKg
+                recommendedWeightKg: genDTO.recommendedWeightKg,
+                restSeconds: genDTO.restSeconds
             )
         }
         

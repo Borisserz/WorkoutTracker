@@ -40,17 +40,12 @@ actor WidgetSyncService {
 
         let totalVolumeKg = workouts.reduce(0.0) { $0 + $1.totalStrengthVolume }
         let totalVolumeTons = totalVolumeKg / 1000.0
-        let previous = WidgetDataManager.load()
-        // Honesty: never invent tip or "ready" muscles from recent training groups.
-        // Preserve prior tip/muscles when present; otherwise leave empty for the widget empty state.
-        let tip = previous.aiTip
-        let muscles = previous.recoveredMuscles
-
+        // Honesty: no in-app tip/muscles producer — never copy stale App Group values forever.
         WidgetDataManager.save(
             streak: currentStreak,
             weeklyStats: points,
-            recoveredMuscles: muscles,
-            aiTip: tip,
+            recoveredMuscles: [],
+            aiTip: "",
             totalVolumeTons: totalVolumeTons
         )
         WidgetCenter.shared.reloadAllTimelines()

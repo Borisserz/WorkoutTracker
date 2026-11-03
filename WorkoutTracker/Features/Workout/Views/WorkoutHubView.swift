@@ -33,8 +33,7 @@ struct WorkoutHubView: View {
     @Environment(UnitsManager.self) var unitsManager
 
     // MARK: - SwiftData Queries
-    @Query(filter: #Predicate<WorkoutPreset> { $0.isSystem == false }, sort: \WorkoutPreset.name)
-    private var userPresets: [WorkoutPreset]
+    @Query private var userPresets: [WorkoutPreset]
 
     @Query private var favoriteWorkouts: [Workout]
 
@@ -83,6 +82,13 @@ struct WorkoutHubView: View {
         )
         favorites.fetchLimit = 400
         _favoriteWorkouts = Query(favorites)
+
+        var presets = FetchDescriptor<WorkoutPreset>(
+            predicate: #Predicate<WorkoutPreset> { $0.isSystem == false },
+            sortBy: [SortDescriptor(\.name)]
+        )
+        presets.fetchLimit = 400
+        _userPresets = Query(presets)
     }
 
     // MARK: - Filter Logic

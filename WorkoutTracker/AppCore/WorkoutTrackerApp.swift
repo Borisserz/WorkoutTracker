@@ -416,6 +416,9 @@ struct WorkoutTrackerApp: App {
                 // Cover finish-undo window AND in-flight phone create/start (Watch canStartWorkout TOCTOU).
                 di?.workoutService.isStartBlocked == true
             }
+            PhoneWatchManager.shared.onWatchStartAllowed = { [weak di] in
+                di?.workoutService.noteWatchStartReserved()
+            }
             MuscleColorManager.shared.initialize(modelContainer: container)
 
             self.dashboardViewModel = di.makeDashboardViewModel()

@@ -75,6 +75,8 @@ class Exercise: Identifiable {
     var type: ExerciseType = ExerciseType.strength
     @Attribute var category: ExerciseCategory = ExerciseCategory.other
     var effort: Int = 5
+    /// Preferred rest between sets (seconds). From templates / AI; optional for free sessions.
+    var restSeconds: Int? = nil
     var isCompleted: Bool = false
 
     var cachedVolume: Double = 0.0
@@ -98,13 +100,14 @@ class Exercise: Identifiable {
     var workout: Workout? = nil
     var preset: WorkoutPreset? = nil
 
-    init(id: UUID = UUID(), name: String = "", muscleGroup: String = "", type: ExerciseType = .strength, category: ExerciseCategory? = nil, sets: Int = 1, reps: Int = 0, weight: Double = 0.0, distance: Double? = nil, timeSeconds: Int? = nil, effort: Int = 5, subExercises: [Exercise] = [], setsList: [WorkoutSet] = [], isCompleted: Bool = false) {
+    init(id: UUID = UUID(), name: String = "", muscleGroup: String = "", type: ExerciseType = .strength, category: ExerciseCategory? = nil, sets: Int = 1, reps: Int = 0, weight: Double = 0.0, distance: Double? = nil, timeSeconds: Int? = nil, effort: Int = 5, restSeconds: Int? = nil, subExercises: [Exercise] = [], setsList: [WorkoutSet] = [], isCompleted: Bool = false) {
         self.id = id
         self.name = name
         self.muscleGroup = muscleGroup
         self.type = type
         self.category = category ?? ExerciseCategory.determine(from: name)
-        self.effort = effort
+        self.effort = EffortScale.clamp(effort)
+        self.restSeconds = restSeconds
         self.isCompleted = isCompleted
         self.subExercises = subExercises
         self.setsList = setsList
@@ -273,28 +276,30 @@ struct ExerciseDTO: Codable, Sendable {
     var sets: Int?
     var reps: Int?
     var recommendedWeightKg: Double?
+    var restSeconds: Int?
 
     init(
         name: String, muscleGroup: String, type: ExerciseType, category: ExerciseCategory,
         effort: Int, isCompleted: Bool, setsList: [WorkoutSetDTO]? = nil,
         subExercises: [ExerciseDTO]? = nil, sets: Int? = nil, reps: Int? = nil,
-        recommendedWeightKg: Double? = nil
+        recommendedWeightKg: Double? = nil, restSeconds: Int? = nil
     ) {
         self.name = name
         self.muscleGroup = muscleGroup
         self.type = type
         self.category = category
-        self.effort = effort
+        self.effort = EffortScale.clamp(effort)
         self.isCompleted = isCompleted
         self.setsList = setsList
         self.subExercises = subExercises
         self.sets = sets
         self.reps = reps
         self.recommendedWeightKg = recommendedWeightKg
+        self.restSeconds = restSeconds
     }
 
     enum CodingKeys: String, CodingKey {
-        case name, muscleGroup, type, category, effort, isCompleted, setsList, subExercises, sets, reps, recommendedWeightKg
+        case name, muscleGroup, type, category, effort, isCompleted, setsList, subExercises, sets, reps, recommendedWeightKg, restSeconds
     }
 
     nonisolated init(from decoder: Decoder) throws {
@@ -303,13 +308,15 @@ struct ExerciseDTO: Codable, Sendable {
         muscleGroup = try container.decode(String.self, forKey: .muscleGroup)
         type = try container.decode(ExerciseType.self, forKey: .type)
         category = try container.decode(ExerciseCategory.self, forKey: .category)
-        effort = try container.decode(Int.self, forKey: .effort)
+        let rawEffort = try container.decode(Int.self, forKey: .effort)
+        effort = min(10, max(1, rawEffort))
         isCompleted = try container.decode(Bool.self, forKey: .isCompleted)
         setsList = try container.decodeIfPresent([WorkoutSetDTO].self, forKey: .setsList)
         subExercises = try container.decodeIfPresent([ExerciseDTO].self, forKey: .subExercises)
         sets = try container.decodeIfPresent(Int.self, forKey: .sets)
         reps = try container.decodeIfPresent(Int.self, forKey: .reps)
         recommendedWeightKg = try container.decodeIfPresent(Double.self, forKey: .recommendedWeightKg)
+        restSeconds = try container.decodeIfPresent(Int.self, forKey: .restSeconds)
     }
 
     nonisolated func encode(to encoder: Encoder) throws {
@@ -325,6 +332,7 @@ struct ExerciseDTO: Codable, Sendable {
         try container.encodeIfPresent(sets, forKey: .sets)
         try container.encodeIfPresent(reps, forKey: .reps)
         try container.encodeIfPresent(recommendedWeightKg, forKey: .recommendedWeightKg)
+        try container.encodeIfPresent(restSeconds, forKey: .restSeconds)
     }
 }
 
@@ -332,7 +340,8 @@ extension Exercise {
     func toDTO() -> ExerciseDTO {
         ExerciseDTO(
             name: name, muscleGroup: muscleGroup, type: type, category: category, effort: effort, isCompleted: isCompleted,
-            setsList: sortedSets.map { $0.toDTO() }, subExercises: subExercises.map { $0.toDTO() }
+            setsList: sortedSets.map { $0.toDTO() }, subExercises: subExercises.map { $0.toDTO() },
+            restSeconds: restSeconds
         )
     }
 
@@ -349,6 +358,7 @@ extension Exercise {
             reps: dto.reps ?? 10,
             weight: dto.recommendedWeightKg ?? 0.0,
             effort: dto.effort,
+            restSeconds: dto.restSeconds,
             subExercises: safeSubs.map { Exercise(from: $0) },
             setsList: safeSets.map { WorkoutSet(from: $0) },
             isCompleted: dto.isCompleted

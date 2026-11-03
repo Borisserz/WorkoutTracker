@@ -90,11 +90,9 @@ struct WorkoutView: View {
                     }
                 }
                 .sheet(isPresented: $showAddWorkout) {
-                    AddWorkoutView(onWorkoutCreated: {
+                    AddWorkoutView(onWorkoutCreated: { newID in
                         Task { @MainActor in
-                            var descriptor = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)])
-                            descriptor.fetchLimit = 1
-                            if let newWorkout = try? context.fetch(descriptor).first {
+                            if let newWorkout = context.model(for: newID) as? Workout {
                                 self.recentWorkoutForNavigation = newWorkout
                                 self.navigateToNewWorkout = true
                             }

@@ -31,7 +31,7 @@ final class AddWorkoutViewModel {
     func checkAndStartWorkout(
         workoutService: WorkoutService,
         liveActivityManager: LiveActivityManager,
-        onSuccess: @escaping () -> Void
+        onSuccess: @escaping (PersistentIdentifier) -> Void
     ) async {
 
         if await workoutService.hasActiveWorkout() {
@@ -42,8 +42,8 @@ final class AddWorkoutViewModel {
         let finalTitle = title.isEmpty ? LocalizationHelper.shared.formatWorkoutDateName() : title
         let presetID = selectedPreset?.persistentModelID
 
-        if let _ = await workoutService.createWorkout(title: finalTitle, presetID: presetID, isAIGenerated: false) {
-            onSuccess()
+        if let id = await workoutService.createWorkout(title: finalTitle, presetID: presetID, isAIGenerated: false) {
+            onSuccess(id)
         }
     }
 }

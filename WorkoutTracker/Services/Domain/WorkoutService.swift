@@ -27,12 +27,18 @@ final class WorkoutService {
     private var startInFlight = false
     /// Blocks new starts during finish snackbar undo window (endTime set but session not committed).
     private var finishTransitionDepth = 0
+    /// After Watch `canStartWorkout` allowed=true — block phone Hub starts until Watch `.startWorkout` or TTL.
+    private var watchStartReservedUntil: Date?
     /// Token for LiveWorkoutSyncEvent; `@ObservationIgnored` and `nonisolated(unsafe)` so `deinit` can unregister.
     @ObservationIgnored nonisolated(unsafe) private var liveSyncObserver: (any NSObjectProtocol)?
 
     var isFinishTransitionPending: Bool { finishTransitionDepth > 0 }
-    /// Sync gate for UI (History/Hub) — covers in-flight start and finish-undo window.
-    var isStartBlocked: Bool { startInFlight || finishTransitionDepth > 0 }
+    /// Sync gate for UI (History/Hub) — covers in-flight start, finish-undo, and Watch start reservation.
+    var isStartBlocked: Bool {
+        startInFlight
+            || finishTransitionDepth > 0
+            || WatchSessionPolicy.isWatchStartReservationActive(until: watchStartReservedUntil)
+    }
 
     func beginFinishTransition() {
         finishTransitionDepth += 1
@@ -40,6 +46,14 @@ final class WorkoutService {
 
     func endFinishTransition() {
         finishTransitionDepth = max(0, finishTransitionDepth - 1)
+    }
+
+    func noteWatchStartReserved(seconds: TimeInterval = WatchSessionPolicy.watchStartReservationSeconds) {
+        watchStartReservedUntil = Date().addingTimeInterval(seconds)
+    }
+
+    func clearWatchStartReservation() {
+        watchStartReservedUntil = nil
     }
 
     deinit {
@@ -91,24 +105,24 @@ final class WorkoutService {
                             return false
                         }
                         self.startInFlight = true
+                        self.clearWatchStartReservation()
                         return true
                     }
                     guard claimed else { return }
                     defer {
                         Task { @MainActor in self.startInFlight = false }
                     }
-                    // R01: refuse dual active sessions from Watch when phone already has one.
-                    let activeDesc = FetchDescriptor<Workout>(predicate: #Predicate<Workout> { $0.endTime == nil })
-                    let actives = (try? bgContext.fetch(activeDesc)) ?? []
-                    let freshActives = actives.filter { Date().timeIntervalSince($0.date) <= 12 * 3600 }
-                    if let existing = freshActives.first {
-                        let existingID = existing.persistentModelID
-                        await MainActor.run {
-                            self.appState.returnToActiveWorkoutId = existingID
-                            self.appState.showError(
-                                title: String(localized: "Workout in progress"),
-                                message: String(localized: "Finish or delete the current workout before starting another.")
-                            )
+                    // Heal stale (>12h) / multi-active before accepting Watch start — same path as Hub.
+                    if await self.hasActiveWorkout() {
+                        if let existing = await self.fetchLatestWorkout() {
+                            let existingID = existing.persistentModelID
+                            await MainActor.run {
+                                self.appState.returnToActiveWorkoutId = existingID
+                                self.appState.showError(
+                                    title: String(localized: "Workout in progress"),
+                                    message: String(localized: "Finish or delete the current workout before starting another.")
+                                )
+                            }
                         }
                         return
                     }
@@ -287,7 +301,7 @@ final class WorkoutService {
     }
 
     func createWorkout(title: String, presetID: PersistentIdentifier?, isAIGenerated: Bool, exerciseCount: Int = 0, estimatedDuration: Int = 0) async -> PersistentIdentifier? {
-        if startInFlight || finishTransitionDepth > 0 {
+        if isStartBlocked {
             appState.showError(
                 title: String(localized: "Workout in progress"),
                 message: String(localized: "Finish or delete the current workout before starting another.")
@@ -296,6 +310,7 @@ final class WorkoutService {
         }
         // Claim the start lock before any await — otherwise two MainActor tasks both pass the check.
         startInFlight = true
+        clearWatchStartReservation()
         defer { startInFlight = false }
         let alreadyActive = await hasActiveWorkout()
         if alreadyActive {
@@ -322,7 +337,7 @@ final class WorkoutService {
 
     @discardableResult
     func startGeneratedWorkout(_ generated: GeneratedWorkoutDTO, source: String = "ai_builder") async -> PersistentIdentifier? {
-        if startInFlight || finishTransitionDepth > 0 {
+        if isStartBlocked {
             appState.showError(
                 title: String(localized: "Workout in progress"),
                 message: String(localized: "Finish or delete the current workout before starting another.")
@@ -330,6 +345,7 @@ final class WorkoutService {
             return nil
         }
         startInFlight = true
+        clearWatchStartReservation()
         defer { startInFlight = false }
         let alreadyActive = await hasActiveWorkout()
         if alreadyActive {

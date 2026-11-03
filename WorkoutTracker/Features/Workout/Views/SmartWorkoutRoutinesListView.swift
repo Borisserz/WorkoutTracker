@@ -6,12 +6,27 @@ struct SmartWorkoutRoutinesListView: View {
     @Environment(ThemeManager.self) private var themeManager
     @Environment(\.colorScheme) private var colorScheme
 
-    @Query(filter: #Predicate<WorkoutPreset> { $0.isSystem == false }, sort: \WorkoutPreset.name)
-    private var userPresets: [WorkoutPreset]
+    @Query private var userPresets: [WorkoutPreset]
 
     var onPresetTap: (WorkoutPreset) -> Void
     var onNewProgramTap: () -> Void
     var onExploreTap: () -> Void
+
+    init(
+        onPresetTap: @escaping (WorkoutPreset) -> Void,
+        onNewProgramTap: @escaping () -> Void,
+        onExploreTap: @escaping () -> Void
+    ) {
+        self.onPresetTap = onPresetTap
+        self.onNewProgramTap = onNewProgramTap
+        self.onExploreTap = onExploreTap
+        var presets = FetchDescriptor<WorkoutPreset>(
+            predicate: #Predicate<WorkoutPreset> { $0.isSystem == false },
+            sortBy: [SortDescriptor(\.name)]
+        )
+        presets.fetchLimit = 400
+        _userPresets = Query(presets)
+    }
 
     private var myRoutines: [WorkoutPreset] {
         userPresets.filter { $0.name != "Today's Plan" }

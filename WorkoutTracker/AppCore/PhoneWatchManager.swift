@@ -11,6 +11,8 @@ final class PhoneWatchManager: NSObject, WCSessionDelegate {
     var modelContainer: ModelContainer?
     /// When true, Watch must not start (phone finish-undo window or other session gate).
     var isSessionStartBlocked: (() -> Bool)?
+    /// Called when phone replies `allowed=true` to Watch `canStartWorkout` (short start reservation).
+    var onWatchStartAllowed: (() -> Void)?
 
     private override init() {
         super.init()
@@ -49,10 +51,14 @@ final class PhoneWatchManager: NSObject, WCSessionDelegate {
                 AppLog.watch.debug("📱 got queued presets request (transferUserInfo)")
                 self.sendPresetsToWatch()
             }
-            if let data = userInfo["guaranteedSyncPayload"] as? Data,
+            if let data = WatchSyncEnvelope.liveSyncData(from: userInfo),
                let payload = try? JSONDecoder().decode(LiveSyncPayload.self, from: data) {
-                // Accept all guaranteed actions (cancel/discard/save), not only saveToHistory.
-                NotificationCenter.default.post(name: .init("LiveWorkoutSyncEvent"), object: nil, userInfo: ["payload": payload])
+                if payload.action == .requestActiveState {
+                    self.sendFullActiveStateToWatch()
+                } else {
+                    // Accept either key (cancel/discard/save/start) — Watch historically mismatched keys.
+                    NotificationCenter.default.post(name: .init("LiveWorkoutSyncEvent"), object: nil, userInfo: ["payload": payload])
+                }
             }
         }
     }
@@ -76,12 +82,15 @@ final class PhoneWatchManager: NSObject, WCSessionDelegate {
         if let request = message["request"] as? String, request == "canStartWorkout" {
             Task { @MainActor in
                 let allowed = self.phoneAllowsWatchStart()
+                if allowed {
+                    self.onWatchStartAllowed?()
+                }
                 replyHandler?(["allowed": allowed])
             }
             return
         }
 
-        if let data = message["syncPayload"] as? Data,
+        if let data = WatchSyncEnvelope.liveSyncData(from: message),
            let payload = try? JSONDecoder().decode(LiveSyncPayload.self, from: data) {
             Task { @MainActor in
                 if payload.action == .updateHeartRate, let hr = payload.heartRate {
@@ -147,13 +156,14 @@ final class PhoneWatchManager: NSObject, WCSessionDelegate {
                 exercises: dtos
             )
             if let data = try? JSONEncoder().encode(payload) {
+                let envelope = WatchSyncEnvelope.userInfo(carrying: data)
                 let session = WCSession.default
                 if session.isReachable {
-                    session.sendMessage(["syncPayload": data], replyHandler: nil) { _ in
-                        session.transferUserInfo(["guaranteedSyncPayload": data])
+                    session.sendMessage(envelope, replyHandler: nil) { _ in
+                        session.transferUserInfo(envelope)
                     }
                 } else {
-                    session.transferUserInfo(["guaranteedSyncPayload": data])
+                    session.transferUserInfo(envelope)
                 }
             }
         }
@@ -162,13 +172,14 @@ final class PhoneWatchManager: NSObject, WCSessionDelegate {
     func sendFinishWorkoutToWatch(workoutID: String) {
         let payload = LiveSyncPayload(action: .finishWorkout, workoutID: workoutID)
         guard let data = try? JSONEncoder().encode(payload) else { return }
+        let envelope = WatchSyncEnvelope.userInfo(carrying: data)
         let session = WCSession.default
         if session.isReachable {
-            session.sendMessage(["syncPayload": data], replyHandler: nil) { _ in
-                session.transferUserInfo(["guaranteedSyncPayload": data])
+            session.sendMessage(envelope, replyHandler: nil) { _ in
+                session.transferUserInfo(envelope)
             }
         } else {
-            session.transferUserInfo(["guaranteedSyncPayload": data])
+            session.transferUserInfo(envelope)
         }
     }
 

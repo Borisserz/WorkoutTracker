@@ -73243,7 +73243,7 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Персональный коуч • На связи 24/7"
+            "value": "Персональный коуч — всегда рядом"
           }
         }
       }
@@ -75981,7 +75981,7 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Показаны встроенные примеры. Подключитесь, чтобы обновить живой каталог."
+            "value": "Показаны встроенные примеры программ. Подключитесь, чтобы обновить живой каталог."
           }
         }
       }
@@ -77036,6 +77036,150 @@
           "stringUnit": {
             "state": "translated",
             "value": "ЦНС по виталам"
+          }
+        }
+      }
+    },
+    "Sample sessions inspired by classic training styles": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sample sessions inspired by classic training styles"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Примеры тренировок в духе классических стилей"
+          }
+        }
+      }
+    },
+    "%lld bundled sample protocols": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld bundled sample protocols"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld встроенных примеров протоколов"
+          }
+        }
+      }
+    },
+    "On-device pose tracking and rep counting in real time": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "On-device pose tracking and rep counting in real time"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отслеживание позы и подсчёт повторений в реальном времени на устройстве"
+          }
+        }
+      }
+    },
+    "Rest readiness estimate": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rest readiness estimate"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Оценка готовности к отдыху"
+          }
+        }
+      }
+    },
+    "No analytics yet": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No analytics yet"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Аналитики пока нет"
+          }
+        }
+      }
+    },
+    "Log your first workout to see muscle charts, volume trends, and progress insights. Nothing is paywalled here.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Log your first workout to see muscle charts, volume trends, and progress insights. Nothing is paywalled here."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Запиши первую тренировку, чтобы увидеть графики мышц, объёма и прогресса. Здесь нет платного доступа."
+          }
+        }
+      }
+    },
+    "No heart rate data yet": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No heart rate data yet"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Данных пульса пока нет"
+          }
+        }
+      }
+    },
+    "Listening": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Listening"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Слушаю"
+          }
+        }
+      }
+    },
+    "Standby": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Standby"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ожидание"
           }
         }
       }

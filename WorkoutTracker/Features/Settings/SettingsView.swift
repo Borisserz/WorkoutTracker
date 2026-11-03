@@ -452,13 +452,27 @@ struct SettingsView: View {
     private func exportAllData(format: ExportFormat) async {
         isProcessing = true
         let bgContext = ModelContext(di.modelContainer)
-        let workouts = (try? bgContext.fetch(FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)]))) ?? []
-        let weights = (try? bgContext.fetch(FetchDescriptor<WeightEntry>(sortBy: [SortDescriptor(\.date, order: .reverse)]))) ?? []
-        let goals = (try? bgContext.fetch(FetchDescriptor<UserGoal>(sortBy: [SortDescriptor(\.createdAt, order: .reverse)]))) ?? []
-        let measurements = (try? bgContext.fetch(FetchDescriptor<BodyMeasurement>(sortBy: [SortDescriptor(\.date, order: .reverse)]))) ?? []
-        let customPresets = (try? bgContext.fetch(FetchDescriptor<WorkoutPreset>(predicate: #Predicate { !$0.isSystem }))) ?? []
-        let exerciseNotes = (try? bgContext.fetch(FetchDescriptor<ExerciseNote>())) ?? []
-        let aiChatSessions = (try? bgContext.fetch(FetchDescriptor<AIChatSession>(sortBy: [SortDescriptor(\.date, order: .reverse)]))) ?? []
+        var workoutDesc = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)])
+        workoutDesc.fetchLimit = 2000
+        var weightDesc = FetchDescriptor<WeightEntry>(sortBy: [SortDescriptor(\.date, order: .reverse)])
+        weightDesc.fetchLimit = 2000
+        var goalDesc = FetchDescriptor<UserGoal>(sortBy: [SortDescriptor(\.createdAt, order: .reverse)])
+        goalDesc.fetchLimit = 500
+        var measurementDesc = FetchDescriptor<BodyMeasurement>(sortBy: [SortDescriptor(\.date, order: .reverse)])
+        measurementDesc.fetchLimit = 2000
+        var presetDesc = FetchDescriptor<WorkoutPreset>(predicate: #Predicate { !$0.isSystem })
+        presetDesc.fetchLimit = 400
+        var notesDesc = FetchDescriptor<ExerciseNote>()
+        notesDesc.fetchLimit = 2000
+        var chatDesc = FetchDescriptor<AIChatSession>(sortBy: [SortDescriptor(\.date, order: .reverse)])
+        chatDesc.fetchLimit = 500
+        let workouts = (try? bgContext.fetch(workoutDesc)) ?? []
+        let weights = (try? bgContext.fetch(weightDesc)) ?? []
+        let goals = (try? bgContext.fetch(goalDesc)) ?? []
+        let measurements = (try? bgContext.fetch(measurementDesc)) ?? []
+        let customPresets = (try? bgContext.fetch(presetDesc)) ?? []
+        let exerciseNotes = (try? bgContext.fetch(notesDesc)) ?? []
+        let aiChatSessions = (try? bgContext.fetch(chatDesc)) ?? []
         let muscleColors = UserDefaults.standard.dictionary(forKey: Constants.UserDefaultsKeys.muscleColors.rawValue) as? [String: String] ?? [:]
 
         let fileURL: URL?
@@ -568,6 +582,15 @@ struct SettingsView: View {
             let customPresetsDesc = FetchDescriptor<WorkoutPreset>(predicate: #Predicate { $0.isSystem == false })
             if let customPresets = try? modelContext.fetch(customPresetsDesc) {
                 for preset in customPresets { modelContext.delete(preset) }
+            }
+            // Wipe parity: custom catalog rows + unhide any soft-deleted defaults.
+            let customDictDesc = FetchDescriptor<ExerciseDictionaryItem>(predicate: #Predicate { $0.isCustom == true })
+            if let customs = try? modelContext.fetch(customDictDesc) {
+                for item in customs { modelContext.delete(item) }
+            }
+            let hiddenDictDesc = FetchDescriptor<ExerciseDictionaryItem>(predicate: #Predicate { $0.isHidden == true })
+            if let hidden = try? modelContext.fetch(hiddenDictDesc) {
+                for item in hidden { item.isHidden = false }
             }
             try modelContext.save()
         } catch {

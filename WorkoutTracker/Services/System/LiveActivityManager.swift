@@ -8,20 +8,26 @@ final class LiveActivityManager: Sendable {
 
     func startWorkoutActivity(title: String) {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
-        guard Activity<WorkoutActivityAttributes>.activities.isEmpty else { return }
 
         let attributes = WorkoutActivityAttributes(workoutTitle: title)
         let state = WorkoutActivityAttributes.ContentState(startTime: Date())
         let staleDate = Date().addingTimeInterval(Self.maxWorkoutDuration)
-        do {
-            _ = try Activity<WorkoutActivityAttributes>.request(
-                attributes: attributes,
-                content: .init(state: state, staleDate: staleDate),
-                pushType: nil
-            )
-        } catch {
-            AppLog.liveActivity.error("❌ LiveActivityManager: Failed to start activity: \(error.localizedDescription, privacy: .public)")
-            TrackingManager.shared.recordError(error: error, additionalInfo: ["context": "LiveActivityManager_start"])
+
+        Task {
+            // End orphan Island/activities left after crash / failed stop — then request fresh.
+            for activity in Activity<WorkoutActivityAttributes>.activities {
+                await activity.end(.init(state: state, staleDate: nil), dismissalPolicy: .immediate)
+            }
+            do {
+                _ = try Activity<WorkoutActivityAttributes>.request(
+                    attributes: attributes,
+                    content: .init(state: state, staleDate: staleDate),
+                    pushType: nil
+                )
+            } catch {
+                AppLog.liveActivity.error("❌ LiveActivityManager: Failed to start activity: \(error.localizedDescription, privacy: .public)")
+                TrackingManager.shared.recordError(error: error, additionalInfo: ["context": "LiveActivityManager_start"])
+            }
         }
     }
 

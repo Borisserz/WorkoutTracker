@@ -46,4 +46,22 @@ enum WatchSessionPolicy {
         case allowStandalone
         case askPhone
     }
+
+    /// Finish snackbar sets `endTime` with `durationSeconds == 0`. Skip finalize until grace elapses
+    /// so Hub resume / cleanup cannot process the orphan during undo (default snackbar ~3.5s).
+    static func shouldProcessFinishOrphan(
+        endTime: Date,
+        now: Date = Date(),
+        graceSeconds: TimeInterval = 15
+    ) -> Bool {
+        now.timeIntervalSince(endTime) >= graceSeconds
+    }
+
+    /// Phone reserves a short window after allowing Watch `canStartWorkout` so phone Hub start loses the race.
+    static func isWatchStartReservationActive(until: Date?, now: Date = Date()) -> Bool {
+        guard let until else { return false }
+        return now < until
+    }
+
+    static let watchStartReservationSeconds: TimeInterval = 8
 }

@@ -216,6 +216,83 @@ final class ResidualPassTests: XCTestCase {
         XCTAssertTrue(json.contains("chest"))
     }
 
+    /// Finish snackbar sets endTime with durationSeconds==0; cleanup must not finalize during undo grace.
+    @MainActor
+    func testFindActiveCleanupSkipsRecentFinishSnackbarOrphan() async throws {
+        let (di, context) = try makeInMemoryDI()
+        let stats = UserStats(totalWorkouts: 0, totalVolume: 0, totalDistance: 0)
+        context.insert(stats)
+        try context.save()
+
+        let pid = try await di.workoutStore.createWorkout(title: "Snackbar pending", fromPresetID: nil, isAIGenerated: false)
+        let workout = try XCTUnwrap(context.model(for: pid) as? Workout)
+        let exercise = Exercise(name: "Squat", muscleGroup: "Legs", type: .strength)
+        let set = WorkoutSet(index: 0, weight: 100, reps: 5, isCompleted: true)
+        context.insert(exercise)
+        context.insert(set)
+        exercise.addSafeSet(set)
+        workout.exercises = [exercise]
+        workout.endTime = Date()
+        workout.durationSeconds = 0
+        try context.save()
+
+        _ = try await di.workoutStore.findActiveWorkoutsAndCleanup()
+
+        let refreshed = try XCTUnwrap(context.model(for: pid) as? Workout)
+        XCTAssertEqual(refreshed.durationSeconds, 0, "Recent finish-orphan must stay unprocessed during undo grace")
+        let after = try XCTUnwrap((try context.fetch(FetchDescriptor<UserStats>())).first)
+        XCTAssertEqual(after.totalWorkouts, 0, "Stats must not apply during snackbar undo window")
+    }
+
+    /// Crash-recovery orphans older than grace must still finalize.
+    @MainActor
+    func testFindActiveCleanupProcessesStaleFinishOrphan() async throws {
+        let (di, context) = try makeInMemoryDI()
+        let stats = UserStats(totalWorkouts: 0, totalVolume: 0, totalDistance: 0)
+        context.insert(stats)
+        try context.save()
+
+        let pid = try await di.workoutStore.createWorkout(title: "Killed mid-finish", fromPresetID: nil, isAIGenerated: false)
+        let workout = try XCTUnwrap(context.model(for: pid) as? Workout)
+        let exercise = Exercise(name: "Bench", muscleGroup: "Chest", type: .strength)
+        let set = WorkoutSet(index: 0, weight: 80, reps: 5, isCompleted: true)
+        context.insert(exercise)
+        context.insert(set)
+        exercise.addSafeSet(set)
+        workout.exercises = [exercise]
+        workout.date = Date().addingTimeInterval(-3600)
+        workout.endTime = Date().addingTimeInterval(-120)
+        workout.durationSeconds = 0
+        try context.save()
+
+        _ = try await di.workoutStore.findActiveWorkoutsAndCleanup()
+
+        // Assert via stats (cross-context); duration is set inside @ModelActor processCompletedWorkout.
+        let after = try XCTUnwrap((try context.fetch(FetchDescriptor<UserStats>())).first)
+        XCTAssertEqual(after.totalWorkouts, 1, "Stale finish-orphan must be finalized")
+        try await di.workoutStore.processCompletedWorkout(workoutID: pid) // idempotent if already done
+        let afterIdempotent = try XCTUnwrap((try context.fetch(FetchDescriptor<UserStats>())).first)
+        XCTAssertEqual(afterIdempotent.totalWorkouts, 1, "Re-process must not double-count")
+    }
+
+    /// Abandoned zero-progress sessions (≥30m) must not block new starts forever.
+    @MainActor
+    func testFindActiveCleanupDiscardsAbandonedZeroProgressZombie() async throws {
+        let (di, context) = try makeInMemoryDI()
+        let pid = try await di.workoutStore.createWorkout(title: "Abandoned preset", fromPresetID: nil, isAIGenerated: false)
+        let workout = try XCTUnwrap(context.model(for: pid) as? Workout)
+        let exercise = Exercise(name: "Squat", muscleGroup: "Legs", type: .strength, sets: 3, reps: 5)
+        context.insert(exercise)
+        workout.exercises = [exercise]
+        workout.date = Date().addingTimeInterval(-40 * 60)
+        try context.save()
+
+        let activeIDs = try await di.workoutStore.findActiveWorkoutsAndCleanup()
+        XCTAssertTrue(activeIDs.isEmpty, "Zero-progress session older than 30m must be discarded")
+        let stillOpen = try context.fetch(FetchDescriptor<Workout>(predicate: #Predicate { $0.endTime == nil }))
+        XCTAssertTrue(stillOpen.isEmpty)
+    }
+
     /// Legacy / race leftovers: two open sessions under 12h must collapse to the newest.
     @MainActor
     func testFindActiveWorkoutsHealsMultipleFreshActivesToNewest() async throws {
@@ -333,6 +410,81 @@ final class ResidualPassTests: XCTestCase {
             XCTAssertFalse(name.contains("barbell"), "XERO offline fallback must not list barbell lifts")
             XCTAssertNil(exercise.recommendedWeightKg, "XERO offline fallback must not invent loaded weights")
         }
+    }
+
+    func testLegendaryFallbackCopyDoesNotClaimExactPublishedPrograms() {
+        for routine in LegendaryFallbackCatalog.routines {
+            let lore = routine.loreDescription.lowercased()
+            XCTAssertFalse(lore.contains("exact"), "Sample lore must not claim exact published protocols: \(routine.title)")
+            XCTAssertTrue(
+                lore.contains("inspired") || lore.contains("sample") || lore.contains("taste"),
+                "Sample lore should signal inspired/sample: \(routine.title)"
+            )
+        }
+    }
+
+    func testEffortScaleClampsOutOfRangeValues() {
+        XCTAssertEqual(EffortScale.clamp(50), 10)
+        XCTAssertEqual(EffortScale.clamp(0), 1)
+        XCTAssertEqual(EffortScale.clamp(5), 5)
+    }
+
+    func testRestDurationPolicyPrefersTemplateRestOverEffortHeuristic() {
+        XCTAssertEqual(
+            RestDurationPolicy.suggestedSeconds(templateRestSeconds: 45, effort: 9, exerciseType: .strength),
+            45
+        )
+        XCTAssertEqual(
+            RestDurationPolicy.suggestedSeconds(templateRestSeconds: nil, effort: 9, exerciseType: .strength),
+            180
+        )
+        XCTAssertEqual(
+            RestDurationPolicy.suggestedSeconds(templateRestSeconds: nil, effort: 50, exerciseType: .strength),
+            180,
+            "Out-of-range effort must clamp before heuristic"
+        )
+        XCTAssertNil(
+            RestDurationPolicy.suggestedSeconds(templateRestSeconds: nil, effort: 5, exerciseType: .cardio)
+        )
+    }
+
+    func testRestDurationPolicyResolveFallsBackToUserDefault() {
+        XCTAssertEqual(
+            RestDurationPolicy.resolveSeconds(
+                templateRestSeconds: nil,
+                effort: 5,
+                exerciseType: .cardio,
+                userDefaultRest: 75
+            ),
+            75
+        )
+        XCTAssertEqual(
+            RestDurationPolicy.resolveSeconds(
+                templateRestSeconds: nil,
+                effort: 5,
+                exerciseType: .cardio,
+                userDefaultRest: 0
+            ),
+            60
+        )
+    }
+
+    func testExerciseDTOClampsEffortAndKeepsRestSeconds() throws {
+        let dto = ExerciseDTO(
+            name: "Squat",
+            muscleGroup: "Legs",
+            type: .strength,
+            category: .squat,
+            effort: 50,
+            isCompleted: false,
+            restSeconds: 120
+        )
+        XCTAssertEqual(dto.effort, 10)
+        XCTAssertEqual(dto.restSeconds, 120)
+        let data = try JSONEncoder().encode(dto)
+        let decoded = try JSONDecoder().decode(ExerciseDTO.self, from: data)
+        XCTAssertEqual(decoded.effort, 10)
+        XCTAssertEqual(decoded.restSeconds, 120)
     }
 
     @MainActor

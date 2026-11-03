@@ -152,13 +152,18 @@ struct PulseExplanationSheet: View {
                             )
                         }
 
-                        // HealthKit Live Sync indicator
+                        // HealthKit sync status — honest when empty
                         HStack(spacing: 8) {
+                            let hasPulse = !(timeAgoText.isEmpty || timeAgoText == "No data")
                             Circle()
-                                .fill(PastelTheme.pastelSage)
+                                .fill(hasPulse ? PastelTheme.pastelSage : PastelTheme.textTertiary.opacity(0.55))
                                 .frame(width: 6, height: 6)
 
-                            Text(timeAgoText.isEmpty || timeAgoText == "No data" ? "Apple Watch / HealthKit Live Sync" : "HealthKit Sync • \(timeAgoText)")
+                            Text(
+                                hasPulse
+                                    ? String(localized: "HealthKit Sync • \(timeAgoText)")
+                                    : String(localized: "No heart rate data yet")
+                            )
                                 .font(.caption2)
                                 .foregroundStyle(PastelTheme.textTertiary)
                         }

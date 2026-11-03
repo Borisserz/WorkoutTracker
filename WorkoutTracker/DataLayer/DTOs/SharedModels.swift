@@ -1,6 +1,23 @@
 
-
 import Foundation
+
+/// WCSession userInfo / message keys for live workout sync.
+/// Always write both; always read either — phone and Watch historically disagreed on the key name.
+enum WatchSyncEnvelope {
+    static let syncPayloadKey = "syncPayload"
+    static let guaranteedSyncPayloadKey = "guaranteedSyncPayload"
+
+    static func liveSyncData(from dict: [String: Any]) -> Data? {
+        if let data = dict[syncPayloadKey] as? Data { return data }
+        if let data = dict[guaranteedSyncPayloadKey] as? Data { return data }
+        return nil
+    }
+
+    /// Outbound dictionary accepted by both phone and Watch receivers.
+    static func userInfo(carrying data: Data) -> [String: Any] {
+        [syncPayloadKey: data, guaranteedSyncPayloadKey: data]
+    }
+}
 
 enum SyncActionType: String, Codable, Sendable {
     case startWorkout

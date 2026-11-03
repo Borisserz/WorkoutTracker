@@ -215,7 +215,7 @@ struct AICoachView: View {
                                         .font(.system(size: 17, weight: .bold, design: .rounded))
                                         .foregroundStyle(PastelTheme.textPrimary)
 
-                                    Text("Joint angles, bar path, and range of motion in real time")
+                                    Text("On-device pose tracking and rep counting in real time")
                                         .font(.system(size: 12, weight: .medium))
                                         .foregroundStyle(PastelTheme.textSecondary)
                                         .lineLimit(2)
@@ -622,6 +622,33 @@ struct InteractiveCoachDialogCard: View {
         CNSCalculator.coachGreeting(for: score)
     }
 
+    private var coachStatusBadge: some View {
+        let listening = isListening
+        let unmeasured = score < 0
+        let label: String = {
+            if listening { return String(localized: "Listening") }
+            if unmeasured { return String(localized: "Standby") }
+            return String(localized: "Ready")
+        }()
+        let color: Color = {
+            if listening { return PastelTheme.pastelAmber }
+            if unmeasured { return PastelTheme.textTertiary }
+            return PastelTheme.pastelSage
+        }()
+        return HStack(spacing: 5) {
+            Circle()
+                .fill(color)
+                .frame(width: 7, height: 7)
+            Text(label)
+                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                .foregroundStyle(color)
+        }
+        .padding(.horizontal, 9)
+        .padding(.vertical, 4)
+        .background(color.opacity(0.12))
+        .clipShape(Capsule())
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             // Coach Persona Header
@@ -649,19 +676,7 @@ struct InteractiveCoachDialogCard: View {
 
                 Spacer()
 
-                HStack(spacing: 5) {
-                    Circle()
-                        .fill(PastelTheme.pastelSage)
-                        .frame(width: 7, height: 7)
-
-                    Text("Ready")
-                        .font(.system(size: 11, weight: .semibold, design: .rounded))
-                        .foregroundStyle(PastelTheme.pastelSage)
-                }
-                .padding(.horizontal, 9)
-                .padding(.vertical, 4)
-                .background(PastelTheme.pastelSage.opacity(0.12))
-                .clipShape(Capsule())
+                coachStatusBadge
             }
 
             // Direct Speech Bubble
@@ -1646,7 +1661,7 @@ struct RestAnalysisSheet: View {
                         Spacer().frame(height: 70)
 
                         VStack(spacing: 16) {
-                            Text("CNS fatigue estimate")
+                            Text("Rest readiness estimate")
                                 .font(.system(size: 13, weight: .semibold, design: .rounded))
                                 .foregroundColor(PastelTheme.textSecondary)
 

@@ -225,4 +225,68 @@ final class WatchConnectivityTests: XCTestCase {
             )
         )
     }
+
+    // MARK: - Sync envelope (key mismatch fix)
+
+    func testWatchSyncEnvelope_readsSyncPayloadKey() {
+        let data = Data([1, 2, 3])
+        XCTAssertEqual(WatchSyncEnvelope.liveSyncData(from: ["syncPayload": data]), data)
+    }
+
+    func testWatchSyncEnvelope_readsGuaranteedSyncPayloadKey() {
+        let data = Data([4, 5, 6])
+        XCTAssertEqual(WatchSyncEnvelope.liveSyncData(from: ["guaranteedSyncPayload": data]), data)
+    }
+
+    func testWatchSyncEnvelope_prefersSyncPayloadWhenBothPresent() {
+        let live = Data([7])
+        let guaranteed = Data([8])
+        let dict: [String: Any] = ["syncPayload": live, "guaranteedSyncPayload": guaranteed]
+        XCTAssertEqual(WatchSyncEnvelope.liveSyncData(from: dict), live)
+    }
+
+    func testWatchSyncEnvelope_outboundCarriesBothKeys() {
+        let data = Data([9, 10])
+        let dict = WatchSyncEnvelope.userInfo(carrying: data)
+        XCTAssertEqual(dict["syncPayload"] as? Data, data)
+        XCTAssertEqual(dict["guaranteedSyncPayload"] as? Data, data)
+    }
+
+    // MARK: - Finish-orphan grace (snackbar undo window)
+
+    func testFinishOrphanGrace_skipsRecentEndTime() {
+        let end = Date()
+        XCTAssertFalse(
+            WatchSessionPolicy.shouldProcessFinishOrphan(
+                endTime: end,
+                now: end.addingTimeInterval(3),
+                graceSeconds: 15
+            )
+        )
+    }
+
+    func testFinishOrphanGrace_processesAfterGrace() {
+        let end = Date().addingTimeInterval(-60)
+        XCTAssertTrue(
+            WatchSessionPolicy.shouldProcessFinishOrphan(
+                endTime: end,
+                now: Date(),
+                graceSeconds: 15
+            )
+        )
+    }
+
+    // MARK: - Watch start reservation TTL
+
+    func testWatchStartReservation_activeWithinTTL() {
+        let reservedUntil = Date().addingTimeInterval(5)
+        XCTAssertTrue(WatchSessionPolicy.isWatchStartReservationActive(until: reservedUntil, now: Date()))
+        XCTAssertFalse(
+            WatchSessionPolicy.isWatchStartReservationActive(
+                until: Date().addingTimeInterval(-1),
+                now: Date()
+            )
+        )
+        XCTAssertFalse(WatchSessionPolicy.isWatchStartReservationActive(until: nil, now: Date()))
+    }
 }

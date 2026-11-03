@@ -2,8 +2,9 @@ import Foundation
 
 /// Pure Rest / Recovery sheet math — never writes AppStorage CNS.
 /// Overview CNS must stay driven by `CNSCalculator` / HealthKit only.
+/// UI labels this “Rest readiness” — not Overview CNS readiness.
 enum RestFatigueEstimator {
-    /// Approximate fatigue load 0…100 from sleep + water inputs.
+    /// Approximate rest-fatigue load 0…100 from sleep + water inputs (local sheet only).
     static func cnsLoad(sleepHours: Double, waterCups: Int) -> Double {
         let sleepFactor = max(0, (8.0 - sleepHours) * 10)
         let waterFactor = max(0, (8 - waterCups) * 2)
