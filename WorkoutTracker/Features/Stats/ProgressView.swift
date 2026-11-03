@@ -237,6 +237,10 @@ struct StatsContentView: View {
     @State private var showAIReviewSheet = false
     @State private var isFetchingReviewData = false
     @State private var reviewData: StatsDataResultDTO?
+    @AppStorage(Constants.UserDefaultsKeys.hasConsentedToAI.rawValue)
+    private var hasConsentedToAI = false
+    @State private var showAIConsentSheet = false
+    @State private var pendingAIReviewAction: (() -> Void)?
 
     var body: some View {
         ZStack {
@@ -266,7 +270,7 @@ struct StatsContentView: View {
                             }
                             
                             AIIslandSquareView(isFetching: isFetchingReviewData) {
-                                fetchReviewDataAndShowSheet()
+                                requireAIConsent { fetchReviewDataAndShowSheet() }
                             }
                             .disabled(isFetchingReviewData || dashboardViewModel.totalWorkouts == 0)
                             .opacity(isFetchingReviewData ? 0.5 : (dashboardViewModel.totalWorkouts == 0 ? 0.4 : 1.0))
@@ -342,6 +346,13 @@ struct StatsContentView: View {
                     .presentationDetents([.medium])
             }
         }
+        .sheet(isPresented: $showAIConsentSheet) {
+            AIConsentSheet(onConsent: {
+                let action = pendingAIReviewAction
+                pendingAIReviewAction = nil
+                action?()
+            })
+        }
         .onChange(of: di.appState.showProfileSheet) { _, newVal in
             if newVal {
                 showProfile = true
@@ -386,6 +397,15 @@ struct StatsContentView: View {
             streak: dashboardViewModel.streakCount,
             unitsManager: unitsManager
         )
+    }
+
+    private func requireAIConsent(_ action: @escaping () -> Void) {
+        if hasConsentedToAI {
+            action()
+        } else {
+            pendingAIReviewAction = action
+            showAIConsentSheet = true
+        }
     }
 
     private func fetchReviewDataAndShowSheet() {
@@ -801,7 +821,7 @@ struct BodyTransformBannerCard: View {
                             }
                         }
 
-                        Text("Before & after slider · Track your progress")
+                        Text("Before & after slider — track your progress")
                             .font(.system(size: 13, weight: .medium, design: .rounded))
                             .foregroundColor(PastelTheme.textSecondary)
                             .lineLimit(1)
@@ -1224,7 +1244,7 @@ struct ActivityThisWeekSquareCard: View {
                             .foregroundColor(PastelTheme.pastelSlate)
                             .lineLimit(1)
                         
-                        Text("\(stats.totalDuration) min · \(stats.totalReps) reps")
+                        Text("\(stats.totalDuration) min, \(stats.totalReps) reps")
                             .font(.system(size: 11, weight: .medium, design: .rounded))
                             .foregroundColor(PastelTheme.textTertiary)
                             .lineLimit(1)
@@ -2902,8 +2922,7 @@ struct HeatmapDetailView: View {
                VStack(alignment: .leading, spacing: 4) {
                    Text(LocalizedStringKey("Primary Focus"))
                        .font(.caption)
-                       .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray) 
-                       .textCase(.uppercase)
+                       .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
 
                    Text(LocalizedStringKey(topMuscle.displayName))
                        .font(.title3)
@@ -2916,8 +2935,7 @@ struct HeatmapDetailView: View {
                VStack(alignment: .trailing, spacing: 4) {
                    Text(LocalizedStringKey("Sets"))
                        .font(.caption)
-                       .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray) 
-                       .textCase(.uppercase)
+                       .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
                    Text("\(topMuscle.sets)")
                        .font(.title2)
                        .bold()
@@ -3587,7 +3605,6 @@ struct HeatmapDetailView: View {
 
                         Text(LocalizedStringKey(data.topMuscle))
                             .font(.system(size: 48, weight: .heavy, design: .rounded))
-                            .textCase(.uppercase)
                             .foregroundStyle(PastelTheme.pastelSage)
                     }
                     .multilineTextAlignment(.center)

@@ -12,8 +12,6 @@ final class OverviewRouter {
 
     enum SheetDestination: Identifiable {
         case settings
-        case addWorkout
-        case muscleColor
         case profile
         case bodyAnalysis(BodyAnalysisReport)
         case dailyFocus(BodyAnalysisReport)
@@ -21,8 +19,6 @@ final class OverviewRouter {
         var id: String {
             switch self {
             case .settings: return "settings"
-            case .addWorkout: return "addWorkout"
-            case .muscleColor: return "muscleColor"
             case .profile: return "profile"
             case .bodyAnalysis: return "bodyAnalysis"
             case .dailyFocus: return "dailyFocus"
@@ -190,18 +186,6 @@ struct OverviewView: View {
                             router.push(.exercises)
                         }
                     )
-                case .addWorkout:
-                    AddWorkoutView(onWorkoutCreated: {
-                        Task { @MainActor in
-                            var desc = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)])
-                            desc.fetchLimit = 1
-                            if let newWorkout = try? context.fetch(desc).first {
-                                router.push(.workoutDetail(newWorkout))
-                            }
-                        }
-                    })
-                case .muscleColor:
-                    MuscleColorSettingsView()
                 }
             }
             .accessibilityIdentifier("wt.overview.root")

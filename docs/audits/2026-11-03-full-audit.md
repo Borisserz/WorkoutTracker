@@ -43,15 +43,13 @@ Method: code review (core / AI / l10n / UX / perf+Watch+widget) against ADR-0001
 | A06 | Hub/History CTA height 32 | `ButtonMetrics.inCardHeight` (36) |
 | A07 | `DynamicWorkoutListView` unbounded `@Query` | `fetchLimit` 400 |
 
-### P2 (deferred)
+### P2 (closed in follow-up pass)
 
 - Multi-active heal (&lt;12h) in `WorkoutStore`
-- Dead `showWorkoutSheet` / cloud builder UX
-- Proactive consent sheets on Progress/Weekly AI
-- GifImageView WKWebView reload churn
-- WatchWorkoutStore full-table fetch per set
-- Anti-slop residual (ALL-CAPS, middle dots)
-- Orphan OverviewRouter `.muscleColor` / `.addWorkout`
+- Removed dead `WorkoutConfigSheet` / `BestExercisesSheet`; Progress/Weekly AI consent gates
+- GifImageView skip reload when URL unchanged
+- WatchWorkoutStore predicate + `fetchLimit = 1`
+- Anti-slop: ALL-CAPS / middle dots on Progress/ProgramDetail; Settings → Muscle colors; removed orphan OverviewRouter cases
 
 ## Fix status (this pass)
 

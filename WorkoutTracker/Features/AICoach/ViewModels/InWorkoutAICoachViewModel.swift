@@ -69,7 +69,10 @@ final class InWorkoutAICoachViewModel {
             } catch {
                 self.isProcessing = false
                 self.activeCommandId = nil
-                self.appState.showError(title: "AI Error", message: "Could not reach the Coach. Please check your connection and try again.")
+                self.appState.showError(
+                    title: String(localized: "AI Error"),
+                    message: error.userFacingAIMessage
+                )
             }
         }
     }

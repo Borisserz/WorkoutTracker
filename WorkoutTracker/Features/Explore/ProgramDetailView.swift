@@ -218,8 +218,7 @@ struct RoutinePreviewCard: View {
                         if let day = dayIndex {
                             Text("Day \(day)")
                                 .font(.caption)
-                                .foregroundColor(.blue) 
-                                .textCase(.uppercase)
+                                .foregroundColor(.blue)
                                 .fontWeight(.bold)
                         }
                         Text(LocalizedStringKey(routine.name))

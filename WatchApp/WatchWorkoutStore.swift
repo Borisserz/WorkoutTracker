@@ -1,5 +1,4 @@
 
-
 import Foundation
 import SwiftData
 
@@ -16,10 +15,7 @@ actor WatchWorkoutStore {
     }
 
     func logSet(workoutID: String, exerciseName: String, weight: Double, reps: Int) throws {
-
-        let desc = FetchDescriptor<Workout>()
-        guard let allWorkouts = try? modelContext.fetch(desc),
-              let workout = allWorkouts.first(where: { $0.id.uuidString == workoutID }) else { return }
+        guard let workout = try workout(forID: workoutID) else { return }
 
         let exercise: Exercise
         if let existing = workout.exercises.first(where: { $0.name == exerciseName && !$0.isCompleted }) {
@@ -42,9 +38,7 @@ actor WatchWorkoutStore {
     }
 
     func finishWorkout(workoutID: String) throws {
-        let desc = FetchDescriptor<Workout>()
-        guard let allWorkouts = try? modelContext.fetch(desc),
-              let workout = allWorkouts.first(where: { $0.id.uuidString == workoutID }) else { return }
+        guard let workout = try workout(forID: workoutID) else { return }
 
         workout.endTime = Date()
         workout.durationSeconds = Int(workout.endTime!.timeIntervalSince(workout.date))
@@ -53,13 +47,18 @@ actor WatchWorkoutStore {
     }
 
     func updateExerciseEffort(workoutID: String, exerciseName: String, effort: Int) throws {
-        let desc = FetchDescriptor<Workout>()
-        guard let allWorkouts = try? modelContext.fetch(desc),
-              let workout = allWorkouts.first(where: { $0.id.uuidString == workoutID }),
+        guard let workout = try workout(forID: workoutID),
               let exercise = workout.exercises.first(where: { $0.name == exerciseName && !$0.isCompleted }) else { return }
 
         exercise.effort = effort
         try modelContext.save()
+    }
+
+    private func workout(forID workoutID: String) throws -> Workout? {
+        guard let id = UUID(uuidString: workoutID) else { return nil }
+        var desc = FetchDescriptor<Workout>(predicate: #Predicate<Workout> { $0.id == id })
+        desc.fetchLimit = 1
+        return try modelContext.fetch(desc).first
     }
 
 }

@@ -76767,6 +76767,23 @@
         }
       },
       "extractionState": "manual"
+    },
+    "Muscle colors": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Цвета мышц"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Muscle colors"
+          }
+        }
+      }
     }
   },
   "version": "1.1"

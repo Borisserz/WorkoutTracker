@@ -368,25 +368,26 @@ actor WorkoutStore: WorkoutStoreProtocol {
         let activeWorkouts = (try? modelContext.fetch(desc)) ?? []
         var remainingActiveIDs: [PersistentIdentifier] = []
 
+        var freshActives: [Workout] = []
         for workout in activeWorkouts {
             let hoursSinceStart = Date().timeIntervalSince(workout.date) / 3600
             if hoursSinceStart > 12 {
-                let hasCompletedSets = workout.exercises.contains { ex in
-                    ex.setsList.contains(where: \.isCompleted)
-                    || ex.subExercises.contains { $0.setsList.contains(where: \.isCompleted) }
-                }
-                if !hasCompletedSets {
-                    // Empty abandoned session — discard instead of inventing a 1h workout.
-                    modelContext.delete(workout)
-                } else {
-                    // Close with real elapsed time (capped); let processCompletedWorkout set durationSeconds.
-                    let elapsed = min(Date().timeIntervalSince(workout.date), 12 * 3600)
-                    workout.endTime = workout.date.addingTimeInterval(elapsed)
-                    try await processCompletedWorkout(workoutID: workout.persistentModelID)
-                }
+                try await healOrDiscardAbandonedActive(workout)
             } else {
-                remainingActiveIDs.append(workout.persistentModelID)
+                freshActives.append(workout)
             }
+        }
+
+        // Single-active policy: keep newest <12h session; close/delete the rest.
+        if freshActives.count > 1 {
+            freshActives.sort { $0.date > $1.date }
+            let keeper = freshActives.removeFirst()
+            remainingActiveIDs.append(keeper.persistentModelID)
+            for duplicate in freshActives {
+                try await healOrDiscardAbandonedActive(duplicate)
+            }
+        } else if let only = freshActives.first {
+            remainingActiveIDs.append(only.persistentModelID)
         }
 
         // Finish-snackbar orphans (app killed after endTime, before process): finalize or discard.
@@ -408,6 +409,21 @@ actor WorkoutStore: WorkoutStoreProtocol {
 
         try modelContext.save()
         return remainingActiveIDs
+    }
+
+    /// Close a stray active: discard empty shells, otherwise finish with real elapsed time (capped at 12h).
+    private func healOrDiscardAbandonedActive(_ workout: Workout) async throws {
+        let hasCompletedSets = workout.exercises.contains { ex in
+            ex.setsList.contains(where: \.isCompleted)
+            || ex.subExercises.contains { $0.setsList.contains(where: \.isCompleted) }
+        }
+        if !hasCompletedSets {
+            modelContext.delete(workout)
+        } else {
+            let elapsed = min(Date().timeIntervalSince(workout.date), 12 * 3600)
+            workout.endTime = workout.date.addingTimeInterval(elapsed)
+            try await processCompletedWorkout(workoutID: workout.persistentModelID)
+        }
     }
 
     func deleteWeightEntry(_ entryID: PersistentIdentifier) async throws {

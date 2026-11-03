@@ -667,6 +667,13 @@ struct AppearanceSettingsView: View {
             Section(header: Text(LocalizedStringKey("Anatomy Model")), footer: Text("This model is used for your personal muscle recovery heatmap.")) {
                 SettingsCheckmarkRow(title: "Male", isSelected: userGender == "male") { userGender = "male" }
                 SettingsCheckmarkRow(title: "Female", isSelected: userGender == "female") { userGender = "female" }
+                NavigationLink(destination: MuscleColorSettingsView()) {
+                    Label {
+                        Text(LocalizedStringKey("Muscle colors"))
+                    } icon: {
+                        Image(systemName: "paintpalette")
+                    }
+                }
             }
             Section(header: Text(LocalizedStringKey("Localization"))) {
                 Button {

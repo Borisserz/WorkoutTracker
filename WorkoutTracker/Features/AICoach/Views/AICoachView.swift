@@ -7,22 +7,6 @@ struct CoachSheetItem: Identifiable {
     let id: String
 }
 
-enum CoachMuscleGroup: String, CaseIterable, Identifiable {
-    case chest = "Chest", back = "Back", legs = "Legs", shoulders = "Shoulders", arms = "Arms", abs = "Abs"
-    var id: String { self.rawValue }
-
-    var engineName: String {
-        switch self {
-        case .chest: return "Chest"
-        case .back: return "Back"
-        case .legs: return "Legs"
-        case .shoulders: return "Shoulders"
-        case .arms: return "Arms"
-        case .abs: return "Core"
-        }
-    }
-}
-
 struct MuscleStats: Identifiable {
     let id = UUID()
     let name: String
@@ -41,7 +25,6 @@ struct AICoachView: View {
     @AppStorage("hasSeenAICoachTooltip") private var hasSeenTooltip = false
     @State private var showTooltip = false
     @State private var showChatView = false
-    @State private var showWorkoutSheet = false
     @State private var showProgressSheet = false
     @State private var showRestSheet = false
     @State private var showAISettings = false
@@ -329,7 +312,7 @@ struct AICoachView: View {
 
                             Button {
                                 HapticManager.shared.impact(.medium)
-                                showProgressSheet = true
+                                requireAIConsent { showProgressSheet = true }
                             } label: {
                                 PastelBentoCard(
                                     title: "Weekly analytics",
@@ -363,7 +346,6 @@ struct AICoachView: View {
             }
             .sheet(isPresented: $showRestSheet) { RestAnalysisSheet().presentationDetents([.large]).presentationCornerRadius(35).presentationDragIndicator(.visible) }
             .sheet(isPresented: $showProgressSheet) { ProgressAnalysisSheet().presentationDetents([.large]).presentationCornerRadius(35).presentationDragIndicator(.visible) }
-            .sheet(isPresented: $showWorkoutSheet) { WorkoutConfigSheet().presentationDetents([.large]).presentationCornerRadius(35).presentationDragIndicator(.visible) }
             .sheet(isPresented: Binding(
                 get: { showAISettings || di.appState.showAISettingsSheet },
                 set: { newVal in
@@ -491,6 +473,7 @@ struct PastelReadinessCard: View {
     let hasSleep: Bool
 
     private var scoreColor: Color {
+        if score < 0 { return PastelTheme.textSecondary }
         if score >= 80 { return PastelTheme.pastelSage }
         if score >= 50 { return PastelTheme.pastelAmber }
         return PastelTheme.pastelPeach
@@ -1036,390 +1019,6 @@ struct AISettingsSheet: View {
             .task {
                 self.availablePersonas = await RemoteConfigManager.shared.getAllPersonas()
             }
-        }
-    }
-}
-
-struct WorkoutConfigSheet: View {
-    @Environment(\.colorScheme) private var colorScheme 
-    let levels: [(String, WorkoutDifficulty)] = [("Basic", .beginner), ("Advanced", .intermediate), ("Athlete PRO", .advanced)]
-
-    @State private var selectedLevel: WorkoutDifficulty = .intermediate
-    @State private var selectedMuscle: CoachMuscleGroup? = nil
-
-    func synergyFor(_ muscle: CoachMuscleGroup) -> String? {
-        switch muscle {
-        case .chest: return "Triceps, delts"
-        case .back: return "Biceps, traps"
-        case .legs: return "Glutes, calves"
-        case .shoulders: return nil
-        case .arms: return nil
-        case .abs: return nil
-        }
-    }
-
-    var body: some View {
-        NavigationStack {
-            ZStack(alignment: .top) {
-                (colorScheme == .dark ? PastelTheme.canvas : Color(UIColor.secondarySystemBackground))
-                    .ignoresSafeArea()
-
-                ScrollView(showsIndicators: false) {
-                    LazyVStack(alignment: .leading, spacing: 28) {
-
-                        Text("Program builder")
-                            .font(.system(size: 28, weight: .bold, design: .rounded))
-                            .foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black) 
-                            .padding(.horizontal, 24)
-                            .padding(.top, 24)
-
-                        VStack(alignment: .leading, spacing: 14) {
-                            Text("Intensity")
-                                .font(.system(size: 13, weight: .semibold, design: .rounded))
-                                .foregroundColor(PastelTheme.textSecondary)
-                                .padding(.horizontal, 24)
-
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                LazyHStack(spacing: 10) {
-                                    Spacer().frame(width: 14)
-                                    ForEach(levels, id: \.0) { level in
-                                        let isSelected = selectedLevel == level.1
-                                        Button(action: {
-                                            HapticManager.shared.impact(.light)
-                                            selectedLevel = level.1
-                                        }) {
-                                            Text(level.0)
-                                                .font(.system(size: 14, weight: .semibold, design: .rounded))
-                                                .padding(.horizontal, 18)
-                                                .frame(height: PastelTheme.ButtonMetrics.pillHeight)
-                                                .background(isSelected ? PastelTheme.pastelOat : (colorScheme == .dark ? PastelTheme.cardSurface : Color.white))
-                                                .foregroundColor(isSelected ? PastelTheme.textOnOat : (colorScheme == .dark ? PastelTheme.textPrimary : .black))
-                                                .clipShape(Capsule())
-                                                .overlay(Capsule().stroke(isSelected ? Color.clear : PastelTheme.cardBorder, lineWidth: 1))
-                                        }
-                                    }
-                                    Spacer().frame(width: 14)
-                                }
-                            }
-                            .scrollBounceBehavior(.basedOnSize)
-                        }
-
-                        VStack(alignment: .leading, spacing: 14) {
-                            Text("Target muscle group")
-                                .font(.system(size: 13, weight: .semibold, design: .rounded))
-                                .foregroundColor(PastelTheme.textSecondary)
-                                .padding(.horizontal, 24)
-
-                            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 14) {
-                                ForEach(CoachMuscleGroup.allCases) { muscle in
-                                    Button(action: {
-                                        HapticManager.shared.impact(.medium)
-                                        selectedMuscle = muscle
-                                    }) {
-                                        VStack(alignment: .leading, spacing: 10) {
-                                            HStack {
-                                                Text(muscle.rawValue)
-                                                    .font(.system(size: 18, weight: .bold, design: .rounded))
-                                                    .foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black) 
-
-                                                Spacer()
-
-                                                ZStack {
-                                                    Circle()
-                                                        .fill(colorScheme == .dark ? PastelTheme.cardSurfaceSubtle : Color.black.opacity(0.05)) 
-                                                        .frame(width: 28, height: 28)
-                                                    Image(systemName: "chevron.right")
-                                                        .font(.system(size: 11, weight: .bold))
-                                                        .foregroundColor(PastelTheme.pastelLavender)
-                                                }
-                                            }
-
-                                            if let syn = synergyFor(muscle) {
-                                                HStack(spacing: 4) {
-                                                    Image(systemName: "link")
-                                                        .font(.system(size: 10, weight: .semibold))
-                                                    Text(syn)
-                                                        .font(.system(size: 11, weight: .medium))
-                                                }
-                                                .foregroundColor(PastelTheme.pastelSlate)
-                                                .lineLimit(1)
-                                            } else {
-                                                Text("Isolation")
-                                                    .font(.system(size: 11, weight: .medium))
-                                                    .foregroundColor(PastelTheme.textMuted)
-                                            }
-                                        }
-                                        .padding(16)
-                                        .background(colorScheme == .dark ? PastelTheme.cardSurface : Color.white)
-                                        .cornerRadius(18)
-                                        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(PastelTheme.cardBorder, lineWidth: 1))
-                                        .shadow(color: .black.opacity(colorScheme == .dark ? 0.2 : 0.04), radius: 6, y: 2)
-                                    }
-                                    .buttonStyle(.plain)
-                                }
-                            }
-                            .padding(.horizontal, 24)
-                        }
-                    }
-                    .padding(.bottom, 40)
-                }
-            }
-            .navigationBarHidden(true)
-            .sheet(item: $selectedMuscle) { m in
-                BestExercisesSheet(muscleGroup: m, difficulty: selectedLevel)
-                    .presentationDetents([.fraction(0.9), .large])
-                    .presentationCornerRadius(35)
-                    .presentationDragIndicator(.visible)
-            }
-        }
-    }
-}
-
-struct BestExercisesSheet: View {
-    @Environment(\.colorScheme) private var colorScheme 
-    let muscleGroup: CoachMuscleGroup
-    let difficulty: WorkoutDifficulty
-
-    @Environment(DashboardViewModel.self) private var dashboard
-    @Environment(WorkoutService.self) private var workoutService
-    @Environment(UnitsManager.self) private var unitsManager
-    @Environment(DIContainer.self) private var di
-    @Environment(\.dismiss) private var dismiss
-
-    @State private var isGenerating = true
-    @State private var aiErrorMessage: String? = nil
-
-    @State private var generatedWorkout: GeneratedWorkoutDTO? = nil
-    @State private var aiCoachMessage: String = String(localized: "Analyzing biometrics...")
-    @State private var estimatedTonnage: Double = 0.0
-
-    @State private var selectedExercise: GeneratedExerciseDTO? = nil
-    @State private var isStarting = false
-    @State private var isPulsing = false
-
-    private var dummyExercises: [GeneratedExerciseDTO] {
-        return (0..<5).map { _ in
-            GeneratedExerciseDTO(name: "Loading exercise...", muscleGroup: "Group", type: "Strength", sets: 3, reps: 10, recommendedWeightKg: 50.0, restSeconds: 90)
-        }
-    }
-
-    var body: some View {
-        ZStack {
-
-            (colorScheme == .dark ? Color(UIColor.systemGroupedBackground) : Color(UIColor.secondarySystemBackground)).ignoresSafeArea()
-
-            VStack(spacing: 0) {
-
-                HStack {
-                    Text(isGenerating ? "AI is building a protocol…" : "Protocol: \(muscleGroup.rawValue)")
-                        .font(.system(size: 22, weight: .bold, design: .rounded))
-                        .foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black) 
-                    Spacer()
-                    if !isGenerating && aiErrorMessage == nil {
-                        Image(systemName: "checkmark.seal.fill")
-                            .foregroundColor(PastelTheme.pastelSage)
-                            .font(.title2)
-                    }
-                }
-                .padding(.horizontal, 24)
-                .padding(.top, 30)
-                .padding(.bottom, 10)
-
-                ScrollView(showsIndicators: false) {
-                    VStack(spacing: 16) {
-
-                        if !isGenerating {
-                            if let errorMsg = aiErrorMessage {
-                                HStack {
-                                    Image(systemName: "exclamationmark.triangle.fill").foregroundColor(PastelTheme.pastelAmber)
-                                    Text(errorMsg).font(.subheadline).foregroundColor(colorScheme == .dark ? .white : .black)
-                                    Spacer()
-                                }
-                                .padding(16)
-                                .background(PastelTheme.pastelAmber.opacity(0.12))
-                                .cornerRadius(16)
-                                .overlay(RoundedRectangle(cornerRadius: 16).stroke(PastelTheme.pastelAmber.opacity(0.3), lineWidth: 1))
-                            } else {
-                                let msg = generatedWorkout?.aiMessage ?? aiCoachMessage
-                                HStack(alignment: .top, spacing: 12) {
-                                    Image(systemName: "brain.head.profile")
-                                        .font(.title2)
-                                        .foregroundStyle(PastelTheme.pastelLavender)
-
-                                    Text(msg)
-                                        .font(.system(size: 15, weight: .medium))
-                                        .foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black) 
-                                        .lineSpacing(4)
-                                    Spacer()
-                                }
-                                .padding(16)
-                                .background(colorScheme == .dark ? PastelTheme.cardSurface : Color.white)
-                                .cornerRadius(16)
-                                .overlay(RoundedRectangle(cornerRadius: 16).stroke(PastelTheme.cardBorder, lineWidth: 1))
-                                .shadow(color: .black.opacity(colorScheme == .dark ? 0.2 : 0.05), radius: 5, y: 2)
-                                .transition(.opacity.combined(with: .move(edge: .top)))
-                            }
-                        }
-
-                        if aiErrorMessage == nil {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text("Estimated volume").font(.system(size: 12, weight: .bold)).foregroundColor(PastelTheme.textSecondary)
-                                    Text("\(Int(estimatedTonnage)) \(unitsManager.weightUnitString())")
-                                        .font(.system(size: 20, weight: .black, design: .rounded).monospacedDigit())
-                                        .foregroundColor(PastelTheme.pastelLavender)
-                                        .contentTransition(.numericText())
-                                }
-                                Spacer()
-                                Divider().background(PastelTheme.separator).frame(height: 30)
-                                Spacer()
-                                VStack(alignment: .trailing, spacing: 4) {
-                                    Text("Difficulty").font(.system(size: 12, weight: .bold)).foregroundColor(PastelTheme.textSecondary)
-                                    Text(difficulty.rawValue).font(.system(size: 16, weight: .bold, design: .rounded)).foregroundColor(PastelTheme.pastelSlate)
-                                }
-                            }
-                            .padding(20)
-                            .background(colorScheme == .dark ? PastelTheme.cardSurface : Color.white)
-                            .cornerRadius(20)
-                            .overlay(RoundedRectangle(cornerRadius: 20).stroke(PastelTheme.cardBorder, lineWidth: 1))
-                            .shadow(color: .black.opacity(colorScheme == .dark ? 0.2 : 0.05), radius: 5, y: 2)
-                            .redacted(reason: isGenerating ? .placeholder : [])
-                            .opacity(isGenerating ? (isPulsing ? 0.6 : 1.0) : 1.0)
-                        }
-
-                        if isGenerating {
-                            ForEach(Array(dummyExercises.enumerated()), id: \.offset) { index, dummy in
-                                AIExerciseRowView(index: index, exercise: dummy, unitsManager: unitsManager) { }
-                                    .redacted(reason: .placeholder)
-                                    .scaleEffect(isPulsing ? 1.02 : 0.98)
-                                    .opacity(isPulsing ? 0.5 : 1.0)
-                                    .animation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true).delay(Double(index) * 0.1), value: isPulsing)
-                            }
-                        } else if let workout = generatedWorkout, !workout.exercises.isEmpty {
-                            ForEach(Array(workout.exercises.enumerated()), id: \.offset) { index, dto in
-                                AIExerciseRowView(index: index, exercise: dto, unitsManager: unitsManager) {
-                                    HapticManager.shared.impact(.medium)
-                                    selectedExercise = dto
-                                }
-                                .transition(.opacity.combined(with: .scale))
-                            }
-                        } else if !isGenerating {
-                            Text("Could not build a program. Try again.")
-                                .foregroundColor(PastelTheme.textSecondary)
-                                .padding(.top, 20)
-                        }
-
-                        if !isGenerating && generatedWorkout != nil && !(generatedWorkout?.exercises.isEmpty ?? true) {
-                            Button(action: startGeneratedWorkout) {
-                                HStack(spacing: 8) {
-                                    if isStarting {
-                                        ProgressView().tint(PastelTheme.textOnOat)
-                                    } else {
-                                        Text("Start Workout").font(.system(size: 16, weight: .bold, design: .rounded))
-                                        Image(systemName: "bolt.fill")
-                                    }
-                                }
-                                .foregroundColor(PastelTheme.textOnOat)
-                                .frame(maxWidth: .infinity)
-                                .frame(height: PastelTheme.ButtonMetrics.heroHeight)
-                                .background(PastelTheme.pastelOat)
-                                .clipShape(RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.heroRadius, style: .continuous))
-                                .shadow(color: PastelTheme.pastelOat.opacity(0.18), radius: 10, y: 3)
-                            }
-                            .padding(.top, 10)
-                            .buttonStyle(ParallaxButtonStyle())
-                            .disabled(isStarting)
-                        }
-                    }
-                    .padding(.horizontal, 24)
-                    .padding(.bottom, 40)
-                }
-            }
-        }
-        .onAppear { isPulsing = true }
-        .task { await generateRealAIRoutine() }
-        .sheet(item: Binding(
-            get: { selectedExercise.map { IdentifiableGeneratedEx(dto: $0) } },
-            set: { selectedExercise = $0?.dto }
-        )) { wrapper in
-            let tempDTO = ExerciseDTO(name: wrapper.dto.name, muscleGroup: wrapper.dto.muscleGroup, type: .strength, category: .other, effort: 8, isCompleted: false)
-            ExerciseTechniqueSheet(exercise: tempDTO)
-                .presentationDetents([.medium])
-                .presentationCornerRadius(35)
-                .presentationDragIndicator(.visible)
-        }
-    }
-
-    private func generateRealAIRoutine() async {
-        await MainActor.run {
-            self.isGenerating = true
-            self.aiErrorMessage = nil
-            self.generatedWorkout = nil
-        }
-
-        let appLanguage = LocalizationHelper.shared.getAILanguageName()
-        let userName = UserDefaults.standard.string(forKey: Constants.UserDefaultsKeys.userName.rawValue) ?? ""
-
-        let relevantExercises = await ExerciseDatabaseService.shared.getRelevantExercisesContext(
-            for: muscleGroup.engineName,
-            equipmentPref: "full gym",
-            limit: 20
-        )
-
-        let savedRecoveryHours = UserDefaults.standard.double(forKey: Constants.UserDefaultsKeys.userRecoveryHours.rawValue)
-        let fullRecoveryHours = savedRecoveryHours > 0 ? savedRecoveryHours : 48.0
-        let workouts = await di.analyticsService.fetchRecentWorkoutsForAnalytics()
-        let recoveryStatus = await di.analyticsService.calculateRecovery(hours: fullRecoveryHours, workouts: workouts)
-        let fatigued = recoveryStatus.filter { $0.recoveryPercentage < 50 }.map { $0.muscleGroup }
-
-        do {
-            let response = try await di.aiLogicService.generateBuilderRoutine(
-                muscleGroup: muscleGroup.rawValue,
-                difficulty: difficulty.rawValue,
-                availableExercises: relevantExercises,
-                weightUnit: unitsManager.weightUnitString(),
-                language: appLanguage,
-                userName: userName,
-                fatiguedMuscles: fatigued
-            )
-
-            await MainActor.run {
-                if let workout = response.workout, !workout.exercises.isEmpty {
-                    self.generatedWorkout = workout
-                    self.aiCoachMessage = response.text
-
-                    var tonnage = 0.0
-                    for ex in workout.exercises {
-                        let w = ex.recommendedWeightKg ?? 0.0
-                        let s = Double(ex.sets)
-                        let r = Double(ex.reps)
-                        tonnage += w * s * r
-                    }
-                    self.estimatedTonnage = unitsManager.convertFromKilograms(tonnage)
-                } else {
-                    self.aiErrorMessage = String(localized: "The AI responded, but forgot to add exercises. Click Cancel and try again.")
-                }
-                withAnimation(.easeOut(duration: 0.4)) { self.isGenerating = false }
-            }
-        } catch {
-            await MainActor.run {
-                self.aiErrorMessage = String(localized: "Communication error with AI: \(error.localizedDescription)")
-                withAnimation(.easeOut(duration: 0.4)) { self.isGenerating = false }
-            }
-        }
-    }
-
-    private func startGeneratedWorkout() {
-        guard !isStarting, let dto = generatedWorkout else { return }
-        isStarting = true
-        HapticManager.shared.impact(.heavy)
-
-        Task {
-            defer { isStarting = false }
-            guard let id = await workoutService.startGeneratedWorkout(dto) else { return }
-            di.appState.returnToActiveWorkoutId = id
-            di.appState.selectedTab = 2
-            dismiss()
         }
     }
 }
@@ -1988,11 +1587,11 @@ struct ProgressAnalysisSheet: View {
         You are a professional AI trainer.
         The user is looking at the muscle load distribution analytics.
         Their emphasis is now: "(selectedFocus)".
-        Analyze the provided data and write a short, motivating, and direct conclusion/advice in RUSSIAN (2-3 sentences maximum).
+        Analyze the provided data and write a short, motivating, and direct conclusion/advice in the user's language (2-3 sentences maximum).
         Point out obvious imbalances or praise focus. Do not use Markdown formatting (no asterisks or bold).
         """
 
-        let userContext = UserProfileContext(userName: "Athlete", weightKg: 80, experienceLevel: "Pro", favoriteMuscles: [], recentPRs: [:], language: "Russian", workoutsThisWeek: 0, currentStreak: 0, fatiguedMuscles: [], availableExercises: [], aiCoachTone: "Strict", weightUnit: "kg")
+        let userContext = UserProfileContext(userName: "Athlete", weightKg: 80, experienceLevel: "Pro", favoriteMuscles: [], recentPRs: [:], language: Locale.autoupdatingCurrent.language.languageCode?.identifier == "ru" ? "Russian" : "English", workoutsThisWeek: 0, currentStreak: 0, fatiguedMuscles: [], availableExercises: [], aiCoachTone: "Strict", weightUnit: "kg")
 
         do {
             let stream = try await di.aiLogicService.streamChatResponse(userRequest: prompt + "\n\n" + contextStr, userProfile: userContext)
@@ -2007,7 +1606,7 @@ struct ProgressAnalysisSheet: View {
             await MainActor.run { self.isAnalyzing = false }
         } catch {
             await MainActor.run {
-                self.aiConclusion = "Could not reach the server. Based on your volume, focus on lagging muscle groups."
+                self.aiConclusion = error.userFacingAIMessage
                 self.isAnalyzing = false
             }
         }

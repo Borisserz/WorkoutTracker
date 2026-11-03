@@ -4,11 +4,11 @@ import WebKit
 struct GifImageView: UIViewRepresentable {
     let urlString: String
     @Binding var hasError: Bool
-    
+
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
     }
-    
+
     func makeUIView(context: Context) -> WKWebView {
         let webView = WKWebView()
         webView.scrollView.isScrollEnabled = false
@@ -17,15 +17,25 @@ struct GifImageView: UIViewRepresentable {
         webView.backgroundColor = .clear
         webView.scrollView.backgroundColor = .clear
         webView.navigationDelegate = context.coordinator
+        webView.configuration.userContentController.add(context.coordinator, name: "error")
+        context.coordinator.didRegisterErrorHandler = true
         return webView
     }
-    
+
     func updateUIView(_ uiView: WKWebView, context: Context) {
+        context.coordinator.parent = self
+
         guard let url = URL(string: urlString) else {
             DispatchQueue.main.async { hasError = true }
             return
         }
-        
+
+        // Avoid WKWebView HTML reload + handler churn on every SwiftUI pass.
+        if context.coordinator.lastLoadedURLString == url.absoluteString {
+            return
+        }
+        context.coordinator.lastLoadedURLString = url.absoluteString
+
         let html = """
         <html>
         <head>
@@ -52,30 +62,34 @@ struct GifImageView: UIViewRepresentable {
         </body>
         </html>
         """
-        
-        // Add message handler to detect image load error
-        let userContentController = uiView.configuration.userContentController
-        userContentController.removeScriptMessageHandler(forName: "error")
-        userContentController.add(context.coordinator, name: "error")
-        
+
         uiView.loadHTMLString(html, baseURL: nil)
     }
-    
+
+    static func dismantleUIView(_ uiView: WKWebView, coordinator: Coordinator) {
+        if coordinator.didRegisterErrorHandler {
+            uiView.configuration.userContentController.removeScriptMessageHandler(forName: "error")
+            coordinator.didRegisterErrorHandler = false
+        }
+    }
+
     class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
         var parent: GifImageView
-        
+        var lastLoadedURLString: String?
+        var didRegisterErrorHandler = false
+
         init(_ parent: GifImageView) {
             self.parent = parent
         }
-        
+
         func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
             DispatchQueue.main.async { self.parent.hasError = true }
         }
-        
+
         func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
             DispatchQueue.main.async { self.parent.hasError = true }
         }
-        
+
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
             if message.name == "error" {
                 DispatchQueue.main.async { self.parent.hasError = true }

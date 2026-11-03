@@ -164,6 +164,26 @@ final class ResidualPassTests: XCTestCase {
         XCTAssertTrue(json.contains("chest"))
     }
 
+    /// Legacy / race leftovers: two open sessions under 12h must collapse to the newest.
+    @MainActor
+    func testFindActiveWorkoutsHealsMultipleFreshActivesToNewest() async throws {
+        let (di, context) = try makeInMemoryDI()
+        let older = Workout(title: "Older active", date: Date().addingTimeInterval(-3600), exercises: [])
+        let newer = Workout(title: "Newer active", date: Date(), exercises: [])
+        context.insert(older)
+        context.insert(newer)
+        try context.save()
+
+        let activeIDs = try await di.workoutStore.findActiveWorkoutsAndCleanup()
+        XCTAssertEqual(activeIDs.count, 1)
+        let kept = try XCTUnwrap(context.model(for: activeIDs[0]) as? Workout)
+        XCTAssertEqual(kept.title, "Newer active")
+
+        let stillOpen = try context.fetch(FetchDescriptor<Workout>(predicate: #Predicate { $0.endTime == nil }))
+        XCTAssertEqual(stillOpen.count, 1)
+        XCTAssertEqual(stillOpen.first?.title, "Newer active")
+    }
+
     /// Concurrent starts must serialize: only one active session survives the race at `hasActiveWorkout` await.
     @MainActor
     func testConcurrentCreateWorkoutAllowsOnlyOneActiveSession() async throws {
