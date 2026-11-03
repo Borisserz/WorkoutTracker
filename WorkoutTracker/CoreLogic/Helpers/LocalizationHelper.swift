@@ -37,7 +37,7 @@ final class LocalizationHelper: @unchecked Sendable {
 
     nonisolated func formatWorkoutDateName(_ date: Date = Date()) -> String {
         let dayName = date.formatted(.dateTime.weekday(.wide))
-        return "\(dayName) Workout"
+        return String(format: String(localized: "%@ Workout"), dayName)
     }
 
     nonisolated func createDateFormatter(format: String) -> DateFormatter {

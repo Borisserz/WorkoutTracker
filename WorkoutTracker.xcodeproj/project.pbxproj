@@ -45,6 +45,7 @@
 		B22C33D44E5F60718293A0B21 /* PreTestFlightHonestyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B22C33D44E5F60718293A0B22 /* PreTestFlightHonestyTests.swift */; };
 		F5E644603197467223F670C5 /* ProgressManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A6B93572A2F5DA01DAC8691 /* ProgressManagerTests.swift */; };
 		F9C4D5E6A7B80910293A0C01 /* UserFacingAIMessageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9C4D5E6A7B80910293A0C02 /* UserFacingAIMessageTests.swift */; };
+		C0FFEE11A7B80910293A0C01 /* LocalizationCatalogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0FFEE11A7B80910293A0C02 /* LocalizationCatalogTests.swift */; };
 		FC4ED48F0C2C9E8C39B3DA00 /* CalorieCalculatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DD649EF8B041E49532FD342 /* CalorieCalculatorTests.swift */; };
 /* End PBXBuildFile section */
 
@@ -173,6 +174,7 @@
 		F414296D08C64A43BAE5B983 /* HapticManagerTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HapticManagerTests.swift; sourceTree = "<group>"; };
 		F8D3C33349C62742653F1E18 /* WorkoutTrackerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = WorkoutTrackerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		F9C4D5E6A7B80910293A0C02 /* UserFacingAIMessageTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = UserFacingAIMessageTests.swift; sourceTree = "<group>"; };
+		C0FFEE11A7B80910293A0C02 /* LocalizationCatalogTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LocalizationCatalogTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -405,6 +407,7 @@
 				5DBD6315A1DD4FE7AF83FE15 /* ResidualPassTests.swift */,
 				6BD6A05972714141ACF5DE83 /* ImprovePassSmokeTests.swift */,
 				F9C4D5E6A7B80910293A0C02 /* UserFacingAIMessageTests.swift */,
+				C0FFEE11A7B80910293A0C02 /* LocalizationCatalogTests.swift */,
 				E7A1B2C3D4E5F60718293A02 /* WatchConnectivityTests.swift */,
 				E8B2C3D4E5F60718293A0B02 /* SisterAppsCatalogTests.swift */,
 				A11B22C33D4E5F60718293A12 /* HonestyWindowTests.swift */,
@@ -704,6 +707,7 @@
 				780198547EC24A76A9E48031 /* ResidualPassTests.swift in Sources */,
 				C3F81C26EAC348EB8FC229FA /* ImprovePassSmokeTests.swift in Sources */,
 				F9C4D5E6A7B80910293A0C01 /* UserFacingAIMessageTests.swift in Sources */,
+				C0FFEE11A7B80910293A0C01 /* LocalizationCatalogTests.swift in Sources */,
 				E7A1B2C3D4E5F60718293A01 /* WatchConnectivityTests.swift in Sources */,
 				E8B2C3D4E5F60718293A0B01 /* SisterAppsCatalogTests.swift in Sources */,
 				A11B22C33D4E5F60718293A11 /* HonestyWindowTests.swift in Sources */,

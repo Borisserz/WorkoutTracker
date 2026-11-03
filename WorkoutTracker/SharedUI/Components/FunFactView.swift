@@ -4,7 +4,7 @@ struct FunFactView: View {
     let totalStrengthVolume: Double
     @Environment(UnitsManager.self) var unitsManager
 
-    private var funFact: (title: LocalizedStringKey, value: String, emoji: String) {
+    private var funFact: (title: LocalizedStringKey, value: LocalizedStringKey, emoji: String) {
         let kg = totalStrengthVolume
         let converted = unitsManager.convertFromKilograms(kg)
         let unit = unitsManager.weightUnitString()
@@ -24,7 +24,8 @@ struct FunFactView: View {
         } else if kg >= 250 {
             return ("Equivalent to a Silverback Gorilla", "Primal Power", "🦍")
         } else if kg > 0 {
-            return ("\(LocalizationHelper.shared.formatInteger(converted)) \(unit) Lifted", "Every Rep Counts", "🔥")
+            let amount = LocalizationHelper.shared.formatInteger(converted)
+            return ("\(amount) \(unit) Lifted", "Every Rep Counts", "🔥")
         } else {
             return ("Ready to Move Mountains", "Start Your First Set", "💪")
         }
@@ -50,14 +51,15 @@ struct FunFactView: View {
                     Text(funFact.title)
                         .font(.system(size: 13, weight: .bold, design: .rounded))
                         .foregroundColor(PastelTheme.pastelAmber)
-                        .lineLimit(1)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.8)
                 }
 
                 Text(funFact.value)
                     .font(.system(size: 24, weight: .heavy, design: .rounded))
                     .foregroundColor(PastelTheme.textPrimary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.7)
                     .contentTransition(.numericText())
             }
             .padding(.horizontal, 20)

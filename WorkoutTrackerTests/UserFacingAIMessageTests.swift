@@ -18,6 +18,13 @@ struct UserFacingAIMessageTests {
         #expect(error.userFacingAIMessage == String(localized: "The request timed out. Check your connection and try again."))
     }
 
+    @Test("HTTP 400 uses the catalog string, not the server body")
+    func badRequestIsCatalogCopy() {
+        let error = AILogicError.apiError(statusCode: 400, message: "payload too large")
+        #expect(error.userFacingAIMessage == String(localized: "The request was invalid or too large. Please try asking a shorter question."))
+        #expect(!error.userFacingAIMessage.contains("payload too large"))
+    }
+
     @Test("AILogicError prefers its own description")
     func aiLogicConsent() {
         let error = AILogicError.aiConsentRequired

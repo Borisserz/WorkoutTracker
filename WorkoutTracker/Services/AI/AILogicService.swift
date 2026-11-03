@@ -22,23 +22,25 @@ public enum AILogicError: Error, LocalizedError, Sendable {
     
     public var errorDescription: String? {
         switch self {
-        case .invalidURL:        return "The URL provided is invalid."
-        case .invalidResponse:   return "Received an invalid response from the server."
+        case .invalidURL:
+            return String(localized: "The URL provided is invalid.")
+        case .invalidResponse:
+            return String(localized: "Received an invalid response from the server.")
         case .aiConsentRequired:
-            return NSLocalizedString(
-                "AI features require your consent before your messages can be sent for processing.",
-                comment: "Shown when the user hasn't consented to AI processing yet"
-            )
-        case .noDataReturned:    return "No data was returned from the server."
-        case .invalidData:       return "The AI response was malformed."
+            return String(localized: "AI features require your consent before your messages can be sent for processing.")
+        case .noDataReturned:
+            return String(localized: "No data was returned from the server.")
+        case .invalidData:
+            return String(localized: "The AI response was malformed.")
         case .rateLimited:
-            return "The AI is currently under high load. Please wait a moment while we reconnect."
-        case .friendlyError:     return "Sorry, I got a little confused. Could you rephrase that?"
+            return String(localized: "The AI is currently under high load. Please wait a moment while we reconnect.")
+        case .friendlyError:
+            return String(localized: "Sorry, I got a little confused. Could you rephrase that?")
         case .badRequest(let reason):
-            return "Your request couldn't be processed. \(reason)"
+            return String(format: String(localized: "Your request couldn't be processed. %@"), reason)
         case .apiError(let code, _):
             if code == 400 {
-                return "The request was invalid or too large. Please try asking a shorter question."
+                return String(localized: "The request was invalid or too large. Please try asking a shorter question.")
             } else if code >= 500 {
                 return String(localized: "The AI coach service is temporarily unavailable. Please try again later.")
             }
