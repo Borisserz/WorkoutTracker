@@ -548,22 +548,20 @@ struct WorkoutHubView: View {
                         .lineLimit(1)
                 }
 
-                // Dynamic flight corridor for the floating bicep icon
-                GeometryReader { proxy in
-                    let travel = max(0, proxy.size.width - 26)
-                    FloatingBicepsIcon(travelDistance: travel)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .trailing)
-                }
-                .frame(height: 44)
+                Spacer(minLength: 8)
 
-                ZStack {
-                    Circle()
-                        .fill(PastelTheme.textOnOat.opacity(0.12))
-                        .frame(width: 32, height: 32)
+                HStack(spacing: 8) {
+                    FloatingBicepsIcon()
 
-                    Image(systemName: "arrow.right")
-                        .font(.system(size: 13, weight: .heavy))
-                        .foregroundStyle(PastelTheme.textOnOat)
+                    ZStack {
+                        Circle()
+                            .fill(PastelTheme.textOnOat.opacity(0.12))
+                            .frame(width: 32, height: 32)
+
+                        Image(systemName: "arrow.right")
+                            .font(.system(size: 13, weight: .heavy))
+                            .foregroundStyle(PastelTheme.textOnOat)
+                    }
                 }
             }
             .padding(.horizontal, 16)
@@ -790,7 +788,7 @@ struct WorkoutHubView: View {
                 .buttonStyle(Tactile3DCardButtonStyle(scale: 0.985, maxTilt: 2.0))
                 .accessibilityIdentifier("wt.hub.chooseWorkout")
 
-                // 2. Build Your Own Best Routine (Right 50% - Replaces Top Bar Create)
+                // 2. Build Your Own Best Routine (Right 50% - Matches Left Button Oat Colors)
                 Button {
                     HapticManager.shared.impact(.medium)
                     presetToEdit = nil
@@ -799,24 +797,24 @@ struct WorkoutHubView: View {
                     HStack(spacing: 8) {
                         ZStack {
                             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                .fill(PastelTheme.pastelAmber.opacity(0.16))
+                                .fill(PastelTheme.textOnOat.opacity(0.12))
                                 .frame(width: 28, height: 28)
 
                             Image(systemName: "plus")
                                 .font(.system(size: 12, weight: .black))
-                                .foregroundStyle(PastelTheme.pastelAmber)
+                                .foregroundStyle(PastelTheme.textOnOat)
                         }
 
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Create Routine")
                                 .font(.system(size: 12, weight: .heavy, design: .rounded))
-                                .foregroundStyle(PastelTheme.textPrimary)
+                                .foregroundStyle(PastelTheme.textOnOat)
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.85)
 
                             Text("Build your own best")
                                 .font(.system(size: 10, weight: .medium, design: .rounded))
-                                .foregroundStyle(PastelTheme.textSecondary)
+                                .foregroundStyle(PastelTheme.textOnOat.opacity(0.8))
                                 .lineLimit(1)
                         }
 
@@ -825,12 +823,9 @@ struct WorkoutHubView: View {
                     .padding(.horizontal, 10)
                     .frame(maxWidth: .infinity)
                     .frame(height: 48)
-                    .background(PastelTheme.cardSurfaceSubtle)
+                    .background(PastelTheme.pastelOat)
                     .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .stroke(PastelTheme.cardBorderFocused, lineWidth: 1)
-                    )
+                    .shadow(color: PastelTheme.pastelOat.opacity(0.18), radius: 6, y: 2)
                 }
                 .buttonStyle(Tactile3DCardButtonStyle(scale: 0.985, maxTilt: 2.0))
                 .accessibilityIdentifier("wt.hub.create")
@@ -1639,15 +1634,14 @@ struct WorkoutHubView: View {
 /// Leisurely patrols horizontally across the corridor towards the letters without touching them,
 /// and gently sways/bobs in 3D space with halved speed.
 struct FloatingBicepsIcon: View {
-    let travelDistance: CGFloat
     @State private var isPatrolling = false
     @State private var isBobbing = false
 
     var body: some View {
         Text("💪")
-            .font(.system(size: 18))
-            .shadow(color: PastelTheme.textOnOat.opacity(0.18), radius: 3, y: 2)
-            .offset(x: isPatrolling ? -travelDistance : 0)
+            .font(.system(size: 20))
+            .shadow(color: PastelTheme.textOnOat.opacity(0.18), radius: 2, y: 1.5)
+            .offset(x: isPatrolling ? -50 : 0)
             .offset(y: isBobbing ? -3.5 : 3.5)
             .rotationEffect(.degrees(isBobbing ? 9.0 : -9.0))
             .scaleEffect(isBobbing ? 1.07 : 0.94)
