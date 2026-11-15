@@ -324,7 +324,10 @@ struct HistoryView: View {
                     if !filteredWorkouts.isEmpty {
                         HStack {
                             Spacer()
-                            HistoryEditButton(isEditing: $isEditingList)
+                            HistorySessionsBadge(
+                                sessions: filteredWorkouts.count,
+                                tons: filteredWorkouts.reduce(0.0) { $0 + $1.totalStrengthVolume } / 1000.0
+                            )
                         }
                         .listRowInsets(EdgeInsets(top: 2, leading: 16, bottom: 0, trailing: 16))
                         .listRowSeparator(.hidden)
@@ -411,21 +414,14 @@ struct HistoryView: View {
 
                                     Spacer()
 
-                                    let tons = group.totalVolume / 1000.0
-                                    HStack(spacing: 6) {
-                                        Text("\(group.workouts.count) sessions")
-                                            .font(.caption2.bold())
-                                            .foregroundStyle(PastelTheme.pastelSage)
-
-                                        Text("\(String(format: "%.1f", tons)) t")
-                                            .font(.caption2.bold())
-                                            .foregroundStyle(PastelTheme.pastelOat)
+                                    if group.id == timelineGroups.first?.id {
+                                        HistoryEditButton(isEditing: $isEditingList)
+                                    } else {
+                                        HistorySessionsBadge(
+                                            sessions: group.workouts.count,
+                                            tons: group.totalVolume / 1000.0
+                                        )
                                     }
-                                    .padding(.horizontal, 9)
-                                    .padding(.vertical, 4)
-                                    .background(PastelTheme.cardSurface)
-                                    .clipShape(Capsule())
-                                    .overlay(Capsule().stroke(PastelTheme.cardBorder, lineWidth: 1))
                                 }
                                 .textCase(nil)
                                 .listRowInsets(EdgeInsets(top: 14, leading: 16, bottom: 6, trailing: 16))
@@ -520,6 +516,28 @@ struct HistoryView: View {
 }
 
 // MARK: - 1. Header View
+private struct HistorySessionsBadge: View {
+    let sessions: Int
+    let tons: Double
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Text("\(sessions) sessions")
+                .font(.caption2.bold())
+                .foregroundStyle(PastelTheme.pastelSage)
+
+            Text("\(String(format: "%.1f", tons)) t")
+                .font(.caption2.bold())
+                .foregroundStyle(PastelTheme.pastelOat)
+        }
+        .padding(.horizontal, 9)
+        .padding(.vertical, 4)
+        .background(PastelTheme.cardSurface)
+        .clipShape(Capsule())
+        .overlay(Capsule().stroke(PastelTheme.cardBorder, lineWidth: 1))
+    }
+}
+
 private struct HistoryEditButton: View {
     @Binding var isEditing: Bool
 

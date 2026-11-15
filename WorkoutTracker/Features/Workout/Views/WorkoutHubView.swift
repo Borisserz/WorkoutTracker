@@ -488,7 +488,7 @@ struct WorkoutHubView: View {
                                     Image(systemName: "flame.fill")
                                         .font(.system(size: 13, weight: .bold))
                                         .foregroundStyle(PastelTheme.pastelAmber)
-                                        .offset(y: 1)
+                                        .offset(x: 1.5, y: 1)
                                 } else if day.isFuture {
                                     Circle()
                                         .fill(PastelTheme.cardSurfaceSubtle.opacity(0.4))
