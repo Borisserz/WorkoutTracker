@@ -365,6 +365,28 @@ struct WorkoutHubView: View {
                 }
             }
             .task {
+                if let asoRoute = UITestLaunchConfiguration.asoRoute {
+                    switch asoRoute {
+                    case "templates":
+                        if navPath.last != .myTemplates {
+                            navPath.append(.myTemplates)
+                        }
+                    case "explore":
+                        if navPath.last != .explore {
+                            navPath.append(.explore)
+                        }
+                    case "discovery":
+                        showWorkoutModeDiscovery = true
+                    case "smart_builder":
+                        showSmartBuilder = true
+                    case "active_workout":
+                        if let active = activeWorkouts.first {
+                            openActiveWorkout(active)
+                        }
+                    default:
+                        break
+                    }
+                }
                 if FirestoreProgramService.shared.explorePrograms.isEmpty || FirestoreProgramService.shared.legendaryRoutines.isEmpty {
                     await FirestoreProgramService.shared.fetchAllPrograms()
                 }
@@ -1547,8 +1569,9 @@ struct FloatingBicepsIcon: View {
     @State private var isBobbing = false
 
     var body: some View {
-        Text("💪")
-            .font(.system(size: 20))
+        Image(systemName: "dumbbell.fill")
+            .font(.system(size: 16, weight: .black))
+            .foregroundStyle(PastelTheme.textOnOat.opacity(0.72))
             .shadow(color: PastelTheme.textOnOat.opacity(0.18), radius: 2, y: 1.5)
             .offset(x: isBobbing ? -6 : 6)
             .offset(y: isBobbing ? -2 : 2)

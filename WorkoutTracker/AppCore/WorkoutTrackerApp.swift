@@ -429,6 +429,13 @@ struct WorkoutTrackerApp: App {
             self.catalogViewModel = di.makeCatalogViewModel()
             self.profileViewModel = di.makeProfileViewModel()
 
+            UITestLaunchConfiguration.seedASODemoDataIfNeeded(
+                container: container,
+                di: di,
+                dashboardViewModel: self.dashboardViewModel,
+                restTimerManager: self.restTimerManager
+            )
+
             self.diContainer = di
 
             Task {
@@ -451,6 +458,11 @@ struct WorkoutTrackerApp: App {
                 await RemoteConfigManager.shared.fetchCloudValues()
                 await versionManager.checkForUpdates()
                 await ExerciseDatabaseService.shared.loadDatabase()
+                if UITestLaunchConfiguration.isASODemoSeed {
+                    await MainActor.run {
+                        self.dashboardViewModel?.refreshAllCaches()
+                    }
+                }
 
                 let migrator = LegacyDataMigrator(modelContainer: container)
                 await migrator.migrateAllIfNeeded()
