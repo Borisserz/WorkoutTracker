@@ -736,7 +736,6 @@ struct BodyTransformBannerCard: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(ThemeManager.self) private var themeManager
 
-    @State private var isPressed = false
     @State private var shimmerOffset: CGFloat = -200
 
     init(onTap: @escaping () -> Void) {
@@ -836,22 +835,14 @@ struct BodyTransformBannerCard: View {
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
                     .stroke(PastelTheme.cardBorder, lineWidth: 1)
             )
-            .scaleEffect(isPressed ? 0.97 : 1.0)
-            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isPressed)
         }
-        .buttonStyle(.plain)
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in isPressed = true }
-                .onEnded { _ in isPressed = false }
-        )
+        .buttonStyle(PressScaleButtonStyle())
     }
 }
 
 struct AIIslandView: View {
     let action: () -> Void
     @Environment(\.colorScheme) private var colorScheme
-    @State private var isPressed = false
 
     var body: some View {
         Button(action: {
@@ -897,15 +888,8 @@ struct AIIslandView: View {
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
                     .stroke(PastelTheme.cardBorder, lineWidth: 1)
             )
-            .scaleEffect(isPressed ? 0.97 : 1.0)
-            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isPressed)
         }
-        .buttonStyle(.plain)
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in isPressed = true }
-                .onEnded { _ in isPressed = false }
-        )
+        .buttonStyle(PressScaleButtonStyle())
     }
 }
 
@@ -913,8 +897,6 @@ struct BodyTransformSquareCard: View {
     let onTap: () -> Void
     @Query private var weightHistory: [WeightEntry]
     @Environment(\.colorScheme) private var colorScheme
-    @State private var isPressed = false
-    @State private var shimmerOffset: CGFloat = -200
 
     init(onTap: @escaping () -> Void) {
         self.onTap = onTap
@@ -928,9 +910,7 @@ struct BodyTransformSquareCard: View {
     }
 
     var body: some View {
-        let isDark = colorScheme == .dark
         let cardBg = PastelTheme.cardSurface
-        let shimmerBg = Color.white.opacity(0.02)
         let strokeGradient = PastelTheme.cardBorder
         let shadowColor = Color.black.opacity(0.15)
         let titleColor = PastelTheme.textPrimary
@@ -945,63 +925,31 @@ struct BodyTransformSquareCard: View {
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
                     .fill(cardBg)
 
-                // Shimmer effect
-                if isDark {
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [.clear, shimmerBg, .clear],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .offset(x: shimmerOffset)
-                        .onAppear {
-                            withAnimation(.linear(duration: 4.0).repeatForever(autoreverses: false)) {
-                                shimmerOffset = 250
-                            }
-                        }
-                        .clipped()
-                }
-
                 // Content
                 VStack(alignment: .leading, spacing: 10) {
                     HStack {
                         ZStack {
                             Circle()
-                                .fill(
-                                    LinearGradient(
-                                        colors: [Color.purple.opacity(0.3), Color.blue.opacity(0.2)],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
+                                .fill(PastelTheme.pastelOat.opacity(0.16))
                                 .frame(width: 40, height: 40)
-                            
-                            Circle()
-                                .fill(
-                                    LinearGradient(
-                                        colors: [Color(red: 0.45, green: 0.3, blue: 1.0), Color(red: 0.2, green: 0.5, blue: 1.0)],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
+                                .overlay(
+                                    Circle().stroke(PastelTheme.pastelOat.opacity(0.32), lineWidth: 1)
                                 )
-                                .frame(width: 32, height: 32)
-                                .shadow(color: Color.purple.opacity(0.3), radius: 3, y: 2)
 
                             Image(systemName: "camera.viewfinder")
-                                .font(.system(size: 15, weight: .bold))
-                                .foregroundColor(.white)
+                                .font(.system(size: 16, weight: .bold))
+                                .foregroundStyle(PastelTheme.pastelOat)
                         }
                         Spacer()
                         if photoCount >= 2 {
                             Text("\(photoCount)")
-                                .font(.system(size: 10, weight: .bold))
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(Color.purple.opacity(0.18))
-                                .foregroundColor(.purple)
+                                .font(.system(size: 10, weight: .bold, design: .rounded))
+                                .padding(.horizontal, 7)
+                                .padding(.vertical, 3)
+                                .background(PastelTheme.pastelSage.opacity(0.15))
+                                .foregroundStyle(PastelTheme.pastelSage)
                                 .clipShape(Capsule())
+                                .overlay(Capsule().stroke(PastelTheme.pastelSage.opacity(0.3), lineWidth: 1))
                         }
                     }
 
@@ -1025,21 +973,14 @@ struct BodyTransformSquareCard: View {
             .frame(height: 150)
             .background(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(strokeGradient, lineWidth: 2)
+                    .stroke(strokeGradient, lineWidth: 1)
             )
             .shadow(
                 color: shadowColor,
                 radius: 8, x: 0, y: 4
             )
-            .scaleEffect(isPressed ? 0.97 : 1.0)
-            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isPressed)
         }
-        .buttonStyle(.plain)
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in isPressed = true }
-                .onEnded { _ in isPressed = false }
-        )
+        .buttonStyle(PressScaleButtonStyle())
     }
 }
 
@@ -1047,7 +988,6 @@ struct AIIslandSquareView: View {
     let isFetching: Bool
     let action: () -> Void
     @Environment(\.colorScheme) private var colorScheme
-    @State private var isPressed = false
 
     var body: some View {
         let cardBg = PastelTheme.cardSurface
@@ -1101,21 +1041,14 @@ struct AIIslandSquareView: View {
             .frame(height: 150)
             .background(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(strokeGradient, lineWidth: 2)
+                    .stroke(strokeGradient, lineWidth: 1)
             )
             .shadow(
                 color: shadowColor,
                 radius: 8, x: 0, y: 4
             )
-            .scaleEffect(isPressed ? 0.97 : 1.0)
-            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isPressed)
         }
-        .buttonStyle(.plain)
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in isPressed = true }
-                .onEnded { _ in isPressed = false }
-        )
+        .buttonStyle(PressScaleButtonStyle())
     }
 }
 
@@ -1191,7 +1124,6 @@ struct ActivityThisWeekSquareCard: View {
     let stats: PeriodStats
     let chartData: [ChartDataPoint]
     @Environment(\.colorScheme) private var colorScheme
-    @State private var isPressed = false
     @State private var showSheet = false
 
     var body: some View {
@@ -1250,15 +1182,8 @@ struct ActivityThisWeekSquareCard: View {
                     .stroke(strokeColor, lineWidth: 1)
             )
             .shadow(color: .black.opacity(isDark ? 0 : 0.05), radius: 8, y: 4)
-            .scaleEffect(isPressed ? 0.97 : 1.0)
-            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isPressed)
         }
-        .buttonStyle(.plain)
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in isPressed = true }
-                .onEnded { _ in isPressed = false }
-        )
+        .buttonStyle(PressScaleButtonStyle())
         .sheet(isPresented: $showSheet) {
             NavigationStack {
                 WorkoutCalendarView(showsCloseButton: true)

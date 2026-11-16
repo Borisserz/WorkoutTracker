@@ -23,6 +23,9 @@ struct SettingsView: View {
     @State private var showDeleteSuccessAlert = false
     @State private var showSignOutAlert = false
     @State private var showSignOutSuccessAlert = false
+    @State private var showSignInSuccessAlert = false
+    @State private var signInSuccessDetail = ""
+    @State private var signInSuccessBannerText: String?
     @State private var showDeleteAccountAlert = false
     @State private var deleteAccountError: String?
     @State private var showDeleteAccountError = false
@@ -95,6 +98,14 @@ struct SettingsView: View {
                 Button("OK", role: .cancel) { }
             } message: {
                 Text("You are signed out and using a guest account. Your local workouts are still on this device.")
+            }
+            .alert("Account Connected", isPresented: $showSignInSuccessAlert) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(signInSuccessDetail)
+            }
+            .onAppear {
+                authManager.refresh()
             }
             .alert("Authentication Error", isPresented: Binding(get: { authErrorMessage != nil }, set: { if !$0 { authErrorMessage = nil } })) {
                 Button("OK", role: .cancel) { }
@@ -296,24 +307,45 @@ struct SettingsView: View {
         .listRowBackground(Color.clear)
     }
 
-        @ViewBuilder
+    @ViewBuilder
     private var accountSection: some View {
         if authManager.isAnonymous {
             Section(
                 header: Text(LocalizedStringKey("Account")),
                 footer: Text(LocalizedStringKey("Register an account to securely save your progress, sync across devices, and share workouts."))
             ) {
+                HStack(spacing: 12) {
+                    ZStack {
+                        Circle()
+                            .fill(PastelTheme.cardSurfaceSubtle)
+                            .frame(width: 40, height: 40)
+                            .overlay(Circle().stroke(PastelTheme.cardBorder, lineWidth: 1))
+
+                        Image(systemName: "person.crop.circle")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundStyle(PastelTheme.textSecondary)
+                    }
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Guest mode")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(PastelTheme.textPrimary)
+
+                        Text("Not signed in — local device only")
+                            .font(.caption)
+                            .foregroundStyle(PastelTheme.textSecondary)
+                    }
+
+                    Spacer()
+                }
+                .padding(.vertical, 4)
+                .accessibilityIdentifier("wt.settings.guestAccount")
+
                 Button(action: {
                     Task {
-                        isProcessing = true
-                        do {
+                        await performSocialSignIn {
                             try await SocialAuthService.shared.signInWithApple()
-                        } catch {
-                            if !AuthFlow.isCancellation(error) {
-                                authErrorMessage = error.localizedDescription
-                            }
                         }
-                        isProcessing = false
                     }
                 }) {
                     HStack {
@@ -331,15 +363,9 @@ struct SettingsView: View {
 
                 Button(action: {
                     Task {
-                        isProcessing = true
-                        do {
+                        await performSocialSignIn {
                             try await SocialAuthService.shared.signInWithGoogle()
-                        } catch {
-                            if !AuthFlow.isCancellation(error) {
-                                authErrorMessage = error.localizedDescription
-                            }
                         }
-                        isProcessing = false
                     }
                 }) {
                     HStack {
@@ -357,38 +383,132 @@ struct SettingsView: View {
             }
         } else {
             Section(
-                header: Text(LocalizedStringKey("Account"))
+                header: Text(LocalizedStringKey("Account")),
+                footer: Text(LocalizedStringKey("Your account is linked. Workouts and profile stay on this device if you sign out."))
             ) {
-                if let user = authManager.currentUser {
-                    HStack {
-                        Label {
-                            Text("Signed in as")
-                                .foregroundColor(themeManager.current.secondaryText)
-                        } icon: {
-                            Image(systemName: "person.circle.fill").foregroundStyle(Color.accentColor)
-                        }
+                if let bannerText = signInSuccessBannerText {
+                    HStack(spacing: 10) {
+                        Image(systemName: "checkmark.seal.fill")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundStyle(PastelTheme.pastelSage)
+
+                        Text(bannerText)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(PastelTheme.pastelSage)
+
                         Spacer()
-                        Text(user.email ?? user.displayName ?? "User")
-                            .foregroundColor(themeManager.current.primaryText)
-                            .lineLimit(1)
-                            .truncationMode(.tail)
                     }
+                    .padding(.vertical, 4)
+                    .listRowBackground(PastelTheme.pastelSage.opacity(0.12))
                 }
-                Button(role: .cancel) {
+
+                let identity = authManager.identity
+                HStack(spacing: 12) {
+                    ZStack {
+                        Circle()
+                            .fill(PastelTheme.pastelOat.opacity(0.16))
+                            .frame(width: 44, height: 44)
+                            .overlay(
+                                Circle().stroke(PastelTheme.pastelOat.opacity(0.35), lineWidth: 1)
+                            )
+
+                        Image(systemName: identity.providerIconName)
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundStyle(PastelTheme.pastelOat)
+                    }
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(identity.primaryLabel)
+                            .font(.subheadline.weight(.bold))
+                            .foregroundStyle(PastelTheme.textPrimary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+
+                        if let secondary = identity.secondaryLabel {
+                            Text(secondary)
+                                .font(.caption)
+                                .foregroundStyle(PastelTheme.textSecondary)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                        } else if let providerName = identity.providerDisplayName {
+                            Text(String(format: String(localized: "Signed in via %@"), providerName))
+                                .font(.caption)
+                                .foregroundStyle(PastelTheme.textSecondary)
+                        }
+                    }
+
+                    Spacer(minLength: 8)
+
+                    HStack(spacing: 4) {
+                        Circle()
+                            .fill(PastelTheme.pastelSage)
+                            .frame(width: 6, height: 6)
+                        Text("Connected")
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .foregroundStyle(PastelTheme.pastelSage)
+                    }
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 5)
+                    .background(PastelTheme.pastelSage.opacity(0.14))
+                    .clipShape(Capsule())
+                    .overlay(Capsule().stroke(PastelTheme.pastelSage.opacity(0.32), lineWidth: 1))
+                }
+                .padding(.vertical, 6)
+                .accessibilityIdentifier("wt.settings.connectedAccount")
+
+                Button(role: .destructive) {
+                    HapticManager.shared.impact(.light)
                     showSignOutAlert = true
                 } label: {
-                    HStack {
-                        Label {
-                            Text(LocalizedStringKey("Sign Out"))
-                                .foregroundColor(.orange)
-                        } icon: {
-                            Image(systemName: "rectangle.portrait.and.arrow.right").foregroundStyle(.orange)
-                        }
+                    HStack(spacing: 8) {
+                        Image(systemName: "rectangle.portrait.and.arrow.right")
+                            .font(.system(size: 15, weight: .semibold))
+                        Text(LocalizedStringKey("Sign Out"))
+                            .font(.system(size: 15, weight: .bold, design: .rounded))
                         Spacer()
                         if isProcessing { ProgressView() }
                     }
+                    .foregroundStyle(PastelTheme.pastelAmber)
+                    .padding(.horizontal, 14)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 46)
+                    .background(PastelTheme.pastelAmber.opacity(0.12))
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .stroke(PastelTheme.pastelAmber.opacity(0.35), lineWidth: 1)
+                    )
                 }
+                .buttonStyle(.plain)
                 .disabled(isProcessing)
+                .accessibilityIdentifier("wt.settings.signOut")
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+                .listRowInsets(EdgeInsets(top: 6, leading: 20, bottom: 8, trailing: 20))
+            }
+        }
+    }
+
+    @MainActor
+    private func performSocialSignIn(_ action: @escaping () async throws -> Void) async {
+        isProcessing = true
+        defer { isProcessing = false }
+        do {
+            try await action()
+            authManager.refresh()
+            HapticManager.shared.notification(.success)
+            let identity = authManager.identity
+            let provider = identity.providerDisplayName ?? String(localized: "Account")
+            signInSuccessBannerText = String(format: String(localized: "Signed in with %@"), provider)
+            signInSuccessDetail = String(
+                format: String(localized: "Connected as %@ (%@). Your account is active and ready."),
+                identity.primaryLabel,
+                provider
+            )
+            showSignInSuccessAlert = true
+        } catch {
+            if !AuthFlow.isCancellation(error) {
+                authErrorMessage = error.localizedDescription
             }
         }
     }
@@ -518,6 +638,8 @@ struct SettingsView: View {
             // R02: do not wipe SwiftData on sign-out — CloudKit private DB would sync deletes.
             await BlockedUsersStore.shared.stopListening()
             try await SocialAuthService.shared.signOut()
+            authManager.refresh()
+            signInSuccessBannerText = nil
             await BlockedUsersStore.shared.startListening()
             showSignOutSuccessAlert = true
         } catch {
@@ -547,13 +669,17 @@ struct SettingsView: View {
 
             // 2) Delete the Firebase Auth account. The recent re-auth in step 0
             //    satisfies requiresRecentLogin for Apple/Google users.
+            let deletedUID = Auth.auth().currentUser?.uid
             try await Auth.auth().currentUser?.delete()
+            AuthIdentityCache.clear(uid: deletedUID)
 
             // 3) Stop the blocked-list listener and wipe local storage.
             await BlockedUsersStore.shared.stopListening()
             deleteLocalData()
             // 4) Guest session so the app is usable without a restart.
             try? await AnonymousAuthBootstrap.shared.ensureSignedIn()
+            authManager.refresh()
+            signInSuccessBannerText = nil
             await BlockedUsersStore.shared.startListening()
             showDeleteSuccessAlert = true
         } catch {

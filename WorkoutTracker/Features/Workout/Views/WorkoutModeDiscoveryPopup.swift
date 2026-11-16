@@ -107,12 +107,21 @@ enum WorkoutLaunchMode: Int, CaseIterable, Identifiable {
     }
 }
 
+/// Three launch destinations offered when starting via Templates.
+enum TemplateLaunchChoice: String, CaseIterable, Equatable {
+    case myTemplates
+    case createTemplate
+    case openHistory
+}
+
 /// Hearthstone-style 3-card discovery popup for starting workouts.
 /// Features 3D card fan spread, hold-to-inspect editorial description HUD,
 /// tactile haptic feedback, and Apple HIG Strict Dark Mode palette.
 struct WorkoutModeDiscoveryPopup: View {
     @Binding var isPresented: Bool
     var hasTemplates: Bool = true
+    var templatesCount: Int = 0
+    var historyCount: Int = 0
     var onCreateTemplate: (() -> Void)? = nil
     var onSelectEmpty: () -> Void
     var onSelectAI: () -> Void
@@ -121,7 +130,15 @@ struct WorkoutModeDiscoveryPopup: View {
 
     @State private var selectedMode: WorkoutLaunchMode = .empty
     @State private var cardsAppeared: Bool = false
-    @State private var showNoTemplatesAlert: Bool = false
+    @State private var showTemplateOptionsSheet: Bool = false
+
+    private var effectiveTemplatesCount: Int {
+        templatesCount > 0 ? templatesCount : (hasTemplates ? 1 : 0)
+    }
+
+    static func shouldPresentTemplateOptions(for mode: WorkoutLaunchMode, hasTemplates: Bool) -> Bool {
+        mode == .templates
+    }
 
     var body: some View {
         ZStack {
@@ -174,21 +191,29 @@ struct WorkoutModeDiscoveryPopup: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("wt.discovery.root")
-        .sheet(isPresented: $showNoTemplatesAlert) {
-            NoTemplatesSheet(
+        .sheet(isPresented: $showTemplateOptionsSheet) {
+            TemplateOptionsSheet(
+                templatesCount: effectiveTemplatesCount,
+                historyCount: historyCount,
+                onMyTemplates: {
+                    showTemplateOptionsSheet = false
+                    executeAction(for: .templates)
+                },
                 onCreate: {
-                    showNoTemplatesAlert = false
-                    dismissPopup()
-                    onCreateTemplate?()
+                    showTemplateOptionsSheet = false
+                    dismissPopupThen {
+                        onCreateTemplate?()
+                    }
                 },
                 onOpenHistory: {
-                    showNoTemplatesAlert = false
-                    dismissPopup()
-                    onOpenHistory()
+                    showTemplateOptionsSheet = false
+                    dismissPopupThen {
+                        onOpenHistory()
+                    }
                 },
-                onStay: { showNoTemplatesAlert = false }
+                onStay: { showTemplateOptionsSheet = false }
             )
-            .presentationDetents([.height(420)])
+            .presentationDetents([.height(470)])
             .presentationDragIndicator(.visible)
             .presentationCornerRadius(28)
             .presentationBackground(PastelTheme.canvas)
@@ -488,9 +513,9 @@ struct WorkoutModeDiscoveryPopup: View {
 
     private func primaryButtonText(for mode: WorkoutLaunchMode) -> String {
         switch mode {
-        case .empty: return "Start empty workout"
-        case .aiBuilder: return "Open AI Builder"
-        case .templates: return hasTemplates ? "Open templates in History" : "Create first template"
+        case .empty: return String(localized: "Start empty workout")
+        case .aiBuilder: return String(localized: "Open AI Builder")
+        case .templates: return String(localized: "Choose template source")
         }
     }
 
@@ -505,24 +530,38 @@ struct WorkoutModeDiscoveryPopup: View {
         }
     }
 
+    private func dismissPopupThen(_ action: @escaping () -> Void) {
+        HapticManager.playMediumImpact()
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+            cardsAppeared = false
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) {
+            isPresented = false
+            action()
+        }
+    }
+
     private func requestLaunch(for mode: WorkoutLaunchMode) {
-        if mode == .templates && !hasTemplates {
+        if Self.shouldPresentTemplateOptions(for: mode, hasTemplates: hasTemplates) {
             HapticManager.playMediumImpact()
-            showNoTemplatesAlert = true
+            showTemplateOptionsSheet = true
         } else {
             executeAction(for: mode)
         }
     }
 
-struct NoTemplatesSheet: View {
+struct TemplateOptionsSheet: View {
+    let templatesCount: Int
+    let historyCount: Int
+    let onMyTemplates: () -> Void
     let onCreate: () -> Void
     let onOpenHistory: () -> Void
     let onStay: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 12) {
-                Image(systemName: "square.stack")
+                Image(systemName: "square.stack.3d.up.fill")
                     .font(.system(size: 16, weight: .bold))
                     .foregroundStyle(PastelTheme.pastelAmber)
                     .frame(width: 44, height: 44)
@@ -530,25 +569,67 @@ struct NoTemplatesSheet: View {
                     .overlay(Circle().stroke(PastelTheme.pastelAmber.opacity(0.35), lineWidth: 1))
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("No templates yet")
+                    Text("Templates & History")
                         .font(.title3.bold())
                         .foregroundStyle(PastelTheme.textPrimary)
-                    Text("History is still empty")
-                        .font(.caption)
-                        .foregroundStyle(PastelTheme.textSecondary)
-                }
-            }
 
-            Text("Save a workout as a template, or open History and replay a finished session.")
-                .font(.subheadline)
-                .foregroundStyle(PastelTheme.textSecondary)
-                .fixedSize(horizontal: false, vertical: true)
+                    Text(
+                        templatesCount > 0
+                            ? String(localized: "\(templatesCount) saved templates ready")
+                            : String(localized: "Pick a template, create one, or replay History")
+                    )
+                    .font(.caption)
+                    .foregroundStyle(PastelTheme.textSecondary)
+                }
+
+                Spacer()
+
+                Button {
+                    HapticManager.shared.impact(.light)
+                    onStay()
+                } label: {
+                    ChromeDismissMark()
+                }
+                .buttonStyle(.plain)
+            }
 
             VStack(spacing: 10) {
-                sheetButton("Create template", fill: PastelTheme.pastelOat, title: PastelTheme.textOnOat, action: onCreate)
-                sheetButton("Open History", fill: PastelTheme.cardSurface, title: PastelTheme.textPrimary, border: PastelTheme.cardBorder, action: onOpenHistory)
-                sheetButton("Stay here", fill: PastelTheme.cardSurface, title: PastelTheme.textSecondary, border: PastelTheme.cardBorder, action: onStay)
+                optionCard(
+                    icon: "rectangle.stack.fill",
+                    accent: PastelTheme.pastelOat,
+                    title: String(localized: "My Templates"),
+                    subtitle: templatesCount > 0
+                        ? String(localized: "Browse and start your saved routines")
+                        : String(localized: "Open your templates & saved splits"),
+                    badge: templatesCount > 0 ? "\(templatesCount)" : nil,
+                    accessibilityId: "wt.templateOptions.myTemplates",
+                    action: onMyTemplates
+                )
+
+                optionCard(
+                    icon: "plus.circle.fill",
+                    accent: PastelTheme.pastelSage,
+                    title: String(localized: "Create Template"),
+                    subtitle: String(localized: "Build a custom routine from scratch"),
+                    badge: nil,
+                    accessibilityId: "wt.templateOptions.create",
+                    action: onCreate
+                )
+
+                optionCard(
+                    icon: "clock.arrow.circlepath",
+                    accent: PastelTheme.pastelLavender,
+                    title: String(localized: "From History"),
+                    subtitle: historyCount > 0
+                        ? String(localized: "Replay a completed workout or record")
+                        : String(localized: "Open History to replay past sessions"),
+                    badge: historyCount > 0 ? "\(historyCount)" : nil,
+                    accessibilityId: "wt.templateOptions.history",
+                    action: onOpenHistory
+                )
             }
+
+            Spacer(minLength: 0)
         }
         .padding(22)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -556,30 +637,76 @@ struct NoTemplatesSheet: View {
         .preferredColorScheme(.dark)
     }
 
-    private func sheetButton(
-        _ title: String,
-        fill: Color,
-        title titleColor: Color,
-        border: Color? = nil,
+    private func optionCard(
+        icon: String,
+        accent: Color,
+        title: String,
+        subtitle: String,
+        badge: String?,
+        accessibilityId: String,
         action: @escaping () -> Void
     ) -> some View {
-        Button(action: {
-            HapticManager.shared.impact(.light)
+        Button {
+            HapticManager.shared.impact(.medium)
             action()
-        }) {
-            Text(title)
-                .font(.system(size: 16, weight: .bold, design: .rounded))
-                .foregroundStyle(titleColor)
-                .frame(maxWidth: .infinity)
-                .frame(height: PastelTheme.ButtonMetrics.heroHeight)
-                .background(fill)
-                .clipShape(RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.heroRadius, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.heroRadius, style: .continuous)
-                        .stroke(border ?? Color.clear, lineWidth: 1)
-                )
+        } label: {
+            HStack(spacing: 14) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(accent.opacity(0.14))
+                        .frame(width: 44, height: 44)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .stroke(accent.opacity(0.32), lineWidth: 1)
+                        )
+
+                    Image(systemName: icon)
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundStyle(accent)
+                }
+
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 6) {
+                        Text(title)
+                            .font(.system(size: 16, weight: .bold, design: .rounded))
+                            .foregroundStyle(PastelTheme.textPrimary)
+
+                        if let badge {
+                            Text(badge)
+                                .font(.system(size: 11, weight: .bold, design: .rounded).monospacedDigit())
+                                .foregroundStyle(accent)
+                                .padding(.horizontal, 7)
+                                .padding(.vertical, 2)
+                                .background(accent.opacity(0.14))
+                                .clipShape(Capsule())
+                        }
+                    }
+
+                    Text(subtitle)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(PastelTheme.textSecondary)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                }
+
+                Spacer(minLength: 4)
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(PastelTheme.textTertiary)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(PastelTheme.cardSurface)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(PastelTheme.cardBorder, lineWidth: 1)
+            )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressScaleButtonStyle())
+        .accessibilityIdentifier(accessibilityId)
     }
 }
 

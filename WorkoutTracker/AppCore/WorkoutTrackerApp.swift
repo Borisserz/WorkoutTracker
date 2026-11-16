@@ -128,6 +128,7 @@ struct WorkoutTrackerApp: App {
                 }
             }
             .onOpenURL { url in
+                if GIDSignIn.sharedInstance.handle(url) { return }
                 // R14: handle warm deep links here too — nested ContentView handler can miss them.
                 let mainContentReady = diContainer != nil
                     && hasCompletedGodModeOnboarding
@@ -260,6 +261,7 @@ struct WorkoutTrackerApp: App {
     }
 
     private func handleIncomingURL(_ url: URL, di: DIContainer) {
+        if GIDSignIn.sharedInstance.handle(url) { return }
         if url.scheme == "workouttracker" {
             if url.host == "tab",
                let components = URLComponents(url: url, resolvingAgainstBaseURL: true),

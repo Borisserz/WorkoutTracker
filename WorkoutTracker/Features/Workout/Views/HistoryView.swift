@@ -286,7 +286,8 @@ struct HistoryView: View {
                     Group {
                         // 1. Header with Edit Button
                         HistoryHeaderView(
-                            totalCount: filteredWorkouts.count
+                            totalCount: filteredWorkouts.count,
+                            isEditing: $isEditingList
                         )
 
                         // 2. High-Level Hero Bento Card (Volume, Sessions, Avg Duration)
@@ -321,19 +322,6 @@ struct HistoryView: View {
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color.clear)
 
-                    if !filteredWorkouts.isEmpty {
-                        HStack {
-                            Spacer()
-                            HistorySessionsBadge(
-                                sessions: filteredWorkouts.count,
-                                tons: filteredWorkouts.reduce(0.0) { $0 + $1.totalStrengthVolume } / 1000.0
-                            )
-                        }
-                        .listRowInsets(EdgeInsets(top: 2, leading: 16, bottom: 0, trailing: 16))
-                        .listRowSeparator(.hidden)
-                        .listRowBackground(Color.clear)
-                    }
-
                     // 5. Timeline Grouped Workouts List
                     if filteredWorkouts.isEmpty {
                         PastelHistoryEmptyState(
@@ -364,11 +352,13 @@ struct HistoryView: View {
                                                     .font(.title3)
                                                     .foregroundStyle(PastelTheme.pastelPeach)
                                             }
+                                            .buttonStyle(.plain)
                                             .transition(.move(edge: .leading).combined(with: .opacity))
                                         }
 
-                                        NavigationLink {
-                                            WorkoutDetailView(workout: workout, viewModel: di.makeWorkoutDetailViewModel())
+                                        Button {
+                                            HapticManager.shared.impact(.light)
+                                            navigateToActiveWorkout = workout
                                         } label: {
                                             PastelWorkoutCard(workout: workout, unitsManager: unitsManager)
                                         }
@@ -407,21 +397,16 @@ struct HistoryView: View {
                                     }
                                 }
                             } header: {
-                                HStack(alignment: .center, spacing: 8) {
+                                HStack(alignment: .firstTextBaseline, spacing: 8) {
                                     Text(group.title)
-                                        .font(.headline)
+                                        .font(.system(size: 18, weight: .bold, design: .rounded))
                                         .foregroundStyle(PastelTheme.textPrimary)
 
                                     Spacer()
 
-                                    if group.id == timelineGroups.first?.id {
-                                        HistoryEditButton(isEditing: $isEditingList)
-                                    } else {
-                                        HistorySessionsBadge(
-                                            sessions: group.workouts.count,
-                                            tons: group.totalVolume / 1000.0
-                                        )
-                                    }
+                                    Text("\(group.workouts.count)")
+                                        .font(.system(size: 12, weight: .semibold, design: .rounded).monospacedDigit())
+                                        .foregroundStyle(PastelTheme.textTertiary)
                                 }
                                 .textCase(nil)
                                 .listRowInsets(EdgeInsets(top: 14, leading: 16, bottom: 6, trailing: 16))
@@ -516,28 +501,6 @@ struct HistoryView: View {
 }
 
 // MARK: - 1. Header View
-private struct HistorySessionsBadge: View {
-    let sessions: Int
-    let tons: Double
-
-    var body: some View {
-        HStack(spacing: 6) {
-            Text("\(sessions) sessions")
-                .font(.caption2.bold())
-                .foregroundStyle(PastelTheme.pastelSage)
-
-            Text("\(String(format: "%.1f", tons)) t")
-                .font(.caption2.bold())
-                .foregroundStyle(PastelTheme.pastelOat)
-        }
-        .padding(.horizontal, 9)
-        .padding(.vertical, 4)
-        .background(PastelTheme.cardSurface)
-        .clipShape(Capsule())
-        .overlay(Capsule().stroke(PastelTheme.cardBorder, lineWidth: 1))
-    }
-}
-
 private struct HistoryEditButton: View {
     @Binding var isEditing: Bool
 
@@ -553,7 +516,7 @@ private struct HistoryEditButton: View {
                 .foregroundStyle(isEditing ? PastelTheme.textOnOat : PastelTheme.textPrimary)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 7)
-                .background(isEditing ? PastelTheme.pastelOat : PastelTheme.cardSurfaceSubtle)
+                .background(isEditing ? PastelTheme.pastelOat : PastelTheme.cardSurface)
                 .clipShape(Capsule())
                 .overlay(
                     Capsule().stroke(isEditing ? PastelTheme.pastelOat : PastelTheme.cardBorder, lineWidth: 1)
@@ -566,9 +529,10 @@ private struct HistoryEditButton: View {
 
 private struct HistoryHeaderView: View {
     let totalCount: Int
+    @Binding var isEditing: Bool
 
     var body: some View {
-        HStack(alignment: .center) {
+        HStack(alignment: .center, spacing: 12) {
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 8) {
                     Text("History")
@@ -592,6 +556,11 @@ private struct HistoryHeaderView: View {
                     .foregroundStyle(PastelTheme.textSecondary)
             }
 
+            Spacer()
+
+            if totalCount > 0 || isEditing {
+                HistoryEditButton(isEditing: $isEditing)
+            }
         }
         .padding(.top, 4)
     }
@@ -1138,8 +1107,7 @@ private struct BestWorkoutReplayCard: View {
                     Text(workout.title.isEmpty ? "Workout" : workout.title)
                         .font(.system(size: 14, weight: .bold, design: .rounded))
                         .foregroundStyle(PastelTheme.textPrimary)
-                        .multilineTextAlignment(.leading)
-                        .fixedSize(horizontal: false, vertical: true)
+                        .lineLimit(1)
                 }
 
                 Spacer()
@@ -1164,6 +1132,8 @@ private struct BestWorkoutReplayCard: View {
                     .foregroundStyle(PastelTheme.textSecondary)
             }
 
+            Spacer(minLength: 0)
+
             Button(action: onReplay) {
                 HStack(spacing: 5) {
                     Image(systemName: "play.fill")
@@ -1180,6 +1150,7 @@ private struct BestWorkoutReplayCard: View {
             .buttonStyle(.plain)
         }
         .padding(12)
+        .frame(minHeight: 132, alignment: .topLeading)
         .frame(width: 185)
         .background(PastelTheme.cardSurfaceSubtle)
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
@@ -1220,6 +1191,8 @@ private struct PresetReplayCard: View {
                 .background(PastelTheme.cardSurfaceSubtle)
                 .clipShape(Capsule())
 
+            Spacer(minLength: 0)
+
             Button(action: onStart) {
                 HStack(spacing: 5) {
                     Image(systemName: "play.fill")
@@ -1236,6 +1209,7 @@ private struct PresetReplayCard: View {
             .buttonStyle(.plain)
         }
         .padding(12)
+        .frame(minHeight: 132, alignment: .topLeading)
         .frame(width: 185)
         .background(PastelTheme.cardSurfaceSubtle)
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))

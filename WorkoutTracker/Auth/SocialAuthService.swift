@@ -47,7 +47,12 @@ final class SocialAuthService {
             rawNonce: nonce,
             fullName: credential.fullName
         )
-        try await linkOrSignIn(with: firebaseCredential)
+        try await linkOrSignIn(
+            with: firebaseCredential,
+            providerID: "apple.com",
+            appleEmail: credential.email,
+            appleFullName: credential.fullName
+        )
         currentNonce = nil
     }
 
@@ -68,7 +73,12 @@ final class SocialAuthService {
             rawNonce: nonce,
             fullName: credential.fullName
         )
-        try await linkOrSignIn(with: firebaseCredential)
+        try await linkOrSignIn(
+            with: firebaseCredential,
+            providerID: "apple.com",
+            appleEmail: credential.email,
+            appleFullName: credential.fullName
+        )
     }
 
     // MARK: - Google
@@ -92,20 +102,31 @@ final class SocialAuthService {
             withIDToken: idToken,
             accessToken: result.user.accessToken.tokenString
         )
-        try await linkOrSignIn(with: credential)
+        try await linkOrSignIn(
+            with: credential,
+            providerID: "google.com",
+            appleEmail: result.user.profile?.email,
+            appleFullName: nil,
+            fallbackDisplayName: result.user.profile?.name
+        )
     }
 
     // MARK: - Linking core
 
-
-    private func linkOrSignIn(with credential: AuthCredential) async throws {
+    private func linkOrSignIn(
+        with credential: AuthCredential,
+        providerID: String,
+        appleEmail: String? = nil,
+        appleFullName: PersonNameComponents? = nil,
+        fallbackDisplayName: String? = nil
+    ) async throws {
         if let user = Auth.auth().currentUser, user.isAnonymous {
             do {
                 _ = try await user.link(with: credential)
             } catch {
                 let nsError = error as NSError
                 let code = AuthErrorCode(rawValue: nsError.code)
-                if code == .credentialAlreadyInUse || code == .emailAlreadyInUse {
+                if code == .credentialAlreadyInUse || code == .emailAlreadyInUse || code == .providerAlreadyLinked {
                     let updated = nsError
                         .userInfo[AuthErrorUserInfoUpdatedCredentialKey] as? AuthCredential
                     _ = try await Auth.auth().signIn(with: updated ?? credential)
@@ -116,15 +137,68 @@ final class SocialAuthService {
         } else {
             _ = try await Auth.auth().signIn(with: credential)
         }
+
+        await finalizeSignedInUser(
+            providerID: providerID,
+            appleEmail: appleEmail,
+            appleFullName: appleFullName,
+            fallbackDisplayName: fallbackDisplayName
+        )
+    }
+
+    private func finalizeSignedInUser(
+        providerID: String,
+        appleEmail: String?,
+        appleFullName: PersonNameComponents?,
+        fallbackDisplayName: String?
+    ) async {
+        guard let activeUser = Auth.auth().currentUser else { return }
+
+        let formattedAppleName: String? = appleFullName.flatMap { components in
+            let formatted = PersonNameComponentsFormatter.localizedString(from: components, style: .default)
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            return formatted.isEmpty ? nil : formatted
+        }
+        let candidateName = formattedAppleName ?? fallbackDisplayName
+
+        if let candidateName,
+           !candidateName.isEmpty,
+           (activeUser.displayName ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            let changeRequest = activeUser.createProfileChangeRequest()
+            changeRequest.displayName = candidateName
+            try? await changeRequest.commitChanges()
+        }
+
+        try? await activeUser.reload()
+
+        let refreshedUser = Auth.auth().currentUser ?? activeUser
+        let email = refreshedUser.email
+            ?? refreshedUser.providerData.compactMap(\.email).first
+            ?? appleEmail
+        let displayName = refreshedUser.displayName
+            ?? refreshedUser.providerData.compactMap(\.displayName).first
+            ?? candidateName
+
+        AuthIdentityCache.save(
+            uid: refreshedUser.uid,
+            email: email,
+            displayName: displayName,
+            providerID: providerID
+        )
+        NotificationCenter.default.post(name: .authSessionDidChange, object: refreshedUser)
     }
 
     // MARK: - Sign Out
 
     func signOut() async throws {
+        let previousUID = Auth.auth().currentUser?.uid
+        AuthIdentityCache.clear(uid: previousUID)
         GIDSignIn.sharedInstance.signOut()
         try Auth.auth().signOut()
+        NotificationCenter.default.post(name: .authSessionDidChange, object: nil)
         // Ensure a new anonymous account is created immediately
-        try await AnonymousAuthBootstrap.shared.ensureSignedIn()
+        let guest = try await AnonymousAuthBootstrap.shared.ensureSignedIn()
+        NotificationCenter.default.post(name: .authSessionDidChange, object: guest)
     }
 
     // MARK: - Helpers
@@ -143,10 +217,18 @@ final class SocialAuthService {
             .joined()
     }
 
+    private static func activeWindowScene() -> UIWindowScene? {
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        return scenes.first { $0.activationState == .foregroundActive }
+            ?? scenes.first { $0.activationState == .foregroundInactive }
+            ?? scenes.first
+    }
+
     private static func topViewController() -> UIViewController? {
-        let scene = UIApplication.shared.connectedScenes
-            .first { $0.activationState == .foregroundActive } as? UIWindowScene
-        var top = scene?.keyWindow?.rootViewController
+        let scene = activeWindowScene()
+        var top = scene?.windows.first(where: \.isKeyWindow)?.rootViewController
+            ?? scene?.keyWindow?.rootViewController
+            ?? scene?.windows.first?.rootViewController
         while let presented = top?.presentedViewController { top = presented }
         return top
     }
@@ -301,8 +383,10 @@ private final class AppleAuthorizationDelegate: NSObject,
     func presentationAnchor(
         for controller: ASAuthorizationController
     ) -> ASPresentationAnchor {
-        let scene = UIApplication.shared.connectedScenes
-            .first { $0.activationState == .foregroundActive } as? UIWindowScene
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        let scene = scenes.first { $0.activationState == .foregroundActive }
+            ?? scenes.first { $0.activationState == .foregroundInactive }
+            ?? scenes.first
         if let window = scene?.windows.first(where: \.isKeyWindow) ?? scene?.windows.first {
             return window
         }

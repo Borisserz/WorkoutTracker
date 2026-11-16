@@ -121,6 +121,10 @@ struct WorkoutHubView: View {
         userPresets.filter { ($0.folderName ?? "").isEmpty && $0.name != "Today's Plan" && filterPreset($0) }
     }
 
+    private var allUserTemplatesCount: Int {
+        userPresets.filter { $0.name != "Today's Plan" && $0.folderName != "HiddenFolder" }.count
+    }
+
     private var legendaryPrograms: [LegendaryRoutine] {
         let routines = FirestoreProgramService.shared.legendaryRoutines
         return routines.isEmpty ? LegendaryFallbackCatalog.routines : routines
@@ -152,7 +156,10 @@ struct WorkoutHubView: View {
             // 6. Best workout for today (Merged Target Focus + Muscle Readiness)
             todayPlanHeroCard
 
-            // 7. Legendary Programs Discovery Row
+            // 7. My Templates Horizontal Deck + Library Entry
+            myTemplatesHorizontalSection
+
+            // 8. Legendary Programs Discovery Row
             legendarySection
 
             Spacer(minLength: 40)
@@ -179,7 +186,9 @@ struct WorkoutHubView: View {
     private var discoveryPopupOverlay: some View {
         WorkoutModeDiscoveryPopup(
             isPresented: $showWorkoutModeDiscovery,
-            hasTemplates: !userPresets.isEmpty,
+            hasTemplates: allUserTemplatesCount > 0,
+            templatesCount: allUserTemplatesCount,
+            historyCount: finishedWorkouts.count,
             onCreateTemplate: {
                 presetToEdit = nil
                 showPresetEditor = true
@@ -191,7 +200,7 @@ struct WorkoutHubView: View {
                 showSmartBuilder = true
             },
             onSelectTemplates: {
-                navigateToExplore = true
+                navigateToLibrary = true
             },
             onOpenHistory: {
                 di.appState.selectedTab = 1
@@ -249,6 +258,24 @@ struct WorkoutHubView: View {
     }
 
     @ViewBuilder
+    private var myLibraryDestinationView: some View {
+        MyLibraryView(
+            onItemTapped: handleItemStart,
+            onStartNow: startLibraryItemNow,
+            onCreate: {
+                presetToEdit = nil
+                showPresetEditor = true
+            },
+            onEdit: { presetToEdit = $0; showPresetEditor = true },
+            onDuplicate: duplicatePreset,
+            onDelete: promptDelete,
+            onLegendaryTapped: { routine in
+                selectedLegendaryRoutine = routine
+            }
+        )
+    }
+
+    @ViewBuilder
     private var hubNavDestinations: some View {
         hubContent
             .navigationBarHidden(true)
@@ -258,6 +285,9 @@ struct WorkoutHubView: View {
             }
             .navigationDestination(isPresented: $navigateToExplore) {
                 ProgramDiscoveryView()
+            }
+            .navigationDestination(isPresented: $navigateToLibrary) {
+                myLibraryDestinationView
             }
     }
 
@@ -887,42 +917,32 @@ struct WorkoutHubView: View {
     }
 
     // MARK: - 6. Workout Templates Compact Horizontal Swipe-Deck (Concept 1: Zero Walls of Text)
-    private var totalTemplateCount: Int {
-        myRoutines.isEmpty ? 2 : myRoutines.count
-    }
-
     private var myTemplatesHorizontalSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             // Header Row
             HStack(alignment: .center) {
                 HStack(spacing: 8) {
-                    Text("Workout templates")
+                    Text("My Templates")
                         .font(.system(size: 18, weight: .bold, design: .rounded))
                         .foregroundStyle(PastelTheme.textPrimary)
 
-                    Text("\(totalTemplateCount)")
-                        .font(.system(size: 11, weight: .bold, design: .rounded))
-                        .foregroundStyle(PastelTheme.pastelSage)
-                        .padding(.horizontal, 7)
-                        .padding(.vertical, 3)
-                        .background(PastelTheme.cardSurfaceSubtle)
-                        .clipShape(Capsule())
-                        .overlay(Capsule().stroke(PastelTheme.cardBorder, lineWidth: 1))
+                    if allUserTemplatesCount > 0 {
+                        Text("\(allUserTemplatesCount)")
+                            .font(.system(size: 11, weight: .bold, design: .rounded).monospacedDigit())
+                            .foregroundStyle(PastelTheme.pastelSage)
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 3)
+                            .background(PastelTheme.cardSurfaceSubtle)
+                            .clipShape(Capsule())
+                            .overlay(Capsule().stroke(PastelTheme.cardBorder, lineWidth: 1))
+                    }
                 }
 
                 Spacer()
 
-                NavigationLink(destination: MyLibraryView(
-                    onItemTapped: handleItemStart,
-                    onEdit: { presetToEdit = $0; showPresetEditor = true },
-                    onDuplicate: duplicatePreset,
-                    onDelete: promptDelete,
-                    onLegendaryTapped: { routine in
-                        selectedLegendaryRoutine = routine
-                    }
-                )) {
+                NavigationLink(destination: myLibraryDestinationView) {
                     HStack(spacing: 4) {
-                        Text("Library")
+                        Text("All")
                             .font(.system(size: 12, weight: .bold, design: .rounded))
                             .foregroundStyle(PastelTheme.pastelOat)
 
@@ -937,6 +957,7 @@ struct WorkoutHubView: View {
                     .overlay(Capsule().stroke(PastelTheme.cardBorder, lineWidth: 1))
                 }
                 .buttonStyle(.plain)
+                .accessibilityIdentifier("wt.hub.myTemplates")
             }
             .padding(.horizontal, 16)
 
@@ -950,28 +971,36 @@ struct WorkoutHubView: View {
                                 icon: preset.icon.isEmpty ? "dumbbell.fill" : preset.icon,
                                 count: preset.exercises.count,
                                 subtitle: "\(preset.exercises.count) exercises",
+                                ctaLabel: String(localized: "Start"),
                                 onStart: { startWorkoutFromPreset(preset) },
                                 onInspect: { selectedPreview = .preset(preset) }
                             )
                         }
                     } else {
-                        // No invented templates — nudge into discovery / builder (I18 honesty).
                         compactRoutineDeckCard(
-                            name: "Build a routine",
+                            name: String(localized: "Create template"),
                             icon: "plus.circle.fill",
-                            count: 0,
-                            subtitle: "Empty session or AI builder",
-                            onStart: { showWorkoutModeDiscovery = true },
-                            onInspect: { showWorkoutModeDiscovery = true }
+                            count: nil,
+                            subtitle: String(localized: "Build your custom split"),
+                            ctaLabel: String(localized: "Create"),
+                            onStart: {
+                                presetToEdit = nil
+                                showPresetEditor = true
+                            },
+                            onInspect: {
+                                presetToEdit = nil
+                                showPresetEditor = true
+                            }
                         )
 
                         compactRoutineDeckCard(
-                            name: "Explore programs",
-                            icon: "sparkles",
-                            count: 0,
-                            subtitle: "Legendary & saved splits",
-                            onStart: { navigateToExplore = true },
-                            onInspect: { navigateToExplore = true }
+                            name: String(localized: "All templates"),
+                            icon: "rectangle.stack.fill",
+                            count: nil,
+                            subtitle: String(localized: "Saved routines & favorites"),
+                            ctaLabel: String(localized: "Open"),
+                            onStart: { navigateToLibrary = true },
+                            onInspect: { navigateToLibrary = true }
                         )
                     }
                 }
@@ -984,8 +1013,9 @@ struct WorkoutHubView: View {
     private func compactRoutineDeckCard(
         name: String,
         icon: String,
-        count: Int,
+        count: Int?,
         subtitle: String,
+        ctaLabel: String,
         onStart: @escaping () -> Void,
         onInspect: @escaping () -> Void
     ) -> some View {
@@ -997,9 +1027,20 @@ struct WorkoutHubView: View {
                         .frame(width: 36, height: 36)
                         .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(PastelTheme.cardBorder, lineWidth: 1))
 
-                    Image(systemName: icon)
-                        .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(PastelTheme.pastelOat)
+                    if UIImage(systemName: icon) != nil {
+                        Image(systemName: icon)
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(PastelTheme.pastelOat)
+                    } else if UIImage(named: icon) != nil {
+                        Image(icon)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 20, height: 20)
+                    } else {
+                        Image(systemName: "dumbbell.fill")
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(PastelTheme.pastelOat)
+                    }
                 }
 
                 VStack(alignment: .leading, spacing: 1) {
@@ -1020,9 +1061,11 @@ struct WorkoutHubView: View {
             Spacer(minLength: 0)
 
             HStack {
-                Text("\(count) exercises")
-                    .font(.system(size: 11, weight: .bold, design: .rounded))
-                    .foregroundStyle(PastelTheme.textSecondary)
+                if let count {
+                    Text("\(count) exercises")
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .foregroundStyle(PastelTheme.textSecondary)
+                }
 
                 Spacer()
 
@@ -1033,7 +1076,7 @@ struct WorkoutHubView: View {
                     HStack(spacing: 4) {
                         Image(systemName: "play.fill")
                             .font(.system(size: 10, weight: .bold))
-                        Text("Start")
+                        Text(ctaLabel)
                             .font(.system(size: 12, weight: .bold, design: .rounded))
                     }
                     .foregroundStyle(PastelTheme.textOnOat)
@@ -1042,7 +1085,7 @@ struct WorkoutHubView: View {
                     .background(PastelTheme.pastelSage)
                     .clipShape(Capsule())
                 }
-                .buttonStyle(Tactile3DCardButtonStyle(scale: 0.97, maxTilt: 2.0))
+                .buttonStyle(PressScaleButtonStyle())
             }
         }
         .padding(14)
@@ -1323,6 +1366,15 @@ struct WorkoutHubView: View {
             selectedPreview = .preset(preset)
         case .favorite(let workout):
             selectedPreview = .favorite(workout)
+        }
+    }
+
+    private func startLibraryItemNow(item: CarouselItemType) {
+        switch item {
+        case .preset(let preset):
+            startWorkoutFromPreview(item: .preset(preset))
+        case .favorite(let workout):
+            startWorkoutFromPreview(item: .favorite(workout))
         }
     }
 

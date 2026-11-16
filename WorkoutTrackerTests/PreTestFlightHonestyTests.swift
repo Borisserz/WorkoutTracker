@@ -192,4 +192,69 @@ final class PreTestFlightHonestyTests: XCTestCase {
         XCTAssertNil(weighed?["value"])
         XCTAssertEqual(weighed?["unit"] as? String, "kg")
     }
+
+    func testTemplateModeAlwaysPresentsThreeLaunchChoices() {
+        XCTAssertEqual(
+            TemplateLaunchChoice.allCases,
+            [.myTemplates, .createTemplate, .openHistory],
+            "Templates mode must always let the user choose between My Templates, Create Template, and History"
+        )
+        XCTAssertTrue(WorkoutModeDiscoveryPopup.shouldPresentTemplateOptions(for: .templates, hasTemplates: false))
+        XCTAssertTrue(WorkoutModeDiscoveryPopup.shouldPresentTemplateOptions(for: .templates, hasTemplates: true))
+        XCTAssertFalse(WorkoutModeDiscoveryPopup.shouldPresentTemplateOptions(for: .empty, hasTemplates: true))
+        XCTAssertFalse(WorkoutModeDiscoveryPopup.shouldPresentTemplateOptions(for: .aiBuilder, hasTemplates: true))
+    }
+
+    func testAuthIdentitySnapshotRecognizesLinkedProvidersAndFallbackLabels() {
+        let guest = AuthIdentitySnapshot.resolve(
+            hasUser: true,
+            firebaseIsAnonymous: true,
+            providerIDs: [],
+            email: nil,
+            displayName: nil,
+            cachedEmail: nil,
+            cachedName: nil,
+            cachedProviderID: nil,
+            uid: "guest123456"
+        )
+        XCTAssertTrue(guest.isAnonymous)
+        XCTAssertFalse(guest.isAuthenticated)
+
+        // Even if Firebase user.isAnonymous was stale before reload after link(with:),
+        // non-empty providerIDs (apple.com / google.com) prove the account is linked.
+        let appleLinked = AuthIdentitySnapshot.resolve(
+            hasUser: true,
+            firebaseIsAnonymous: true,
+            providerIDs: ["apple.com"],
+            email: nil,
+            displayName: nil,
+            cachedEmail: "athlete@privaterelay.appleid.com",
+            cachedName: "Boris",
+            cachedProviderID: "apple.com",
+            uid: "abc987654321"
+        )
+        XCTAssertFalse(appleLinked.isAnonymous)
+        XCTAssertTrue(appleLinked.isAuthenticated)
+        XCTAssertEqual(appleLinked.providerDisplayName, "Apple ID")
+        XCTAssertEqual(appleLinked.providerIconName, "apple.logo")
+        XCTAssertEqual(appleLinked.primaryLabel, "Boris")
+        XCTAssertEqual(appleLinked.secondaryLabel, "athlete@privaterelay.appleid.com")
+
+        let googleLinked = AuthIdentitySnapshot.resolve(
+            hasUser: true,
+            firebaseIsAnonymous: false,
+            providerIDs: ["google.com"],
+            email: "boris@gmail.com",
+            displayName: nil,
+            cachedEmail: nil,
+            cachedName: nil,
+            cachedProviderID: nil,
+            uid: "goog123456"
+        )
+        XCTAssertFalse(googleLinked.isAnonymous)
+        XCTAssertTrue(googleLinked.isAuthenticated)
+        XCTAssertEqual(googleLinked.providerDisplayName, "Google")
+        XCTAssertEqual(googleLinked.providerIconName, "globe")
+        XCTAssertEqual(googleLinked.primaryLabel, "boris@gmail.com")
+    }
 }
