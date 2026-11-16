@@ -257,4 +257,27 @@ final class PreTestFlightHonestyTests: XCTestCase {
         XCTAssertEqual(googleLinked.providerIconName, "globe")
         XCTAssertEqual(googleLinked.primaryLabel, "boris@gmail.com")
     }
+
+    func testTemplateOptionsSheetDefersNavigationUntilSheetDismisses() {
+        var state = TemplateOptionsSheetState()
+        state.present()
+        XCTAssertTrue(state.isPresented)
+        XCTAssertNil(state.pendingChoice)
+
+        // Selecting "My Templates" dismisses the sheet first and defers navigation until onDismiss.
+        state.select(.myTemplates)
+        XCTAssertFalse(state.isPresented)
+        XCTAssertEqual(state.pendingChoice, .myTemplates)
+
+        // When UIKit finishes dismissing the sheet, onDismiss consumes the choice exactly once.
+        XCTAssertEqual(state.consumeOnDismiss(), .myTemplates)
+        XCTAssertNil(state.pendingChoice)
+        XCTAssertNil(state.consumeOnDismiss())
+
+        // Dismissing via Stay / swipe-down must clear any pending choice.
+        state.present()
+        state.stayOnPopup()
+        XCTAssertFalse(state.isPresented)
+        XCTAssertNil(state.consumeOnDismiss())
+    }
 }

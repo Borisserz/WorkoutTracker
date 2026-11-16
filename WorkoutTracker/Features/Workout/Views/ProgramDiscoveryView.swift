@@ -15,6 +15,7 @@ struct ProgramDiscoveryView: View {
     @State private var selectedFilter: CatalogFilter = .all
     @State private var hasPavedScreen = false
     @State private var selectedProgram: WorkoutProgramDefinition?
+    @State private var showProgramDetail = false
     
     private var usingOfflineCatalog: Bool {
         FirestoreProgramService.shared.legendaryRoutines.isEmpty
@@ -88,10 +89,7 @@ struct ProgramDiscoveryView: View {
                 startLegendaryRoutine(routine)
             }
         }
-        .navigationDestination(isPresented: Binding(
-            get: { selectedProgram != nil },
-            set: { if !$0 { selectedProgram = nil } }
-        )) {
+        .navigationDestination(isPresented: $showProgramDetail) {
             if let selectedProgram {
                 ProgramDetailView(program: selectedProgram)
             }
@@ -282,6 +280,7 @@ struct ProgramDiscoveryView: View {
         Button {
             HapticManager.shared.impact(.light)
             selectedProgram = program
+            showProgramDetail = true
         } label: {
             ProgramPressurePlate(
                 program: program,

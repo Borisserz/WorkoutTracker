@@ -43,6 +43,7 @@ struct MyLibraryView: View {
     var onDuplicate: ((WorkoutPreset) -> Void)? = nil
     var onDelete: ((CarouselItemType) -> Void)? = nil
     var onLegendaryTapped: ((LegendaryRoutine) -> Void)? = nil
+    var onBrowseCatalog: (() -> Void)? = nil
 
     init(
         onItemTapped: @escaping (CarouselItemType) -> Void,
@@ -51,7 +52,8 @@ struct MyLibraryView: View {
         onEdit: ((WorkoutPreset) -> Void)? = nil,
         onDuplicate: ((WorkoutPreset) -> Void)? = nil,
         onDelete: ((CarouselItemType) -> Void)? = nil,
-        onLegendaryTapped: ((LegendaryRoutine) -> Void)? = nil
+        onLegendaryTapped: ((LegendaryRoutine) -> Void)? = nil,
+        onBrowseCatalog: (() -> Void)? = nil
     ) {
         self.onItemTapped = onItemTapped
         self.onStartNow = onStartNow
@@ -60,6 +62,7 @@ struct MyLibraryView: View {
         self.onDuplicate = onDuplicate
         self.onDelete = onDelete
         self.onLegendaryTapped = onLegendaryTapped
+        self.onBrowseCatalog = onBrowseCatalog
 
         var presets = FetchDescriptor<WorkoutPreset>(
             predicate: #Predicate<WorkoutPreset> { $0.isSystem == false },
@@ -78,6 +81,7 @@ struct MyLibraryView: View {
 
     @State private var selectedFilter: LibraryFilter = .all
     @State private var searchText: String = ""
+    @State private var showCatalogSheet = false
 
     private let columns = [
         GridItem(.flexible(), spacing: 12),
@@ -231,6 +235,11 @@ struct MyLibraryView: View {
         .navigationBarHidden(true)
         .accessibilityIdentifier("wt.templates.root")
         .preferredColorScheme(.dark)
+        .sheet(isPresented: $showCatalogSheet) {
+            NavigationStack {
+                ProgramDiscoveryView()
+            }
+        }
     }
 
     // MARK: - Header
@@ -423,7 +432,9 @@ struct MyLibraryView: View {
                         .buttonStyle(PressScaleButtonStyle())
                     }
 
-                    NavigationLink(destination: ProgramDiscoveryView()) {
+                    Button {
+                        openBrowseCatalog()
+                    } label: {
                         HStack(spacing: 8) {
                             Image(systemName: "sparkles")
                             Text("Browse Catalog")
@@ -452,7 +463,9 @@ struct MyLibraryView: View {
 
     // MARK: - Bottom Catalog CTA
     private var browseCatalogFAB: some View {
-        NavigationLink(destination: ProgramDiscoveryView()) {
+        Button {
+            openBrowseCatalog()
+        } label: {
             HStack(spacing: 8) {
                 Image(systemName: "sparkles")
                     .font(.system(size: 14, weight: .bold))
@@ -466,7 +479,17 @@ struct MyLibraryView: View {
             .clipShape(Capsule())
             .shadow(color: PastelTheme.pastelOat.opacity(0.28), radius: 10, x: 0, y: 4)
         }
+        .buttonStyle(PressScaleButtonStyle())
         .padding(.bottom, 18)
+    }
+
+    private func openBrowseCatalog() {
+        HapticManager.shared.impact(.medium)
+        if let onBrowseCatalog {
+            onBrowseCatalog()
+        } else {
+            showCatalogSheet = true
+        }
     }
 
     // MARK: - Routing Helpers

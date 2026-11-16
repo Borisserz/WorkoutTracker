@@ -114,6 +114,33 @@ enum TemplateLaunchChoice: String, CaseIterable, Equatable {
     case openHistory
 }
 
+/// Coordinates dismissing the template options sheet before tearing down the discovery
+/// popup or pushing a NavigationStack destination, preventing SwiftUI sheet/push races.
+struct TemplateOptionsSheetState: Equatable {
+    var isPresented: Bool = false
+    private(set) var pendingChoice: TemplateLaunchChoice?
+
+    mutating func present() {
+        pendingChoice = nil
+        isPresented = true
+    }
+
+    mutating func select(_ choice: TemplateLaunchChoice) {
+        pendingChoice = choice
+        isPresented = false
+    }
+
+    mutating func stayOnPopup() {
+        pendingChoice = nil
+        isPresented = false
+    }
+
+    mutating func consumeOnDismiss() -> TemplateLaunchChoice? {
+        defer { pendingChoice = nil }
+        return pendingChoice
+    }
+}
+
 /// Hearthstone-style 3-card discovery popup for starting workouts.
 /// Features 3D card fan spread, hold-to-inspect editorial description HUD,
 /// tactile haptic feedback, and Apple HIG Strict Dark Mode palette.
@@ -130,7 +157,7 @@ struct WorkoutModeDiscoveryPopup: View {
 
     @State private var selectedMode: WorkoutLaunchMode = .empty
     @State private var cardsAppeared: Bool = false
-    @State private var showTemplateOptionsSheet: Bool = false
+    @State private var templateOptionsState = TemplateOptionsSheetState()
 
     private var effectiveTemplatesCount: Int {
         templatesCount > 0 ? templatesCount : (hasTemplates ? 1 : 0)
@@ -191,27 +218,25 @@ struct WorkoutModeDiscoveryPopup: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("wt.discovery.root")
-        .sheet(isPresented: $showTemplateOptionsSheet) {
+        .sheet(
+            isPresented: $templateOptionsState.isPresented,
+            onDismiss: handleTemplateOptionsDismiss
+        ) {
             TemplateOptionsSheet(
                 templatesCount: effectiveTemplatesCount,
                 historyCount: historyCount,
                 onMyTemplates: {
-                    showTemplateOptionsSheet = false
-                    executeAction(for: .templates)
+                    templateOptionsState.select(.myTemplates)
                 },
                 onCreate: {
-                    showTemplateOptionsSheet = false
-                    dismissPopupThen {
-                        onCreateTemplate?()
-                    }
+                    templateOptionsState.select(.createTemplate)
                 },
                 onOpenHistory: {
-                    showTemplateOptionsSheet = false
-                    dismissPopupThen {
-                        onOpenHistory()
-                    }
+                    templateOptionsState.select(.openHistory)
                 },
-                onStay: { showTemplateOptionsSheet = false }
+                onStay: {
+                    templateOptionsState.stayOnPopup()
+                }
             )
             .presentationDetents([.height(470)])
             .presentationDragIndicator(.visible)
@@ -544,9 +569,26 @@ struct WorkoutModeDiscoveryPopup: View {
     private func requestLaunch(for mode: WorkoutLaunchMode) {
         if Self.shouldPresentTemplateOptions(for: mode, hasTemplates: hasTemplates) {
             HapticManager.playMediumImpact()
-            showTemplateOptionsSheet = true
+            templateOptionsState.present()
         } else {
             executeAction(for: mode)
+        }
+    }
+
+    private func handleTemplateOptionsDismiss() {
+        guard let choice = templateOptionsState.consumeOnDismiss() else { return }
+        HapticManager.playMediumImpact()
+        cardsAppeared = false
+        isPresented = false
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+            switch choice {
+            case .myTemplates:
+                onSelectTemplates()
+            case .createTemplate:
+                onCreateTemplate?()
+            case .openHistory:
+                onOpenHistory()
+            }
         }
     }
 

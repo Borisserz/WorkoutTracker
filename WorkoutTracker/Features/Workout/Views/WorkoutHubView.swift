@@ -22,6 +22,12 @@ struct WorkoutHubView: View {
         case openHistoryTab
     }
 
+    enum WorkoutHubRoute: Hashable {
+        case myTemplates
+        case explore
+        case activeWorkout(Workout)
+    }
+
     /// Contract for empty-library “Explore programs” CTA — must open Legendary/Explore, never History tab.
     static let exploreProgramsTabAction: ExploreProgramsDestination = .openExplore
 
@@ -50,9 +56,7 @@ struct WorkoutHubView: View {
     private let muscleGroups = ["Chest", "Back", "Legs", "Shoulders", "Arms", "Core"]
 
     // MARK: - Navigation & Sheets
-    @State private var navigateToActiveWorkout: Workout? = nil
-    @State private var navigateToExplore = false
-    @State private var navigateToLibrary = false
+    @State private var navPath: [WorkoutHubRoute] = []
 
     @State private var showSmartBuilder = false
     @State private var showPresetEditor = false
@@ -146,7 +150,7 @@ struct WorkoutHubView: View {
             if let active = activeWorkouts.first, active.isActive, active.endTime == nil, !di.appState.isInsideActiveWorkout, abs(active.date.timeIntervalSinceNow) < 12 * 3600 {
                 ActiveWorkoutResumeCard(workout: active) {
                     HapticManager.shared.impact(.medium)
-                    self.navigateToActiveWorkout = active
+                    self.openActiveWorkout(active)
                 }
             }
 
@@ -200,7 +204,9 @@ struct WorkoutHubView: View {
                 showSmartBuilder = true
             },
             onSelectTemplates: {
-                navigateToLibrary = true
+                if navPath.last != .myTemplates {
+                    navPath.append(.myTemplates)
+                }
             },
             onOpenHistory: {
                 di.appState.selectedTab = 1
@@ -252,7 +258,7 @@ struct WorkoutHubView: View {
             )
             if let id = await workoutService.startGeneratedWorkout(generatedDTO, source: "smart_builder"),
                let newWorkout = context.model(for: id) as? Workout {
-                self.navigateToActiveWorkout = newWorkout
+                self.openActiveWorkout(newWorkout)
             }
         }
     }
@@ -271,6 +277,9 @@ struct WorkoutHubView: View {
             onDelete: promptDelete,
             onLegendaryTapped: { routine in
                 selectedLegendaryRoutine = routine
+            },
+            onBrowseCatalog: {
+                navPath.append(.explore)
             }
         )
     }
@@ -280,14 +289,15 @@ struct WorkoutHubView: View {
         hubContent
             .navigationBarHidden(true)
             .accessibilityIdentifier("wt.workout.root")
-            .navigationDestination(item: $navigateToActiveWorkout) { workout in
-                WorkoutDetailView(workout: workout, viewModel: di.makeWorkoutDetailViewModel())
-            }
-            .navigationDestination(isPresented: $navigateToExplore) {
-                ProgramDiscoveryView()
-            }
-            .navigationDestination(isPresented: $navigateToLibrary) {
-                myLibraryDestinationView
+            .navigationDestination(for: WorkoutHubRoute.self) { route in
+                switch route {
+                case .myTemplates:
+                    myLibraryDestinationView
+                case .explore:
+                    ProgramDiscoveryView()
+                case .activeWorkout(let workout):
+                    WorkoutDetailView(workout: workout, viewModel: di.makeWorkoutDetailViewModel())
+                }
             }
     }
 
@@ -329,13 +339,13 @@ struct WorkoutHubView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $navPath) {
             hubWithAlerts
             .onChange(of: di.appState.returnToActiveWorkoutId) { _, newId in
                 if let id = newId {
                     let desc = FetchDescriptor<Workout>(predicate: #Predicate { $0.endTime == nil })
                     if let active = try? context.fetch(desc).first(where: { $0.persistentModelID == id }) {
-                        self.navigateToActiveWorkout = active
+                        self.openActiveWorkout(active)
                     }
                     di.appState.returnToActiveWorkoutId = nil
                 }
@@ -940,7 +950,10 @@ struct WorkoutHubView: View {
 
                 Spacer()
 
-                NavigationLink(destination: myLibraryDestinationView) {
+                Button {
+                    HapticManager.shared.impact(.light)
+                    navPath.append(.myTemplates)
+                } label: {
                     HStack(spacing: 4) {
                         Text("All")
                             .font(.system(size: 12, weight: .bold, design: .rounded))
@@ -999,8 +1012,8 @@ struct WorkoutHubView: View {
                             count: nil,
                             subtitle: String(localized: "Saved routines & favorites"),
                             ctaLabel: String(localized: "Open"),
-                            onStart: { navigateToLibrary = true },
-                            onInspect: { navigateToLibrary = true }
+                            onStart: { navPath.append(.myTemplates) },
+                            onInspect: { navPath.append(.myTemplates) }
                         )
                     }
                 }
@@ -1250,7 +1263,7 @@ struct WorkoutHubView: View {
     private var legendarySection: some View {
         Button {
             HapticManager.shared.impact(.rigid)
-            navigateToExplore = true
+            navPath.append(.explore)
         } label: {
             HStack(spacing: 14) {
                 ZStack {
@@ -1353,7 +1366,7 @@ struct WorkoutHubView: View {
             let title = LocalizationHelper.shared.formatWorkoutDateName()
             if let id = await workoutService.createWorkout(title: title, presetID: nil, isAIGenerated: false),
                let newWorkout = context.model(for: id) as? Workout {
-                self.navigateToActiveWorkout = newWorkout
+                self.openActiveWorkout(newWorkout)
             }
             isProcessing = false
         }
@@ -1416,7 +1429,7 @@ struct WorkoutHubView: View {
                             newWorkout.exercises.append(newEx)
                         }
                         try context.save()
-                        self.navigateToActiveWorkout = newWorkout
+                        self.openActiveWorkout(newWorkout)
                     } catch {
                         di.appState.showError(
                             title: String(localized: "Replay failed"),
@@ -1448,9 +1461,17 @@ struct WorkoutHubView: View {
         }
     }
 
+    private func openActiveWorkout(_ workout: Workout) {
+        if case .activeWorkout(let current) = navPath.last,
+           current.persistentModelID == workout.persistentModelID {
+            return
+        }
+        navPath.append(.activeWorkout(workout))
+    }
+
     private func routeToWorkout(id: PersistentIdentifier) {
         if let newWorkout = context.model(for: id) as? Workout {
-            self.navigateToActiveWorkout = newWorkout
+            self.openActiveWorkout(newWorkout)
         }
     }
 
@@ -1458,7 +1479,7 @@ struct WorkoutHubView: View {
         var descriptor = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)])
         descriptor.fetchLimit = 1
         if let newWorkout = try? context.fetch(descriptor).first {
-            self.navigateToActiveWorkout = newWorkout
+            self.openActiveWorkout(newWorkout)
         }
     }
 
@@ -1483,7 +1504,7 @@ struct WorkoutHubView: View {
 
             if let id = await workoutService.startGeneratedWorkout(generatedDTO, source: "legendary"),
                let newWorkout = context.model(for: id) as? Workout {
-                self.navigateToActiveWorkout = newWorkout
+                self.openActiveWorkout(newWorkout)
             }
 
             isProcessing = false
