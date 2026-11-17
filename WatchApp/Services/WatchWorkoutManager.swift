@@ -147,12 +147,15 @@ extension WatchWorkoutManager: HKWorkoutSessionDelegate, HKLiveWorkoutBuilderDel
         Task { @MainActor in
             if let hr = hrToSend {
                 self.heartRate = hr
-                let payload = LiveSyncPayload(
-                    action: .updateHeartRate,
-                    workoutID: "",
-                    heartRate: hr
-                )
-                WatchSyncManager.shared.sendLiveAction(payload)
+                // Avoid queuing hundreds of stale HR packets via transferUserInfo when iPhone is unreachable.
+                if WatchSyncManager.shared.isReachable {
+                    let payload = LiveSyncPayload(
+                        action: .updateHeartRate,
+                        workoutID: "",
+                        heartRate: hr
+                    )
+                    WatchSyncManager.shared.sendLiveAction(payload)
+                }
             }
             if let energy = energyToSet {
                 self.activeEnergy = energy

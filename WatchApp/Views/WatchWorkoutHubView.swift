@@ -101,8 +101,13 @@ struct WatchWorkoutHubView: View {
     }
 
     private func restoreWorkout(from payload: LiveSyncPayload) {
-
             guard let uuid = UUID(uuidString: payload.workoutID) else { return }
+
+            // Avoid tearing down the active Watch workout VM / HKWorkoutSession when already tracking this session.
+            if let current = activeWorkoutVM, current.workoutID == uuid {
+                current.applyRemoteDelta(payload)
+                return
+            }
 
             let vm = WatchActiveWorkoutViewModel(workoutID: uuid, workoutTitle: payload.workoutTitle ?? "Active Workout", presetDTO: nil, store: WatchWorkoutStore(modelContainer: context.container))
             vm.exercises = payload.exercises ?? []

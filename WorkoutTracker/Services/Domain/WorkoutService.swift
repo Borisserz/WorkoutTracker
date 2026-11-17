@@ -103,6 +103,16 @@ final class WorkoutService {
                 switch payload.action {
                 case .startWorkout:
                     guard let uuid = workoutUUID else { return }
+                    // Deduplicate live + guaranteed Watch deliveries for the same session ID.
+                    let existingDesc = FetchDescriptor<Workout>(predicate: #Predicate { $0.id == uuid })
+                    if let existingSameID = try? bgContext.fetch(existingDesc).first {
+                        let pid = existingSameID.persistentModelID
+                        await MainActor.run {
+                            self.clearWatchStartReservation()
+                            self.appState.returnToActiveWorkoutId = pid
+                        }
+                        return
+                    }
                     // Share phone start mutex so Watch cannot race createWorkout / startGeneratedWorkout.
                     let claimed = await MainActor.run { () -> Bool in
                         if self.startInFlight || self.finishTransitionDepth > 0 {
@@ -146,7 +156,10 @@ final class WorkoutService {
                             let exercise = Exercise(from: dto)
                             bgContext.insert(exercise)
                             for set in exercise.setsList { bgContext.insert(set) }
-                            for sub in exercise.subExercises { bgContext.insert(sub) }
+                            for sub in exercise.subExercises {
+                                bgContext.insert(sub)
+                                for set in sub.setsList { bgContext.insert(set) }
+                            }
                             exercise.workout = newWorkout
                             newWorkout.exercises.append(exercise)
                         }
@@ -174,8 +187,9 @@ final class WorkoutService {
                     guard let uuid = workoutUUID, let exName = payload.exerciseName else { return }
                     let desc = FetchDescriptor<Workout>(predicate: #Predicate { $0.id == uuid })
                     if let workout = try? bgContext.fetch(desc).first {
-                        let newEx = Exercise(name: exName, muscleGroup: "Mixed", type: .strength, sets: 0, reps: 0, weight: 0)
+                        let newEx = Exercise(name: exName, muscleGroup: "Mixed", type: .strength, sets: 3, reps: 10, weight: 0)
                         bgContext.insert(newEx)
+                        for set in newEx.setsList { bgContext.insert(set) }
                         newEx.workout = workout
                         workout.exercises.append(newEx)
                         do { try bgContext.save() } catch {
@@ -192,12 +206,23 @@ final class WorkoutService {
                     guard let uuid = workoutUUID, let exName = payload.exerciseName, let setIndex = payload.setIndex else { return }
                     let desc = FetchDescriptor<Workout>(predicate: #Predicate { $0.id == uuid })
                     if let workout = try? bgContext.fetch(desc).first,
-                       let exercise = workout.exercises.first(where: { $0.name == exName }),
-                       let setToUpdate = exercise.setsList.first(where: { $0.index == setIndex }) {
-
-                        setToUpdate.weight = payload.weight
-                        setToUpdate.reps = payload.reps
-                        setToUpdate.isCompleted = payload.isCompleted ?? true
+                       let exercise = workout.exercises.first(where: { $0.name == exName }) {
+                        if let setToUpdate = exercise.setsList.first(where: { $0.index == setIndex }) {
+                            setToUpdate.weight = payload.weight
+                            setToUpdate.reps = payload.reps
+                            setToUpdate.isCompleted = payload.isCompleted ?? true
+                        } else {
+                            let newSet = WorkoutSet(
+                                index: setIndex,
+                                weight: payload.weight,
+                                reps: payload.reps,
+                                isCompleted: payload.isCompleted ?? true,
+                                type: .normal
+                            )
+                            bgContext.insert(newSet)
+                            newSet.exercise = exercise
+                            exercise.setsList.append(newSet)
+                        }
                         do { try bgContext.save() } catch {
                             await MainActor.run {
                                 self.appState.showError(
@@ -247,34 +272,54 @@ final class WorkoutService {
                 case .saveToHistory:
                     guard let uuid = workoutUUID else { return }
                     let desc = FetchDescriptor<Workout>(predicate: #Predicate { $0.id == uuid })
-                    if let workout = try? bgContext.fetch(desc).first {
-                        if let dDuration = payload.durationSeconds { workout.durationSeconds = dDuration }
+                    let workout: Workout
+                    if let existing = try? bgContext.fetch(desc).first {
+                        workout = existing
+                    } else {
+                        let created = Workout(
+                            id: uuid,
+                            title: payload.workoutTitle ?? "Watch Workout",
+                            date: Date().addingTimeInterval(-Double(payload.durationSeconds ?? 0)),
+                            exercises: []
+                        )
+                        created.icon = "applewatch"
+                        bgContext.insert(created)
+                        workout = created
+                    }
 
-                        if let exercisesDTO = payload.exercises {
-                            for old in workout.exercises { bgContext.delete(old) }
-                            workout.exercises.removeAll()
-                            for dto in exercisesDTO {
-                                let ex = Exercise(from: dto)
-                                bgContext.insert(ex)
-                                ex.workout = workout
-                                workout.exercises.append(ex)
+                    if let dDuration = payload.durationSeconds, dDuration > 0 {
+                        workout.durationSeconds = dDuration
+                    }
+
+                    if let exercisesDTO = payload.exercises {
+                        for old in workout.exercises { bgContext.delete(old) }
+                        workout.exercises.removeAll()
+                        for dto in exercisesDTO {
+                            let ex = Exercise(from: dto)
+                            bgContext.insert(ex)
+                            for set in ex.setsList { bgContext.insert(set) }
+                            for sub in ex.subExercises {
+                                bgContext.insert(sub)
+                                for set in sub.setsList { bgContext.insert(set) }
                             }
+                            ex.workout = workout
+                            workout.exercises.append(ex)
                         }
-                        try? bgContext.save()
-                        let itemsCount = workout.exercises.count
-                        let pid = workout.persistentModelID
-                        await MainActor.run {
-                            TrackingManager.shared.track(.watchSyncCompleted(success: true, itemsSynced: itemsCount))
-                            let mainContext = container.mainContext
-                            if let mainWorkout = mainContext.model(for: pid) as? Workout {
-                                Task {
-                                    await self.processCompletedWorkout(
-                                        mainWorkout,
-                                        mirrorToHealthKit: payload.healthKitSavedOnWatch != true
-                                    )
-                                }
-                                self.appState.returnToActiveWorkoutId = nil
+                    }
+                    try? bgContext.save()
+                    let itemsCount = workout.exercises.count
+                    let pid = workout.persistentModelID
+                    await MainActor.run {
+                        TrackingManager.shared.track(.watchSyncCompleted(success: true, itemsSynced: itemsCount))
+                        let mainContext = container.mainContext
+                        if let mainWorkout = mainContext.model(for: pid) as? Workout {
+                            Task {
+                                await self.processCompletedWorkout(
+                                    mainWorkout,
+                                    mirrorToHealthKit: payload.healthKitSavedOnWatch != true
+                                )
                             }
+                            self.appState.returnToActiveWorkoutId = nil
                         }
                     }
 
@@ -496,6 +541,7 @@ final class WorkoutService {
             defer { liveActivityManager.stopAllActivities() }
             do {
                 try await workoutStore.processCompletedWorkout(workoutID: workout.persistentModelID)
+                await updateWidgetData()
 
                 guard mirrorToHealthKit else { return }
 
@@ -536,6 +582,7 @@ final class WorkoutService {
             if wasActiveSession {
                 await stopLiveActivityIfNoActiveSession()
             }
+            await updateWidgetData()
         } catch {
             appState.showError(title: "Delete Failed", message: "Could not delete workout: \(error.localizedDescription)")
         }
@@ -546,6 +593,7 @@ final class WorkoutService {
             try await workoutStore.deleteWorkout(id: id)
             // Never blanket-stop LA: History may delete a finished row while another session is live.
             await stopLiveActivityIfNoActiveSession()
+            await updateWidgetData()
         } catch {
             appState.showError(title: "Delete Failed", message: "Could not delete workout: \(error.localizedDescription)")
         }

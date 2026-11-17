@@ -266,6 +266,11 @@ struct OverviewView: View {
                 .presentationDetents([.height(390), .medium])
                 .presentationDragIndicator(.visible)
             }
+            .sheet(isPresented: Bindable(di.appState).showWeightLog) {
+                NavigationStack {
+                    WeightHistoryView()
+                }
+            }
             .onAppear {
                 vitals.startMonitoring()
                 Task {

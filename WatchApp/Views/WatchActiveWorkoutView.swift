@@ -53,10 +53,14 @@ struct WatchActiveWorkoutView: View {
                 }
             }
         }
-        .alert("Workout in progress", isPresented: $viewModel.phoneBlockedStart) {
+        .alert(WatchSyncManager.shared.isReachable ? "Workout in progress" : "iPhone unreachable", isPresented: $viewModel.phoneBlockedStart) {
             Button("OK", role: .cancel) { dismiss() }
         } message: {
-            Text("Finish the iPhone workout before starting another on Apple Watch.")
+            Text(
+                WatchSyncManager.shared.isReachable
+                    ? "Finish the iPhone workout before starting another on Apple Watch."
+                    : "Open AI Workout on your iPhone so Watch and Phone stay in sync before starting."
+            )
         }
         .alert(
             "Could not start",
@@ -87,6 +91,11 @@ struct WatchActiveWorkoutView: View {
             WatchSummaryView(viewModel: viewModel) {
                 viewModel.showSummary = false
                 dismiss()
+            }
+        }
+        .onChange(of: viewModel.showSummary) { _, isShowing in
+            if isShowing {
+                Task { await workoutManager.endWorkout(saveToHealthKit: false) }
             }
         }
         .alert("Cancel Workout?", isPresented: $showCancelAlert) {

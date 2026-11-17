@@ -7,6 +7,7 @@ import FirebaseAuth
 import AuthenticationServices
 import GoogleSignIn
 import FirebaseFunctions
+import WidgetKit
 
 struct SettingsView: View {
     @Environment(\.dismiss) var dismiss
@@ -509,6 +510,7 @@ struct SettingsView: View {
         defer { isProcessing = false }
         do {
             try await action()
+            await BlockedUsersStore.shared.startListening()
             authManager.refresh()
             HapticManager.shared.notification(.success)
             let identity = authManager.identity
@@ -611,7 +613,11 @@ struct SettingsView: View {
         let customPresets = (try? bgContext.fetch(presetDesc)) ?? []
         let exerciseNotes = (try? bgContext.fetch(notesDesc)) ?? []
         let aiChatSessions = (try? bgContext.fetch(chatDesc)) ?? []
-        let muscleColors = UserDefaults.standard.dictionary(forKey: Constants.UserDefaultsKeys.muscleColors.rawValue) as? [String: String] ?? [:]
+        let colorPrefs = (try? modelContext.fetch(FetchDescriptor<MuscleColorPreference>())) ?? []
+        let muscleColors = Dictionary(
+            colorPrefs.map { ($0.muscleName, $0.hexColor) },
+            uniquingKeysWith: { _, latest in latest }
+        )
 
         let fileURL: URL?
         switch format {
@@ -678,13 +684,19 @@ struct SettingsView: View {
 
             // 1) Delete all server-side Firestore data (shared_workouts, reports,
             //    users/{uid} + blocked subcollection) using the Admin SDK.
+            let deletedUID = Auth.auth().currentUser?.uid
             let functions = Functions.functions(region: "us-central1")
             _ = try await functions.httpsCallable("deleteAccount").call()
 
-            // 2) Delete the Firebase Auth account. The recent re-auth in step 0
-            //    satisfies requiresRecentLogin for Apple/Google users.
-            let deletedUID = Auth.auth().currentUser?.uid
-            try await Auth.auth().currentUser?.delete()
+            // 2) Server deletes the Auth user too; still delete/sign out locally if needed.
+            do {
+                try await Auth.auth().currentUser?.delete()
+            } catch let authError as NSError where authError.domain == AuthErrorDomain
+                && (authError.code == AuthErrorCode.userNotFound.rawValue
+                    || authError.code == AuthErrorCode.userTokenExpired.rawValue
+                    || authError.code == AuthErrorCode.invalidUserToken.rawValue) {
+                try? Auth.auth().signOut()
+            }
             AuthIdentityCache.clear(uid: deletedUID)
 
             // 3) Stop the blocked-list listener and wipe local storage.
@@ -712,6 +724,8 @@ struct SettingsView: View {
 
     /// Shared helper that removes all on-device data (parity with DEBUG Clear All + avatar wipe).
     private func deleteLocalData() {
+        let weightImageNames = ((try? modelContext.fetch(FetchDescriptor<WeightEntry>())) ?? [])
+            .flatMap(\.imageFileNames)
         do {
             try modelContext.delete(model: Workout.self)
             try modelContext.delete(model: Exercise.self)
@@ -765,7 +779,15 @@ struct SettingsView: View {
         let suite = UserDefaults(suiteName: "group.com.borisdev.WorkoutTracker")
         suite?.removeObject(forKey: WidgetDataManager.key)
         UserDefaults.standard.removeObject(forKey: WidgetDataManager.key)
+        WidgetCenter.shared.reloadAllTimelines()
+        LiveActivityManager().stopAllActivities()
+        di.progressManager.resetProgress()
         ProfileImageManager.shared.deleteImage()
+        if !weightImageNames.isEmpty {
+            Task {
+                await LocalImageStore.shared.deleteImages(named: weightImageNames)
+            }
+        }
     }
 }
 

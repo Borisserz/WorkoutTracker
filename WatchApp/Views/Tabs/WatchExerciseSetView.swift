@@ -228,6 +228,7 @@ struct WatchExerciseSetView: View {
     }
 
     private func setupInitialSet() {
+        guard viewModel.exercises.indices.contains(exerciseIndex) else { return }
         let sets = viewModel.exercises[exerciseIndex].setsList ?? []
         if let firstUncompleted = sets.first(where: { !$0.isCompleted }) {
             currentSetIndex = firstUncompleted.index
@@ -238,6 +239,7 @@ struct WatchExerciseSetView: View {
     }
 
     private func changeSet(by amount: Int) {
+        guard viewModel.exercises.indices.contains(exerciseIndex) else { return }
         let exercise = viewModel.exercises[exerciseIndex]
         let targetSets = exercise.sets ?? 3
         let actualSets = exercise.setsList?.count ?? 0
@@ -255,6 +257,7 @@ struct WatchExerciseSetView: View {
     }
 
     private func loadDataForCurrentSet() {
+        guard viewModel.exercises.indices.contains(exerciseIndex) else { return }
         let sets = viewModel.exercises[exerciseIndex].setsList ?? []
         if let existingSet = sets.first(where: { $0.index == currentSetIndex }) {
             weight = existingSet.weight ?? 0.0

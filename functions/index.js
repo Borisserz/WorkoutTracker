@@ -792,6 +792,43 @@ exports.onReportCreated = onDocumentCreated(
 // ==========================================
 // 4) Full account + data deletion (Guideline 5.1.1(v))
 // ==========================================
+async function deleteUserAccountData(db, auth, uid) {
+  const sharedSnap = await db
+    .collection("shared_workouts")
+    .where("creatorUid", "==", uid)
+    .get();
+
+  // Recursively delete each shared workout (including any `reporters` subcollection).
+  for (const sharedDoc of sharedSnap.docs) {
+    await db.recursiveDelete(sharedDoc.ref);
+  }
+
+  const reportsSnap = await db
+    .collection("reports")
+    .where("reporterUid", "==", uid)
+    .get();
+
+  const reportRefs = reportsSnap.docs.map((d) => d.ref);
+  for (let i = 0; i < reportRefs.length; i += 450) {
+    const batch = db.batch();
+    reportRefs.slice(i, i + 450).forEach((ref) => batch.delete(ref));
+    await batch.commit();
+  }
+
+  await db.recursiveDelete(db.collection("users").doc(uid));
+  await db.collection("ai_usage").doc(uid).delete();
+
+  if (auth && typeof auth.deleteUser === "function") {
+    try {
+      await auth.deleteUser(uid);
+    } catch (err) {
+      if (err?.code !== "auth/user-not-found") {
+        throw err;
+      }
+    }
+  }
+}
+
 exports.deleteAccount = onCall(
   {
     region: "us-central1",
@@ -809,31 +846,7 @@ exports.deleteAccount = onCall(
       );
     }
 
-    const db = getFirestore();
-
-    const sharedSnap = await db
-      .collection("shared_workouts")
-      .where("creatorUid", "==", uid)
-      .get();
-
-    // Recursively delete each shared workout (including any `reporters` subcollection).
-    for (const sharedDoc of sharedSnap.docs) {
-      await db.recursiveDelete(sharedDoc.ref);
-    }
-
-    const reportsSnap = await db
-      .collection("reports")
-      .where("reporterUid", "==", uid)
-      .get();
-
-    const reportRefs = reportsSnap.docs.map((d) => d.ref);
-    for (let i = 0; i < reportRefs.length; i += 450) {
-      const batch = db.batch();
-      reportRefs.slice(i, i + 450).forEach((ref) => batch.delete(ref));
-      await batch.commit();
-    }
-
-    await db.recursiveDelete(db.collection("users").doc(uid));
+    await deleteUserAccountData(getFirestore(), getAuth(), uid);
 
     return { ok: true };
   }
@@ -855,4 +868,5 @@ module.exports._test = {
   FREE_MODELS_FALLBACK,
   VISION_MODELS,
   callOpenRouterText,
+  deleteUserAccountData,
 };

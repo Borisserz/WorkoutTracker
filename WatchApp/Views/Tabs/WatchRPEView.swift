@@ -46,7 +46,7 @@ struct WatchRPEView: View {
                 HStack(spacing: 8) {
                     Button("Skip") {
                         WKInterfaceDevice.current().play(.click)
-                        viewModel.showRPE = false
+                        viewModel.skipRPE()
                     }
                     .font(.system(size: 15, weight: .bold))
                     .frame(maxWidth: .infinity)

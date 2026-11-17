@@ -222,6 +222,7 @@ fileprivate struct StreakMotivationCard: View {
 struct WeeklyActivityDetailSheet: View {
     let stats: PeriodStats
     let chartData: [ChartDataPoint]
+    var metric: StatsView.GraphMetric = .volume
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dismiss) private var dismiss
 
@@ -235,7 +236,7 @@ struct WeeklyActivityDetailSheet: View {
                     VStack(spacing: 32) {
                         Spacer().frame(height: 10)
 
-                        WeeklyActivityChartSection(chartData: chartData)
+                        WeeklyActivityChartSection(chartData: chartData, metric: metric)
 
                         WeeklyActivityBentoGrid(stats: stats)
                     }
@@ -255,23 +256,39 @@ struct WeeklyActivityDetailSheet: View {
 
 fileprivate struct WeeklyActivityChartSection: View {
     let chartData: [ChartDataPoint]
+    let metric: StatsView.GraphMetric
     @Environment(UnitsManager.self) private var unitsManager
     @Environment(\.colorScheme) private var colorScheme
 
+    private var unitStr: String {
+        switch metric {
+        case .count: return ""
+        case .volume: return unitsManager.weightUnitString()
+        case .time: return "min"
+        case .distance: return unitsManager.distanceUnitString()
+        }
+    }
+
+    private func convertedValue(for rawValue: Double) -> Double {
+        switch metric {
+        case .count, .time: return rawValue
+        case .volume: return unitsManager.convertFromKilograms(rawValue)
+        case .distance: return unitsManager.convertFromMeters(rawValue)
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text(LocalizedStringKey("Activity Volume"))
+            Text(metric.title)
                 .font(.headline)
                 .foregroundColor(colorScheme == .dark ? .white : .black)
 
-            let unitStr = unitsManager.weightUnitString()
-            
             Chart {
                 ForEach(chartData) { item in
-                    let displayVal = unitsManager.convertFromKilograms(item.value)
+                    let displayVal = convertedValue(for: item.value)
                     BarMark(
                         x: .value("Day", item.label),
-                        y: .value("Volume", displayVal)
+                        y: .value(metric.title, displayVal)
                     )
                     .foregroundStyle(LinearGradient(colors: [PastelTheme.pastelSage, PastelTheme.pastelSage.opacity(0.6)], startPoint: .top, endPoint: .bottom))
                     .cornerRadius(8)
@@ -290,7 +307,8 @@ fileprivate struct WeeklyActivityChartSection: View {
                     AxisGridLine().foregroundStyle(Color.gray.opacity(0.2))
                     AxisValueLabel() {
                         if let intVal = value.as(Double.self) {
-                            Text("\(LocalizationHelper.shared.formatFlexible(intVal)) \(unitStr)")
+                            let formatted = LocalizationHelper.shared.formatFlexible(intVal)
+                            Text(unitStr.isEmpty ? formatted : "\(formatted) \(unitStr)")
                                 .font(.caption)
                                 .foregroundColor(.gray)
                         }

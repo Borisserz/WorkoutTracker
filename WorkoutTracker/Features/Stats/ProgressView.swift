@@ -140,9 +140,9 @@ struct StatsView: View {
         var title: LocalizedStringKey {
             switch self {
             case .count: return "Activity"
-            case .volume: return "Volume (kg)"
+            case .volume: return LocalizedStringKey("\(String(localized: "Volume")) (\(UnitsManager.shared.weightUnitString()))")
             case .time: return "Time (min)"
-            case .distance: return "Distance (km)"
+            case .distance: return LocalizedStringKey("\(String(localized: "Distance")) (\(UnitsManager.shared.distanceUnitString()))")
             }
         }
     }
@@ -1296,7 +1296,7 @@ struct QuickStatsView: View {
             InteractiveStatCard(
                 icon: "map.fill",
                 title: "Distance",
-                value: "\(LocalizationHelper.shared.formatDecimal(unitsManager.convertFromMeters(stats.totalDistance))) km",
+                value: "\(LocalizationHelper.shared.formatDecimal(unitsManager.convertFromMeters(stats.totalDistance))) \(unitsManager.distanceUnitString())",
                 metric: .distance,
                 selectedMetric: $viewModel.selectedMetric
             )

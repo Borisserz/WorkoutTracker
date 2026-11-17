@@ -26,6 +26,10 @@ struct WidgetData: Codable, Sendable {
         self.totalVolumeTons = totalVolumeTons
     }
 
+    nonisolated static func currentWeekCount(from weeklyStats: [WeeklyPoint]) -> Int {
+        weeklyStats.last?.count ?? 0
+    }
+
     nonisolated init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         streak = try container.decodeIfPresent(Int.self, forKey: .streak) ?? 0

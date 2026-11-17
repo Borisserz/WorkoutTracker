@@ -81,7 +81,7 @@ actor AnalyticsService {
         let maxDate = currentInterval.end
 
         let descriptor = FetchDescriptor<Workout>(
-            predicate: #Predicate<Workout> { $0.date >= minDate && $0.date <= maxDate },
+            predicate: #Predicate<Workout> { $0.endTime != nil && $0.date >= minDate && $0.date <= maxDate },
             sortBy: [SortDescriptor(\.date, order: .reverse)]
         )
 

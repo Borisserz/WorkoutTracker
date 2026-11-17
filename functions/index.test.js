@@ -113,3 +113,82 @@ test("resolveReportUpdate ignores duplicate reporter UIDs and auto-blocks at thr
   });
   assert.deepEqual(third, { reportCount: 3, shouldBlock: true });
 });
+
+test("deleteUserAccountData removes ai_usage, user tree, shared_workouts, reports, and auth user", async () => {
+  const deletedDocs = [];
+  const recursiveDeleted = [];
+  const batchDeleted = [];
+  const deletedUids = [];
+
+  const mockDb = {
+    collection(name) {
+      if (name === "shared_workouts") {
+        return {
+          where() {
+            return {
+              async get() {
+                return { docs: [{ ref: "shared_workouts/w1" }] };
+              },
+            };
+          },
+        };
+      }
+      if (name === "reports") {
+        return {
+          where() {
+            return {
+              async get() {
+                return { docs: [{ ref: "reports/r1" }] };
+              },
+            };
+          },
+        };
+      }
+      return {
+        doc(id) {
+          const ref = `${name}/${id}`;
+          return {
+            ref,
+            path: ref,
+            async delete() {
+              deletedDocs.push(ref);
+            },
+          };
+        },
+      };
+    },
+    async recursiveDelete(ref) {
+      recursiveDeleted.push(typeof ref === "string" ? ref : ref.path);
+    },
+    batch() {
+      return {
+        delete(ref) {
+          batchDeleted.push(ref);
+        },
+        async commit() {},
+      };
+    },
+  };
+
+  const mockAuth = {
+    async deleteUser(uid) {
+      deletedUids.push(uid);
+    },
+  };
+
+  await t.deleteUserAccountData(mockDb, mockAuth, "uid-123");
+
+  assert.deepEqual(recursiveDeleted, ["shared_workouts/w1", "users/uid-123"]);
+  assert.deepEqual(batchDeleted, ["reports/r1"]);
+  assert.deepEqual(deletedDocs, ["ai_usage/uid-123"]);
+  assert.deepEqual(deletedUids, ["uid-123"]);
+
+  const notFoundAuth = {
+    async deleteUser() {
+      const err = new Error("missing");
+      err.code = "auth/user-not-found";
+      throw err;
+    },
+  };
+  await assert.doesNotReject(() => t.deleteUserAccountData(mockDb, notFoundAuth, "uid-123"));
+});

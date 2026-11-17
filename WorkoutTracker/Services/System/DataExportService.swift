@@ -176,14 +176,14 @@ final class DataManager: Sendable {
         for workout in workouts {
             let workoutDate = dateFormatter.string(from: workout.date)
             let endTimeStr = workout.endTime != nil ? dateFormatter.string(from: workout.endTime!) : ""
-            csvLines.append("\(workout.id.uuidString),\"\(escapeCSV(workout.title))\",\(workoutDate),\(endTimeStr),\(workout.durationSeconds / 60),\(workout.icon),\(workout.isFavorite),\(workout.exercises.count)")
+            csvLines.append("\(workout.id.uuidString),\(escapeCSV(workout.title)),\(workoutDate),\(endTimeStr),\(workout.durationSeconds / 60),\(escapeCSV(workout.icon)),\(workout.isFavorite),\(workout.exercises.count)")
         }
         csvLines.append("")
 
         csvLines.append("## EXERCISES\nExercise ID,Workout ID,Workout Title,Exercise Name,Muscle Group,Type,Effort,Is Completed,Set Count")
         for workout in workouts {
             for exercise in workout.exercises {
-                csvLines.append("\(exercise.id.uuidString),\(workout.id.uuidString),\"\(escapeCSV(workout.title))\",\"\(escapeCSV(exercise.name))\",\(exercise.muscleGroup),\(exercise.type.rawValue),\(exercise.effort),\(exercise.isCompleted),\(exercise.setsList.count)")
+                csvLines.append("\(exercise.id.uuidString),\(workout.id.uuidString),\(escapeCSV(workout.title)),\(escapeCSV(exercise.name)),\(escapeCSV(exercise.muscleGroup)),\(exercise.type.rawValue),\(exercise.effort),\(exercise.isCompleted),\(exercise.setsList.count)")
             }
         }
         csvLines.append("")
@@ -196,7 +196,7 @@ final class DataManager: Sendable {
                     let repsStr = set.reps != nil ? String(set.reps!) : ""
                     let distanceStr = set.distance != nil ? String(set.distance!) : ""
                     let timeStr = set.time != nil ? String(set.time!) : ""
-                    csvLines.append("\(set.id.uuidString),\(exercise.id.uuidString),\"\(escapeCSV(exercise.name))\",\(set.index),\(weightStr),\(repsStr),\(distanceStr),\(timeStr),\(set.isCompleted),\(set.type.rawValue)")
+                    csvLines.append("\(set.id.uuidString),\(exercise.id.uuidString),\(escapeCSV(exercise.name)),\(set.index),\(weightStr),\(repsStr),\(distanceStr),\(timeStr),\(set.isCompleted),\(set.type.rawValue)")
                 }
             }
         }
@@ -210,7 +210,7 @@ final class DataManager: Sendable {
 
         csvLines.append("## GOALS\nID,Type,Target,Starting,TargetDate,Exercise,TargetReps,Completed,CreatedAt")
         for goal in goals {
-            csvLines.append("\(goal.id.uuidString),\(goal.type.rawValue),\(goal.targetValue),\(goal.startingValue),\(dateFormatter.string(from: goal.targetDate)),\"\(escapeCSV(goal.exerciseName ?? ""))\",\(goal.targetReps),\(goal.isCompleted),\(dateFormatter.string(from: goal.createdAt))")
+            csvLines.append("\(goal.id.uuidString),\(goal.type.rawValue),\(goal.targetValue),\(goal.startingValue),\(dateFormatter.string(from: goal.targetDate)),\(escapeCSV(goal.exerciseName ?? "")),\(goal.targetReps),\(goal.isCompleted),\(dateFormatter.string(from: goal.createdAt))")
         }
         csvLines.append("")
 

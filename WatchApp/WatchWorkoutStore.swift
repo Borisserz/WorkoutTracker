@@ -54,6 +54,12 @@ actor WatchWorkoutStore {
         try modelContext.save()
     }
 
+    func discardWorkout(workoutID: String) throws {
+        guard let workout = try workout(forID: workoutID) else { return }
+        modelContext.delete(workout)
+        try modelContext.save()
+    }
+
     private func workout(forID workoutID: String) throws -> Workout? {
         guard let id = UUID(uuidString: workoutID) else { return nil }
         var desc = FetchDescriptor<Workout>(predicate: #Predicate<Workout> { $0.id == id })

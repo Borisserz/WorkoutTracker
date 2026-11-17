@@ -58,7 +58,7 @@ struct ProStreakWidgetView: View {
     @Environment(\.widgetFamily) var family
 
     var currentWeeklyCount: Int {
-        entry.data.weeklyStats.reduce(0) { $0 + $1.count }
+        WidgetData.currentWeekCount(from: entry.data.weeklyStats)
     }
 
     var progress: Double {

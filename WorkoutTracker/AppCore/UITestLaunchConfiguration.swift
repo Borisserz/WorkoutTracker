@@ -6,6 +6,7 @@ import SwiftData
 /// Pass `-ASODemoSeed` and `-ASORoute <route>` in Debug/Simulator to populate realistic athlete data.
 enum UITestLaunchConfiguration {
     static var isUITestMode: Bool {
+        #if DEBUG
         let args = ProcessInfo.processInfo.arguments
         if args.contains("-UITestMode") || args.contains("UITestMode") || isASODemoSeed { return true }
         // Maestro may pass `-UITestMode true` as adjacent argv pairs.
@@ -16,19 +17,30 @@ enum UITestLaunchConfiguration {
         // Unit tests: skip Health / TCC sheets that can hang xcodebuild test runners.
         if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil { return true }
         return false
+        #else
+        return false
+        #endif
     }
 
     static var isASODemoSeed: Bool {
+        #if DEBUG
         let args = ProcessInfo.processInfo.arguments
         return args.contains("-ASODemoSeed") || ProcessInfo.processInfo.environment["ASO_DEMO_SEED"] == "1"
+        #else
+        return false
+        #endif
     }
 
     static var asoRoute: String? {
+        #if DEBUG
         let args = ProcessInfo.processInfo.arguments
         if let idx = args.firstIndex(of: "-ASORoute"), args.index(after: idx) < args.endIndex {
             return args[args.index(after: idx)]
         }
         return ProcessInfo.processInfo.environment["ASO_ROUTE"]
+        #else
+        return nil
+        #endif
     }
 
     /// Call as early as possible (AppDelegate) before SwiftUI `@AppStorage` reads.

@@ -91,9 +91,12 @@ final class WatchActiveWorkoutViewModel: Hashable {
     }
 
     func addExercise(name: String) async {
+        let initialSets = (1...3).map { idx in
+            WorkoutSetDTO(index: idx, weight: nil, reps: nil, distance: nil, time: nil, isCompleted: false, type: .normal)
+        }
         let newEx = ExerciseDTO(
             name: name, muscleGroup: "Mixed", type: .strength, category: .other, effort: 5,
-            isCompleted: false, setsList: [], subExercises: [], sets: 3, reps: 10, recommendedWeightKg: 0.0
+            isCompleted: false, setsList: initialSets, subExercises: [], sets: 3, reps: 10, recommendedWeightKg: 0.0
         )
         exercises.append(newEx)
         let payload = LiveSyncPayload(action: .addExercise, workoutID: workoutID.uuidString, exerciseName: name)
@@ -110,7 +113,7 @@ final class WatchActiveWorkoutViewModel: Hashable {
         }
     }
 
-        private func applyRemoteDelta(_ payload: LiveSyncPayload) {
+    func applyRemoteDelta(_ payload: LiveSyncPayload) {
             switch payload.action {
             case .syncFullState:
                             if let newExercises = payload.exercises {
@@ -192,12 +195,29 @@ final class WatchActiveWorkoutViewModel: Hashable {
             currentExerciseIndexForRPE = exerciseIndex
             showRPE = true
         } else {
-            let weightStr = String(format: "%.1f", weight)
-            nextSetInfo = "Next set\n\(currentEx.name)\nSet \(completedCount + 1)/\(currentEx.sets ?? 3): \(weightStr)kg × \(reps)"
+            let weightStr = UnitsManager.shared.displayWeightWithUnit(forKg: weight)
+            nextSetInfo = "Next set\n\(currentEx.name)\nSet \(completedCount + 1)/\(currentEx.sets ?? 3): \(weightStr) × \(reps)"
 
             let defaultRest = UserDefaults.standard.integer(forKey: "defaultRestTime")
             startTimer(duration: defaultRest > 0 ? defaultRest : 60)
         }
+    }
+
+    func skipRPE() {
+        if let exIndex = currentExerciseIndexForRPE, exercises.indices.contains(exIndex) {
+            exercises[exIndex].isCompleted = true
+        }
+        showRPE = false
+        currentExerciseIndexForRPE = nil
+
+        if let nextIndex = exercises.firstIndex(where: { !$0.isCompleted }) {
+            pendingNextExerciseIndex = nextIndex
+            nextSetInfo = "Next exercise\n\(exercises[nextIndex].name)\nSet 1"
+        } else {
+            pendingNextExerciseIndex = nil
+            nextSetInfo = "Workout Complete!\nRest up."
+        }
+        goBackToWorkoutView = true
     }
 
     func saveRPE(_ rpe: Int) async {
@@ -331,6 +351,7 @@ final class WatchActiveWorkoutViewModel: Hashable {
        }
 
     func cancelWorkout() async {
+        _ = try? await store.discardWorkout(workoutID: workoutID.uuidString)
         let payload = LiveSyncPayload(action: .discardWorkout, workoutID: workoutID.uuidString)
         // Must survive reachability gaps — same path as saveToHistory.
         WatchSyncManager.shared.transferGuaranteedPayload(payload)

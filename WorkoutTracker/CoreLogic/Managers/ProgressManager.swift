@@ -126,6 +126,13 @@ class ProgressManager {
         }
     }
 
+    func resetProgress() {
+        level = 1
+        totalXP = 0
+        UserDefaults.standard.set(1, forKey: levelKey)
+        UserDefaults.standard.set(0, forKey: xpKey)
+    }
+
     private func saveProgress() {
         UserDefaults.standard.set(level, forKey: levelKey)
         UserDefaults.standard.set(totalXP, forKey: xpKey)

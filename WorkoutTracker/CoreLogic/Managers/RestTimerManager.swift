@@ -15,6 +15,8 @@ final class RestTimerManager {
 
     private var restEndTime: Date?
     private var tickerTask: Task<Void, Never>?
+    private var activeExerciseName: String?
+    private var activeUpcomingWeight: String?
 
     var progress: Double {
         guard initialRestTime > 0 else { return 0 }
@@ -85,8 +87,10 @@ final class RestTimerManager {
 
     func startRestTimer(duration: Int? = nil, exerciseName: String? = nil, upcomingWeight: String? = nil) {
         let seconds = duration ?? defaultRestTime
-        self.initialRestTime = seconds 
+        self.initialRestTime = seconds
         self.restEndTime = Date().addingTimeInterval(Double(seconds))
+        self.activeExerciseName = exerciseName
+        self.activeUpcomingWeight = upcomingWeight
         self.restTimeRemaining = seconds
         self.isRestTimerActive = true
         self.restTimerFinished = false
@@ -109,6 +113,11 @@ final class RestTimerManager {
             self.initialRestTime += seconds 
             self.restTimeRemaining += seconds
             saveTimerState()
+            LiveActivityManager().updateRestTimer(
+                endTime: newEnd,
+                currentExerciseName: activeExerciseName,
+                upcomingWeight: activeUpcomingWeight
+            )
             Task {
                 await NotificationManager.shared.scheduleRestTimerNotification(seconds: newEnd.timeIntervalSinceNow)
             }
@@ -126,6 +135,11 @@ final class RestTimerManager {
 
                 self.restTimeRemaining = max(0, restTimeRemaining - seconds)
                 saveTimerState()
+                LiveActivityManager().updateRestTimer(
+                    endTime: newEnd,
+                    currentExerciseName: activeExerciseName,
+                    upcomingWeight: activeUpcomingWeight
+                )
                 Task {
                     await NotificationManager.shared.scheduleRestTimerNotification(seconds: newEnd.timeIntervalSinceNow)
                 }
@@ -175,7 +189,8 @@ final class RestTimerManager {
           tickerTask = nil
           restTimerFinished = true
           restEndTime = nil
-          restEndTime = nil
+          activeExerciseName = nil
+          activeUpcomingWeight = nil
           clearTimerState()
           LiveActivityManager().clearRestTimer()
           
@@ -201,6 +216,8 @@ final class RestTimerManager {
           isRestTimerActive = false
           restTimerFinished = false
           restEndTime = nil
+          activeExerciseName = nil
+          activeUpcomingWeight = nil
           clearTimerState()
           LiveActivityManager().clearRestTimer()
 
