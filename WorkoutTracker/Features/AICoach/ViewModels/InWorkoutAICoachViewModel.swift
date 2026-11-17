@@ -98,14 +98,16 @@ final class InWorkoutAICoachViewModel {
             return ("Workout is already completed.", "")
         }
 
-        let remainingSetsCount = activeEx.setsList.filter({ !$0.isCompleted }).count
-        let currentWeight = activeEx.setsList.last(where: { $0.weight != nil })?.weight ?? 0.0
-        let unit = UnitsManager.shared.weightUnitString()
+        let targetExercises = activeEx.isSuperset ? activeEx.subExercises : [activeEx]
+        let allSets = targetExercises.flatMap(\.setsList)
+        let remainingSetsCount = allSets.filter { !$0.isCompleted }.count
+        let currentWeightKg = allSets.last(where: { $0.weight != nil })?.weight ?? 0.0
+        let weightText = InWorkoutAIUnitHelper.promptWeightText(storedKg: currentWeightKg, weightUnit: UnitsManager.shared.weightUnit)
 
         let workoutContextString = """
         CURRENT EXERCISE: \(activeEx.name) (Target: \(activeEx.muscleGroup))
         REMAINING SETS: \(remainingSetsCount)
-        CURRENT WEIGHT: \(currentWeight) \(unit)
+        CURRENT WEIGHT: \(weightText)
         """
 
         let combinedQuery = "\(activeEx.muscleGroup) \(userCommand)"

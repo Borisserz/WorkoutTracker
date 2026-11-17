@@ -29,12 +29,16 @@ struct WorkoutTimerWidget: Widget {
                     }
                 }
                 DynamicIslandExpandedRegion(.trailing) {
-                    if let restEnd = context.state.restTimerEndTime {
-                        Text(timerInterval: Date()...restEnd, countsDown: true)
+                    if let restRange = context.state.activeRestRange() {
+                        Text(timerInterval: restRange, countsDown: true)
+                            .monospacedDigit().font(.title2).bold().foregroundColor(WidgetPastel.amber)
+                            .frame(width: 90)
+                    } else if context.state.restTimerEndTime != nil {
+                        Text("0:00")
                             .monospacedDigit().font(.title2).bold().foregroundColor(WidgetPastel.amber)
                             .frame(width: 90)
                     } else {
-                        Text(timerInterval: context.state.startTime...Date.distantFuture, countsDown: false)
+                        Text(timerInterval: context.state.activeWorkoutRange(), countsDown: false)
                             .monospacedDigit().font(.title2).bold().foregroundColor(WidgetPastel.sage)
                             .frame(width: 90)
                     }
@@ -53,11 +57,14 @@ struct WorkoutTimerWidget: Widget {
                     Image(systemName: "figure.strengthtraining.traditional").foregroundColor(WidgetPastel.sage).font(.title3)
                 }
             } compactTrailing: {
-                if let restEnd = context.state.restTimerEndTime {
-                    Text(timerInterval: Date()...restEnd, countsDown: true)
+                if let restRange = context.state.activeRestRange() {
+                    Text(timerInterval: restRange, countsDown: true)
+                        .monospacedDigit().frame(width: 50).font(.caption).foregroundColor(WidgetPastel.amber)
+                } else if context.state.restTimerEndTime != nil {
+                    Text("0:00")
                         .monospacedDigit().frame(width: 50).font(.caption).foregroundColor(WidgetPastel.amber)
                 } else {
-                    Text(timerInterval: context.state.startTime...Date.distantFuture, countsDown: false)
+                    Text(timerInterval: context.state.activeWorkoutRange(), countsDown: false)
                         .monospacedDigit().frame(width: 50).font(.caption).foregroundColor(WidgetPastel.sage)
                 }
             } minimal: {
@@ -98,12 +105,16 @@ struct LockScreenView: View {
 
             Spacer()
 
-            if let restEnd = context.state.restTimerEndTime {
-                Text(timerInterval: Date()...restEnd, countsDown: true)
+            if let restRange = context.state.activeRestRange() {
+                Text(timerInterval: restRange, countsDown: true)
+                    .font(.system(size: 32, weight: .semibold, design: .rounded).monospacedDigit())
+                    .foregroundStyle(WidgetPastel.amber)
+            } else if context.state.restTimerEndTime != nil {
+                Text("0:00")
                     .font(.system(size: 32, weight: .semibold, design: .rounded).monospacedDigit())
                     .foregroundStyle(WidgetPastel.amber)
             } else {
-                Text(timerInterval: context.state.startTime...Date.distantFuture, countsDown: false)
+                Text(timerInterval: context.state.activeWorkoutRange(), countsDown: false)
                     .font(.system(size: 32, weight: .semibold, design: .rounded).monospacedDigit())
                     .foregroundStyle(WidgetPastel.sage)
             }

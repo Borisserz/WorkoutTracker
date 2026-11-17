@@ -138,8 +138,8 @@ struct WorkoutDetailContentView: View {
         .onDisappear {
             handleOnDisappear()
             di.appState.isInsideActiveWorkout = false
-            // Discard only true ghosts (no exercises). Preset rows without completed sets must survive tab switches.
-            guard workout.isActive, !isDeletingEmptyWorkout, workout.exercises.isEmpty else { return }
+            // Discard only true ghosts when actually backing out of Workout tab (never on tab switch).
+            guard di.appState.selectedTab == 2, workout.isActive, !isDeletingEmptyWorkout, workout.exercises.isEmpty else { return }
             let id = workout.id
             Task { await viewModel.deleteEmptyWorkout(id: id) }
         }

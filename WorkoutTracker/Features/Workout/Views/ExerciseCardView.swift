@@ -157,8 +157,8 @@ struct ExerciseCardView: View {
 
             let nextSet: WorkoutSet? = (currentIndex + 1 < sortedSets.count) ? sortedSets[currentIndex + 1] : nil
             let upcomingWeightStr: String? = {
-                if let w = nextSet?.weight { return "\(w) \(unitsManager.weightUnitString())" }
-                if let pw = prevSet?.weight { return "\(pw) \(unitsManager.weightUnitString())" }
+                if let w = nextSet?.weight { return unitsManager.displayWeightWithUnit(forKg: w) }
+                if let pw = prevSet?.weight { return unitsManager.displayWeightWithUnit(forKg: pw) }
                 return nil
             }()
 

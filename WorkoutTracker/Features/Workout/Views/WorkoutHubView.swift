@@ -249,10 +249,12 @@ struct WorkoutHubView: View {
                         name: dto.name,
                         muscleGroup: dto.muscleGroup,
                         type: dto.type.rawValue,
-                        sets: safeSetsList.count,
+                        sets: max(1, safeSetsList.count),
                         reps: safeSetsList.first?.reps ?? 10,
                         recommendedWeightKg: safeSetsList.first?.weight,
-                        restSeconds: nil
+                        restSeconds: nil,
+                        durationSeconds: safeSetsList.first?.time,
+                        distanceMeters: safeSetsList.first?.distance
                     )
                 }
             )

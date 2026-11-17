@@ -65,10 +65,11 @@ struct OneRepMaxTabView: View {
 
                 let current1RM = vm.effective1RM
 
-                if current1RM > 0 {
+                if current1RM.isFinite, current1RM > 0 {
                     ForEach(1...12, id: \.self) { reps in
                         let weightKg = OneRepMaxCalculator.calculateWeightForReps(oneRepMax: current1RM, targetReps: reps, formula: vm.selectedFormula)
-                        let percentage = (weightKg / current1RM) * 100.0
+                        let rawPct = (weightKg / current1RM) * 100.0
+                        let percentage = rawPct.isFinite ? max(0, min(100, Int(rawPct.rounded()))) : 0
 
                         let displayWeight = unitsManager.convertFromKilograms(weightKg)
 
@@ -83,7 +84,7 @@ struct OneRepMaxTabView: View {
                                 .foregroundColor(PastelTheme.pastelAmber)
                                 .frame(maxWidth: .infinity, alignment: .center)
 
-                            Text("\(Int(percentage))%")
+                            Text("\(percentage)%")
                                 .font(.system(.subheadline, design: .rounded, weight: .medium))
                                 .foregroundColor(PastelTheme.textTertiary)
                                 .frame(width: 80, alignment: .trailing)
@@ -170,7 +171,11 @@ struct OneRepMaxSettingsSheet: View {
                             .fontWeight(.bold)
                             .onChange(of: repsString) { _, newValue in
                                 if let val = Int(newValue) {
-                                    vm.calcInputReps = val
+                                    let clamped = max(1, min(val, 36))
+                                    if clamped != val {
+                                        repsString = "\(clamped)"
+                                    }
+                                    vm.calcInputReps = clamped
                                     if isManualEnabled { isManualEnabled = false; vm.manual1RMOverride = nil }
                                 } else if newValue.isEmpty {
                                     vm.calcInputReps = nil

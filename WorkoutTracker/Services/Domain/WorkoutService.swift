@@ -602,7 +602,11 @@ final class WorkoutService {
 
     func applySmartAction(_ proposal: SmartActionDTO, to workout: Workout) async {
         do {
-            try await workoutStore.applySmartAction(proposal: proposal, inWorkoutID: workout.persistentModelID)
+            try await workoutStore.applySmartAction(
+                proposal: proposal,
+                inWorkoutID: workout.persistentModelID,
+                weightUnit: UnitsManager.shared.weightUnit
+            )
             await updateWidgetData()
         } catch {
             appState.showError(title: "Database Error", message: "Failed to apply AI changes.")

@@ -162,9 +162,7 @@ final class AICoachViewModel {
 
            let workouts = await analyticsService.fetchRecentWorkoutsForAnalytics()
            let recoveryStatus = await analyticsService.calculateRecovery(hours: fullRecoveryHours, workouts: workouts)
-           let prCache = await analyticsService.getAllPersonalRecords(workouts: workouts, unitsManager: UnitsManager.shared).reduce(into: [String: Double]()) {
-               $0[$1.exerciseName] = Double($1.value.filter("0123456789.".contains)) ?? 0
-           }
+           let prCache = await analyticsService.getStrengthPRKilograms(workouts: workouts)
            let weekStart = Calendar.current.date(from: Calendar.current.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date())) ?? Date()
            let workoutsThisWeek = workouts.filter { $0.date >= weekStart }.count
 
@@ -243,7 +241,7 @@ final class AICoachViewModel {
 
         let workouts = await analyticsService.fetchRecentWorkoutsForAnalytics()
         let recoveryStatus = await analyticsService.calculateRecovery(hours: fullRecoveryHours, workouts: workouts)
-        let prCache = await analyticsService.getAllPersonalRecords(workouts: workouts, unitsManager: UnitsManager.shared).reduce(into: [String:Double]()) { $0[$1.exerciseName] = Double($1.value.filter("0123456789.".contains)) ?? 0 }
+        let prCache = await analyticsService.getStrengthPRKilograms(workouts: workouts)
 
         let customExercises = (try? await exerciseCatalogService.fetchCustomExercises())?.map { $0.name } ?? []
         var relevantExercises = await ExerciseDatabaseService.shared.getRelevantExercisesContext(for: prompt, equipmentPref: "any", limit: 25)

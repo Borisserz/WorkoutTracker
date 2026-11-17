@@ -395,7 +395,7 @@ public actor AILogicService {
         action must be EXACTLY one of: swap | reduce_weight | increase_weight | add_finisher
         If switching barbell→dumbbells: reduce weight 15-20%. If "Too Heavy": reduce ~10%. If "Too Easy": increase ~5-10%.
         exerciseName must match an exercise from the current workout (English name).
-        setsRemaining and weightValue are required numbers (use 0 if unused).
+        setsRemaining and weightValue are required numbers (use 0 if unused). Return weightValue in \(weightUnit).
         reasoning: one short motivational sentence.
         \(langInstruction)
         AVAILABLE EXERCISES FOR SWAP (use exact names only):
@@ -495,8 +495,7 @@ public actor AILogicService {
         - hasWorkout: true ONLY if they explicitly ask for a workout/routine/program.
         - workoutTitle + exercises: only when hasWorkout is true; otherwise omit or use empty exercises.
         - When hasWorkout is true: 4–6 exercises, names ONLY from AVAILABLE EXERCISES (exact match). Do not invent names.
-        - Each exercise: name, muscleGroup, type, sets, reps (ints). Optional recommendedWeightKg, restSeconds.
-        Weights must be in \(profile.weightUnit).
+        - Each exercise: name, muscleGroup, type, sets, reps (ints). Optional recommendedWeightKg (ALWAYS in kilograms, kg), restSeconds.
         Use experience + PRs to calibrate load. Do NOT ask for body weight.
         """
 

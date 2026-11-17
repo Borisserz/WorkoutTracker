@@ -126,9 +126,17 @@ final class WorkoutDetailViewModel {
             for set in newExercise.setsList {
                 context.insert(set)
             }
+            for sub in newExercise.subExercises {
+                sub.parentExercise = newExercise
+                context.insert(sub)
+                for set in sub.setsList {
+                    context.insert(set)
+                }
+            }
         }
 
         withAnimation { workout.exercises.insert(newExercise, at: 0) }
+        try? workout.modelContext?.save()
         Task {
             try? await Task.sleep(for: .seconds(0.3))
             guard !Task.isCancelled else { return }
@@ -226,6 +234,7 @@ final class WorkoutDetailViewModel {
             ))
         }
         updateWorkoutAnalytics(for: workout)
+        try? workout.modelContext?.save()
 
         if set.isCompleted, let context = workout.modelContext {
                   let goalDesc = FetchDescriptor<UserGoal>(predicate: #Predicate { $0.isCompleted == false })
@@ -291,6 +300,7 @@ final class WorkoutDetailViewModel {
         }
 
         exercise.isCompleted = true
+        try? workout.modelContext?.save()
 
         if let prLevel = calculatePRLevel(for: exercise, prCache: self.personalRecordsCache) {
             handlePRSet(level: prLevel) 
@@ -310,6 +320,7 @@ final class WorkoutDetailViewModel {
         }
 
         superset.isCompleted = true
+        try? workout.modelContext?.save()
 
         var highestPR: PRLevel? = nil
         for sub in superset.subExercises {
@@ -391,7 +402,8 @@ final class WorkoutDetailViewModel {
         
         var prCount = 0
         for exercise in workout.exercises {
-            if calculatePRLevel(for: exercise, prCache: self.personalRecordsCache) != nil {
+            let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
+            for target in targets where calculatePRLevel(for: target, prCache: self.personalRecordsCache) != nil {
                 prCount += 1
             }
         }
@@ -410,11 +422,17 @@ final class WorkoutDetailViewModel {
         let wEnd = workout.endTime ?? Date()
         let wDuration = workout.durationSeconds > 0 ? workout.durationSeconds : Int(wEnd.timeIntervalSince(wStart))
 
+        let flatExercises: [Exercise] = workout.exercises.flatMap { ex -> [Exercise] in
+            ex.isSuperset ? ex.subExercises : [ex]
+        }
+        let completedSetsCount: Int = flatExercises.reduce(0) { sum, ex in
+            sum + ex.setsList.filter(\.isCompleted).count
+        }
         TrackingManager.shared.track(.workoutCompleted(
             durationMinutes: wDuration / 60,
             totalVolume: workout.totalStrengthVolume,
             exercisesCompleted: workout.exercises.filter { $0.isCompleted }.count,
-            setsCompleted: workout.exercises.flatMap { $0.setsList }.filter { $0.isCompleted }.count,
+            setsCompleted: completedSetsCount,
             avgEffort: workout.effortPercentage,
             source: workout.source ?? "manual"
         ))
@@ -446,11 +464,15 @@ final class WorkoutDetailViewModel {
                     for goal in activeGoals {
                         var goalAchieved = false
                         if goal.type == .strength, let exName = goal.exerciseName {
-                            let maxLifted = currentWorkout.exercises
+                            let bgFlat: [Exercise] = currentWorkout.exercises.flatMap { ex -> [Exercise] in
+                                ex.isSuperset ? ex.subExercises : [ex]
+                            }
+                            let matchingSets: [WorkoutSet] = bgFlat
                                 .filter { $0.name == exName && $0.type == .strength }
-                                .flatMap { $0.setsList }
+                                .flatMap(\.setsList)
+                            let maxLifted: Double = matchingSets
                                 .filter { $0.isCompleted && $0.type != .warmup && ($0.reps ?? 0) >= goal.targetReps }
-                                .compactMap { $0.weight }
+                                .compactMap(\.weight)
                                 .max() ?? 0.0
                             if maxLifted >= goal.targetValue { goalAchieved = true }
                         } else if goal.type == .consistency {

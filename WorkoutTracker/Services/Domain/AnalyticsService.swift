@@ -454,6 +454,38 @@ actor AnalyticsService {
             }.sorted { $0.exerciseName < $1.exerciseName }
         }
 
+        /// Canonical best strength weight in kilograms per exercise (excludes bodyweight/cardio/duration).
+        func getStrengthPRKilograms(workouts: [Workout]) -> [String: Double] {
+            var bests: [String: Double] = [:]
+            for workout in workouts {
+                for exercise in workout.exercises {
+                    let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
+                    for ex in targets where ex.type == .strength {
+                        let maxKg = ex.setsList
+                            .filter { $0.isCompleted && $0.type != .warmup }
+                            .compactMap(\.weight)
+                            .max() ?? 0.0
+                        if maxKg > (bests[ex.name] ?? 0.0) {
+                            bests[ex.name] = maxKg
+                        }
+                    }
+                }
+            }
+            return bests
+        }
+
+        nonisolated static func classifyEquipment(_ rawEquipment: String) -> EquipmentCategory {
+            let eq = rawEquipment.lowercased()
+            if eq.contains("barbell") || eq.contains("dumbbell") || eq.contains("kettlebell") {
+                return .freeWeights
+            } else if eq.contains("machine") || eq.contains("cable") || eq.contains("band") {
+                return .machines
+            } else if eq.contains("body") || eq == "bodyweight" {
+                return .bodyweight
+            }
+            return .other
+        }
+
         func calculateWorkoutStreak(workouts: [Workout]) -> Int {
             let maxRestDaysAllowed = UserDefaults.standard.integer(forKey: Constants.UserDefaultsKeys.streakRestDays.rawValue)
             let maxRestDays = maxRestDaysAllowed > 0 ? maxRestDaysAllowed : 2
@@ -882,7 +914,7 @@ actor AnalyticsService {
            var equipmentStats: [EquipmentCategory: Int] = [.freeWeights: 0, .machines: 0, .bodyweight: 0, .other: 0]
 
            let dbItems = await ExerciseDatabaseService.shared.getAllExerciseItems()
-           let dbDict = Dictionary(uniqueKeysWithValues: dbItems.map { ($0.name.lowercased(), $0) })
+           let dbDict = Dictionary(dbItems.map { ($0.name.lowercased(), $0) }, uniquingKeysWith: { first, _ in first })
            let includeWarmups = UserDefaults.standard.bool(forKey: Constants.UserDefaultsKeys.includeWarmupsInStats.rawValue)
 
            for workout in validWorkouts {
@@ -902,17 +934,7 @@ actor AnalyticsService {
                        }
 
                        let eq = dbItem?.equipment?.lowercased() ?? "bodyweight"
-                       let category: EquipmentCategory
-
-                       if eq.contains("barbell") || eq.contains("dumbbell1") || eq.contains("kettlebell") {
-                           category = .freeWeights
-                       } else if eq.contains("machine") || eq.contains("cable") || eq.contains("band") {
-                           category = .machines
-                       } else if eq.contains("body") || eq == "bodyweight" {
-                           category = .bodyweight
-                       } else {
-                           category = .other
-                       }
+                       let category = Self.classifyEquipment(eq)
 
                        equipmentStats[category, default: 0] += completedSets
                    }

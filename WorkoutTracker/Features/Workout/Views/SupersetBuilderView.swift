@@ -308,8 +308,9 @@ struct EditSupersetItemView: View {
 
                 Button(LocalizedStringKey("Save")) {
                     let weight = sortedSets.first?.weight ?? 0.0
-                    if exercise.type == .strength && weight <= 0 {
-                        validationErrorMessage = String(localized: "Please enter a weight greater than 0.")
+                    let reps = sortedSets.first?.reps ?? 0
+                    if exercise.type == .strength && weight <= 0 && reps <= 0 {
+                        validationErrorMessage = String(localized: "Please enter a weight or reps greater than 0.")
                         showValidationAlert = true
                     } else {
                         propagateFirstSetData()
@@ -344,6 +345,21 @@ struct EditSupersetItemView: View {
         let lastSet = sortedSets.last
         let newIndex = (lastSet?.index ?? 0) + 1
 
+        guard exercise.modelContext != nil else {
+            let newSet = WorkoutSet(
+                index: newIndex,
+                weight: lastSet?.weight,
+                reps: lastSet?.reps,
+                distance: lastSet?.distance,
+                time: lastSet?.time,
+                isCompleted: false,
+                type: .normal
+            )
+            newSet.exercise = exercise
+            exercise.setsList.append(newSet)
+            return
+        }
+
         Task {
             await workoutService.addSet(
                 to: exercise,
@@ -360,6 +376,10 @@ struct EditSupersetItemView: View {
 
     private func removeSetLocally() {
         if exercise.setsList.count > 1, let last = sortedSets.last {
+            guard exercise.modelContext != nil else {
+                exercise.setsList.removeAll { $0.id == last.id }
+                return
+            }
             Task {
                 await workoutService.deleteSet(last, from: exercise)
             }

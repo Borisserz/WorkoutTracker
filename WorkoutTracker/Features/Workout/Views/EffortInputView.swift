@@ -31,6 +31,7 @@ fileprivate struct RPEData {
 struct EffortInputView: View {
     @Binding var effort: Int
     var exerciseName: String
+    var onSave: (() -> Void)? = nil
     @Environment(\.dismiss) var dismiss
     @Environment(TutorialManager.self) var tutorialManager
 
@@ -178,6 +179,7 @@ struct EffortInputView: View {
 
         effort = localEffort
         TrackingManager.shared.track(.rpeGiven(rpeValue: localEffort, exerciseName: exerciseName))
+        onSave?()
         dismiss()
 
         if tutorialManager.currentStep == .explainEffort {

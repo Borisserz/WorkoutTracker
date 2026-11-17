@@ -82,6 +82,12 @@ struct WorkoutExportService: Sendable {
 
     static func importPreset(from url: URL) throws -> WorkoutPresetDTO {
         if url.isFileURL {
+            let needsSecurityScope = url.startAccessingSecurityScopedResource()
+            defer {
+                if needsSecurityScope {
+                    url.stopAccessingSecurityScopedResource()
+                }
+            }
             return try processImportedData(try Data(contentsOf: url))
         } else {
             guard let comp = URLComponents(url: url, resolvingAgainstBaseURL: true),

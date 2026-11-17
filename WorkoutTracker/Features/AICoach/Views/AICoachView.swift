@@ -372,8 +372,9 @@ struct AICoachView: View {
                                 let safeSetsList = dto.setsList ?? []
                                 return GeneratedExerciseDTO(
                                     name: dto.name, muscleGroup: dto.muscleGroup, type: dto.type.rawValue,
-                                    sets: safeSetsList.count, reps: safeSetsList.first?.reps ?? 10,
-                                    recommendedWeightKg: safeSetsList.first?.weight, restSeconds: nil
+                                    sets: max(1, safeSetsList.count), reps: safeSetsList.first?.reps ?? 10,
+                                    recommendedWeightKg: safeSetsList.first?.weight, restSeconds: nil,
+                                    durationSeconds: safeSetsList.first?.time, distanceMeters: safeSetsList.first?.distance
                                 )
                             }
                         )

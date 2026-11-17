@@ -29,13 +29,13 @@ enum ReportReason: String, CaseIterable, Identifiable {
 
     var localizedTitle: String {
         switch self {
-        case .spam:       return String(localized: "report.reason.spam")
-        case .hate:       return String(localized: "report.reason.hate")
-        case .harassment: return String(localized: "report.reason.harassment")
-        case .sexual:     return String(localized: "report.reason.sexual")
-        case .violence:   return String(localized: "report.reason.violence")
-        case .dangerous:  return String(localized: "report.reason.dangerous")
-        case .other:      return String(localized: "report.reason.other")
+        case .spam:       return String(localized: "Spam")
+        case .hate:       return String(localized: "Hate Speech")
+        case .harassment: return String(localized: "Harassment")
+        case .sexual:     return String(localized: "Sexual Content")
+        case .violence:   return String(localized: "Violence")
+        case .dangerous:  return String(localized: "Dangerous Content")
+        case .other:      return String(localized: "Other")
         }
     }
 }
@@ -62,7 +62,7 @@ struct ReportSheet: View {
         NavigationStack {
             Form {
                 Section {
-                    Picker("report.reason.title", selection: $selectedReason) {
+                    Picker("Select a reason", selection: $selectedReason) {
                         ForEach(ReportReason.allCases) { reason in
                             Text(reason.localizedTitle).tag(reason)
                         }
@@ -70,21 +70,21 @@ struct ReportSheet: View {
                     .pickerStyle(.inline)
                     .labelsHidden()
                 } header: {
-                    Text("report.reason.header")
+                    Text("Reason")
                 } footer: {
-                    Text("report.reason.footer")
+                    Text("Why are you reporting this workout?")
                 }
 
                 Section {
-                    TextField("report.details.placeholder", text: $details, axis: .vertical)
+                    TextField("Additional details...", text: $details, axis: .vertical)
                         .lineLimit(3...6)
                         .textInputAutocapitalization(.sentences)
                 } header: {
-                    Text("report.details.header")
+                    Text("Details")
                 }
 
                 Section {
-                    Toggle("report.also_block", isOn: $alsoBlock)
+                    Toggle("Also block this user", isOn: $alsoBlock)
                 }
 
                 if let error {
@@ -95,11 +95,11 @@ struct ReportSheet: View {
                     }
                 }
             }
-            .navigationTitle("report.title")
+            .navigationTitle("Report Workout")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("common.cancel") { dismiss() }
+                    Button("Cancel") { dismiss() }
                         .disabled(isSubmitting)
                 }
                 ToolbarItem(placement: .confirmationAction) {
@@ -109,17 +109,17 @@ struct ReportSheet: View {
                         if isSubmitting {
                             ProgressView()
                         } else {
-                            Text("report.submit")
+                            Text("Submit")
                         }
                     }
                     .disabled(isSubmitting || didSubmit)
                 }
             }
             .interactiveDismissDisabled(isSubmitting)
-            .alert("report.thanks.title", isPresented: $didSubmit) {
-                Button("common.ok") { dismiss() }
+            .alert("Report Submitted", isPresented: $didSubmit) {
+                Button("OK") { dismiss() }
             } message: {
-                Text("report.thanks.message")
+                Text("Thank you for your report.")
             }
         }
     }

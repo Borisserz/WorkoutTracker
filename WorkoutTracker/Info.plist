@@ -100,7 +100,7 @@
         </dict>
     </array>
     <key>NSCameraUsageDescription</key>
-    <string>AI Workout requires camera access to analyze your exercise form and automatically track repetitions using AI.</string>
+    <string>AI Workout requires camera access to analyze your exercise form, track repetitions with AI, and capture progress photos.</string>
     <key>NSHealthShareUsageDescription</key>
     <string>AI Workout uses Health data to sync your daily steps, resting heart rate, and sleep data to generate personalized recovery metrics and proactive workout suggestions.</string>
     <key>NSHealthUpdateUsageDescription</key>
@@ -108,9 +108,9 @@
     <key>NSPhotoLibraryUsageDescription</key>
     <string>AI Workout requires photo library access so you can attach progress photos to your weight logs and workout history.</string>
     <key>NSMicrophoneUsageDescription</key>
-    <string>AI Workout uses the microphone to power the Voice Coach feature, which provides real-time spoken feedback and rep counting during your workouts.</string>
+    <string>AI Workout uses the microphone when you dictate messages to the AI Coach.</string>
     <key>NSSpeechRecognitionUsageDescription</key>
-    <string>AI Workout uses on-device speech recognition for voice commands during workouts (start/stop timer, log set).</string>
+    <string>AI Workout uses on-device speech recognition to transcribe your voice messages in AI Coach chat.</string>
     <key>LSApplicationQueriesSchemes</key>
     <array>
         <string>foodtracker</string>

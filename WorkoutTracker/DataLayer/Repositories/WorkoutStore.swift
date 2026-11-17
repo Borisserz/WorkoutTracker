@@ -36,14 +36,21 @@ actor WorkoutStore: WorkoutStoreProtocol {
 
         for exDTO in generated.exercises {
             let category = ExerciseCategory.determine(from: exDTO.name)
+            let safeSets = max(1, min(exDTO.sets, 30))
+            let safeReps = max(0, min(exDTO.reps, InputValidator.maxReps))
+            let safeWeight = max(0.0, min(exDTO.recommendedWeightKg ?? 0.0, InputValidator.maxWeight))
+            let safeDistance = exDTO.distanceMeters.map { max(0.0, min($0, InputValidator.maxDistance)) }
+            let safeDuration = exDTO.durationSeconds.map { max(0, min($0, InputValidator.maxTime)) }
             let exercise = Exercise(
                 name: exDTO.name,
                 muscleGroup: exDTO.muscleGroup,
                 type: ExerciseType(rawValue: exDTO.type) ?? .strength,
                 category: category,
-                sets: exDTO.sets, 
-                reps: exDTO.reps,
-                weight: exDTO.recommendedWeightKg ?? 0,
+                sets: safeSets,
+                reps: safeReps,
+                weight: safeWeight,
+                distance: safeDistance,
+                timeSeconds: safeDuration,
                 restSeconds: exDTO.restSeconds
             )
 
@@ -674,19 +681,29 @@ actor WorkoutStore: WorkoutStoreProtocol {
         }
 }
 extension WorkoutStore {
-    func applySmartAction(proposal: SmartActionDTO, inWorkoutID: PersistentIdentifier) async throws {
+    func applySmartAction(
+        proposal: SmartActionDTO,
+        inWorkoutID: PersistentIdentifier,
+        weightUnit: WeightUnit = .kilograms
+    ) async throws {
         guard let workout = modelContext.model(for: inWorkoutID) as? Workout else {
             throw WorkoutRepositoryError.modelNotFound
         }
+
+        let canonicalWeightKg = InWorkoutAIUnitHelper.canonicalKg(
+            fromModelWeight: proposal.weightValue,
+            weightUnit: weightUnit
+        )
+        let safeSets = max(1, min(proposal.setsRemaining, 20))
 
         if proposal.action == "add_finisher" {
             let finisher = Exercise(
                 name: proposal.exerciseName,
                 muscleGroup: "Mixed",
                 type: .strength,
-                sets: proposal.setsRemaining,
+                sets: safeSets,
                 reps: 15,
-                weight: proposal.weightValue
+                weight: canonicalWeightKg
             )
             modelContext.insert(finisher)
             finisher.workout = workout
@@ -695,7 +712,11 @@ extension WorkoutStore {
             for set in finisher.setsList { modelContext.insert(set) }
 
         } else {
-            guard let activeExIndex = workout.exercises.firstIndex(where: { !$0.isCompleted }),
+            let trimmedProposalName = proposal.exerciseName.trimmingCharacters(in: .whitespacesAndNewlines)
+            let namedIndex = trimmedProposalName.isEmpty ? nil : workout.exercises.firstIndex {
+                !$0.isCompleted && $0.name.caseInsensitiveCompare(trimmedProposalName) == .orderedSame
+            }
+            guard let activeExIndex = namedIndex ?? workout.exercises.firstIndex(where: { !$0.isCompleted }),
                   let activeEx = workout.exercises[activeExIndex] as Exercise? else { return }
 
             if proposal.action == "swap" {
@@ -710,9 +731,9 @@ extension WorkoutStore {
                     name: proposal.exerciseName,
                     muscleGroup: activeEx.muscleGroup,
                     type: .strength,
-                    sets: proposal.setsRemaining,
+                    sets: safeSets,
                     reps: activeEx.firstSetReps > 0 ? activeEx.firstSetReps : 10,
-                    weight: proposal.weightValue
+                    weight: canonicalWeightKg
                 )
                 modelContext.insert(newEx)
                 for set in newEx.setsList { modelContext.insert(set) }
@@ -723,7 +744,7 @@ extension WorkoutStore {
 
             } else {
                 for set in activeEx.setsList where !set.isCompleted {
-                    set.weight = proposal.weightValue
+                    set.weight = canonicalWeightKg
                 }
             }
         }

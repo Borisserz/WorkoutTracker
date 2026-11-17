@@ -14,15 +14,17 @@ final class LocalizationHelper: @unchecked Sendable {
         self.exerciseInstructionsRU = instructions
     }
 
-    nonisolated func translateName(_ englishName: String) -> String {
-        guard Locale.current.language.languageCode?.identifier == "ru" else { return englishName }
+    nonisolated func translateName(_ englishName: String, languageCode: String? = nil) -> String {
+        let code = (languageCode ?? Locale.current.language.languageCode?.identifier ?? "en").lowercased()
+        guard !code.hasPrefix("en") else { return englishName }
         cacheLock.lock()
         defer { cacheLock.unlock() }
         return exerciseNamesRU[englishName.lowercased()] ?? englishName
     }
 
-    nonisolated func translateInstructions(for englishName: String) -> [String]? {
-        guard Locale.current.language.languageCode?.identifier == "ru" else { return nil }
+    nonisolated func translateInstructions(for englishName: String, languageCode: String? = nil) -> [String]? {
+        let code = (languageCode ?? Locale.current.language.languageCode?.identifier ?? "en").lowercased()
+        guard !code.hasPrefix("en") else { return nil }
         cacheLock.lock()
         defer { cacheLock.unlock() }
         return exerciseInstructionsRU[englishName.lowercased()]

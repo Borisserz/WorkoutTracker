@@ -207,9 +207,6 @@ struct WorkoutTrackerApp: App {
                     handleIncomingURL(url, di: di)
                 }
             }
-            .onOpenURL { url in
-                handleIncomingURL(url, di: di)
-            }
             .onReceive(NotificationCenter.default.publisher(for: Notification.Name("widgetActionTriggered"))) { notification in
                 if let action = notification.object as? String {
                     handleWidgetAction(action, appState: di.appState)

@@ -282,7 +282,7 @@ struct ConfigureExerciseView: View {
             
             PremiumSliderPicker(
                 value: weightValueBinding,
-                range: 0...300,
+                range: unitsManager.weightUnit == .kilograms ? 0...300 : 0...660,
                 step: 0.5
             )
             
@@ -327,14 +327,15 @@ struct ConfigureExerciseView: View {
                 .foregroundColor(themeManager.current.secondaryText)
             
             let dVal = unitsManager.convertFromMeters(viewModel.form.distance ?? 0.0)
-            Text(String(format: "%.2f", dVal))
+            let isMeters = unitsManager.distanceUnit == .meters
+            Text(String(format: isMeters ? "%.0f" : "%.2f", dVal))
                 .font(.system(size: 38, weight: .black, design: .rounded))
                 .foregroundColor(.white)
             
             PremiumSliderPicker(
                 value: distanceValueBinding,
-                range: 0...50,
-                step: 0.1
+                range: isMeters ? 0...25_000 : 0...50,
+                step: isMeters ? 50 : 0.1
             )
         }
         .padding(.vertical, 14)

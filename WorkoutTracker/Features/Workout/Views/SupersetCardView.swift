@@ -36,8 +36,12 @@ struct SupersetCardView: View {
                     .stroke(isActiveExercise ? PastelTheme.cardBorderFocused : PastelTheme.cardBorder, lineWidth: 1)
             )
         }
-        .sheet(isPresented: $showEffortSheet, onDismiss: { if superset.isCompleted { finishSupersetAction() } }) {
-            EffortInputView(effort: $superset.effort, exerciseName: superset.name)
+        .sheet(isPresented: $showEffortSheet) {
+            EffortInputView(
+                effort: $superset.effort,
+                exerciseName: superset.name,
+                onSave: { finishSupersetAction() }
+            )
         }
     }
 

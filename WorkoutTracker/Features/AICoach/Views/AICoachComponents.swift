@@ -215,14 +215,20 @@ struct ProposedWorkoutCardView: View {
                         }
                         Spacer()
                         VStack(alignment: .trailing, spacing: 4) {
-                            Text("\(exercise.sets) x \(exercise.reps)")
-                                .font(.subheadline)
-                                .bold()
+                            if let duration = exercise.durationSeconds, duration > 0 {
+                                Text("\(duration / 60) min")
+                                    .font(.subheadline)
+                                    .bold()
+                            } else {
+                                Text("\(exercise.sets) x \(exercise.reps)")
+                                    .font(.subheadline)
+                                    .bold()
+                            }
 
                             if let weight = exercise.recommendedWeightKg, weight > 0 {
-                                Text("\(Int(weight)) kg")
+                                Text(UnitsManager.shared.displayWeightWithUnit(forKg: weight))
                                     .font(.caption)
-                                    .foregroundColor(themeManager.current.primaryAccent) 
+                                    .foregroundColor(themeManager.current.primaryAccent)
                             }
                         }
                     }

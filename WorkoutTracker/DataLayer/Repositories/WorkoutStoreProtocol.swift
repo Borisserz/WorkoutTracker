@@ -24,5 +24,11 @@ protocol WorkoutStoreProtocol: Sendable {
     func fetchLatestWorkoutID() async throws -> PersistentIdentifier?
     func checkAndGenerateDefaultPresets() async throws
 
-    func applySmartAction(proposal: SmartActionDTO, inWorkoutID: PersistentIdentifier) async throws
+    func applySmartAction(proposal: SmartActionDTO, inWorkoutID: PersistentIdentifier, weightUnit: WeightUnit) async throws
+}
+
+extension WorkoutStoreProtocol {
+    func applySmartAction(proposal: SmartActionDTO, inWorkoutID: PersistentIdentifier) async throws {
+        try await applySmartAction(proposal: proposal, inWorkoutID: inWorkoutID, weightUnit: .kilograms)
+    }
 }

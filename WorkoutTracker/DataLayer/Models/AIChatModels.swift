@@ -76,6 +76,45 @@ public struct GeneratedExerciseDTO: Codable, Sendable {
     let reps: Int
     let recommendedWeightKg: Double?
     let restSeconds: Int?
+    let durationSeconds: Int?
+    let distanceMeters: Double?
+
+    public init(
+        name: String,
+        muscleGroup: String,
+        type: String,
+        sets: Int,
+        reps: Int,
+        recommendedWeightKg: Double?,
+        restSeconds: Int?,
+        durationSeconds: Int? = nil,
+        distanceMeters: Double? = nil
+    ) {
+        self.name = name
+        self.muscleGroup = muscleGroup
+        self.type = type
+        self.sets = sets
+        self.reps = reps
+        self.recommendedWeightKg = recommendedWeightKg
+        self.restSeconds = restSeconds
+        self.durationSeconds = durationSeconds
+        self.distanceMeters = distanceMeters
+    }
+}
+
+enum InWorkoutAIUnitHelper {
+    /// Converts canonical stored kilograms into display-unit prompt text (`kg` or `lbs`).
+    static func promptWeightText(storedKg: Double, weightUnit: WeightUnit) -> String {
+        let converted = weightUnit == .kilograms ? storedKg : storedKg * 2.20462
+        return String(format: "%.1f %@", converted, weightUnit.shortName)
+    }
+
+    /// Converts AI-returned weight in the user's active unit back into canonical kilograms for SwiftData storage.
+    static func canonicalKg(fromModelWeight value: Double, weightUnit: WeightUnit) -> Double {
+        let safeValue = max(0.0, value)
+        let kg = weightUnit == .kilograms ? safeValue : safeValue / 2.20462
+        return min(kg, 1500.0)
+    }
 }
 
 public struct AICoachResponseDTO: Sendable {

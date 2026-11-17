@@ -18,24 +18,21 @@ public struct OneRepMaxCalculator: Sendable {
         guard reps > 0, weight > 0 else { return 0 }
         if reps == 1 { return weight }
 
-        let r = Double(reps)
+        // Brzycki hits 0 denominator at 37 and Lander turns negative at 38; clamp to safe physiological range.
+        let r = Double(min(reps, 36))
         let w = weight
 
+        let epley = w * (1.0 + (r / 30.0))
+        let brzycki = w * (36.0 / max(1.0, 37.0 - r))
+        let lander = (100.0 * w) / max(5.0, 101.3 - 2.67123 * r)
+        let oconnor = w * (1.0 + 0.025 * r)
+
         switch formula {
-        case .epley:
-            return w * (1.0 + (r / 30.0))
-        case .brzycki:
-            return w * (36.0 / (37.0 - r))
-        case .lander:
-            return (100.0 * w) / (101.3 - 2.67123 * r)
-        case .oconnor:
-            return w * (1.0 + 0.025 * r)
-        case .average:
-            let e = w * (1.0 + (r / 30.0))
-            let b = w * (36.0 / (37.0 - r))
-            let l = (100.0 * w) / (101.3 - 2.67123 * r)
-            let o = w * (1.0 + 0.025 * r)
-            return (e + b + l + o) / 4.0
+        case .epley: return epley
+        case .brzycki: return brzycki
+        case .lander: return lander
+        case .oconnor: return oconnor
+        case .average: return (epley + brzycki + lander + oconnor) / 4.0
         }
     }
 
@@ -43,19 +40,18 @@ public struct OneRepMaxCalculator: Sendable {
         guard targetReps > 0, oneRepMax > 0 else { return 0 }
         if targetReps == 1 { return oneRepMax }
 
-        let r = Double(targetReps)
+        let r = Double(min(targetReps, 36))
 
         switch formula {
         case .epley:
             return oneRepMax / (1.0 + (r / 30.0))
         case .brzycki:
-            return oneRepMax / (36.0 / (37.0 - r))
+            return max(oneRepMax * 0.05, oneRepMax / (36.0 / max(1.0, 37.0 - r)))
         case .lander:
-            return (oneRepMax * (101.3 - 2.67123 * r)) / 100.0
+            return max(oneRepMax * 0.05, (oneRepMax * (101.3 - 2.67123 * r)) / 100.0)
         case .oconnor:
             return oneRepMax / (1.0 + 0.025 * r)
         case .average:
-
             return oneRepMax / (1.0 + (r / 30.0))
         }
     }

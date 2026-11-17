@@ -52,35 +52,56 @@ final class ConfigureExerciseViewModel {
         guard let lastPerf = lastPerformanceInstance else { return nil }
         let lastSets = lastPerf.sortedSets.filter { $0.type != .warmup && $0.isCompleted }
         guard !lastSets.isEmpty else { return nil }
-        
+
+        let firstSet = lastSets.first
+        let maxWeightKg = lastSets.compactMap { $0.weight }.max() ?? 0.0
+        return Self.formatPreviousPerformance(
+            exerciseType: exerciseType,
+            setsCount: lastSets.count,
+            reps: firstSet?.reps ?? 0,
+            maxWeightKg: maxWeightKg,
+            distanceMeters: firstSet?.distance ?? 0.0,
+            durationSeconds: firstSet?.time ?? 0,
+            weightUnit: UnitsManager.shared.weightUnit,
+            distanceUnit: UnitsManager.shared.distanceUnit
+        )
+    }
+
+    static func formatPreviousPerformance(
+        exerciseType: ExerciseType,
+        setsCount: Int,
+        reps: Int,
+        maxWeightKg: Double,
+        distanceMeters: Double,
+        durationSeconds: Int,
+        weightUnit: WeightUnit,
+        distanceUnit: DistanceUnit
+    ) -> String {
         switch exerciseType {
         case .strength:
-            let setsCount = lastSets.count
-            let reps = lastSets.first?.reps ?? 0
-            let lastMax = lastSets.compactMap { $0.weight }.max() ?? 0.0
-            if lastMax > 0 {
-                return String(format: NSLocalizedString("Previous: %d sets × %d reps @ %.1f kg", comment: ""), setsCount, reps, lastMax)
-            } else {
-                return String(format: NSLocalizedString("Previous: %d sets × %d reps", comment: ""), setsCount, reps)
+            let base = String(format: NSLocalizedString("Previous: %d sets × %d reps", comment: ""), setsCount, reps)
+            if maxWeightKg > 0 {
+                let converted = weightUnit == .kilograms ? maxWeightKg : maxWeightKg * 2.20462
+                let formatted = LocalizationHelper.shared.formatFlexible(converted)
+                return "\(base) @ \(formatted) \(weightUnit.shortName)"
             }
+            return base
+
         case .cardio:
-            if let firstSet = lastSets.first {
-                let dist = firstSet.distance ?? 0.0
-                let t = firstSet.time ?? 0
-                let mins = t / 60
-                let secs = t % 60
-                return String(format: NSLocalizedString("Previous: %.2f km in %dm %ds", comment: ""), dist, mins, secs)
-            }
+            let convertedDist = distanceUnit == .meters ? distanceMeters : distanceMeters * 0.000621371
+            let distText = distanceUnit == .meters
+                ? LocalizationHelper.shared.formatFlexible(convertedDist)
+                : LocalizationHelper.shared.formatTwoDecimals(convertedDist)
+            let mins = durationSeconds / 60
+            let secs = durationSeconds % 60
+            let base = String(format: NSLocalizedString("Previous: %d sets × %dm %ds", comment: ""), 1, mins, secs)
+            return "\(distText) \(distanceUnit.shortName) · \(base)"
+
         case .duration:
-            if let firstSet = lastSets.first {
-                let setsCount = lastSets.count
-                let t = firstSet.time ?? 0
-                let mins = t / 60
-                let secs = t % 60
-                return String(format: NSLocalizedString("Previous: %d sets × %dm %ds", comment: ""), setsCount, mins, secs)
-            }
+            let mins = durationSeconds / 60
+            let secs = durationSeconds % 60
+            return String(format: NSLocalizedString("Previous: %d sets × %dm %ds", comment: ""), setsCount, mins, secs)
         }
-        return nil
     }
 
     func loadLastPerformance(from dashboardCache: [String: Exercise]) {

@@ -101,14 +101,11 @@ final class AIProgramBuilderViewModel {
                     muscleGroup: exDTO.muscleGroup,
                     type: exerciseType,
                     category: category,
-                    sets: exDTO.sets,
-                    reps: exDTO.reps,
-                    weight: exDTO.recommendedWeightKg ?? 0.0
+                    sets: max(1, min(exDTO.sets, 30)),
+                    reps: max(0, exDTO.reps),
+                    weight: max(0, exDTO.recommendedWeightKg ?? 0.0),
+                    restSeconds: exDTO.restSeconds
                 )
-
-                if let rest = exDTO.restSeconds {
-                    for set in exercise.setsList { set.time = rest }
-                }
                 return exercise
             }
 
