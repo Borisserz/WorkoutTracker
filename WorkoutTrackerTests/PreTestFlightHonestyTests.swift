@@ -372,4 +372,55 @@ final class PreTestFlightHonestyTests: XCTestCase {
             }
         }
     }
+
+    func testUserFacingAppNameAndUsageDescriptionsUseUnifiedAIWorkoutBranding() throws {
+        let info = try XCTUnwrap(Bundle.main.infoDictionary)
+        XCTAssertEqual(info["CFBundleDisplayName"] as? String, "AI Workout")
+
+        let usageKeys = [
+            "NSCameraUsageDescription",
+            "NSHealthShareUsageDescription",
+            "NSHealthUpdateUsageDescription",
+            "NSMicrophoneUsageDescription",
+            "NSPhotoLibraryUsageDescription",
+            "NSPhotoLibraryAddUsageDescription",
+            "NSSpeechRecognitionUsageDescription",
+        ]
+        for key in usageKeys {
+            let desc = try XCTUnwrap(info[key] as? String, "Missing \(key)")
+            XCTAssertTrue(desc.contains("AI Workout"), "\(key) must reference AI Workout: \(desc)")
+            XCTAssertFalse(desc.localizedCaseInsensitiveContains("WorkoutTracker"), "\(key) still contains WorkoutTracker")
+            XCTAssertFalse(desc.contains("Ai Workout"), "\(key) still contains Ai Workout")
+            XCTAssertFalse(desc.localizedCaseInsensitiveContains("FoodTracker"), "\(key) contains FoodTracker")
+        }
+
+        let repoRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let pbxprojURL = repoRoot.appendingPathComponent("WorkoutTracker.xcodeproj/project.pbxproj")
+        if FileManager.default.fileExists(atPath: pbxprojURL.path) {
+            let pbx = try String(contentsOf: pbxprojURL, encoding: .utf8)
+            XCTAssertFalse(pbx.contains("INFOPLIST_KEY_CFBundleDisplayName = \"Ai Workout\""), "Replace Ai Workout with AI Workout")
+            XCTAssertFalse(pbx.contains("INFOPLIST_KEY_CFBundleDisplayName = WorkoutTrackerWatch"), "Align Watch display name with AI Workout")
+            for match in pbx.matches(of: /INFOPLIST_KEY_NS[A-Za-z]+UsageDescription = "([^"]+)";/) {
+                let text = String(match.1)
+                XCTAssertTrue(text.contains("AI Workout"), "pbxproj usage description must reference AI Workout: \(text)")
+                XCTAssertFalse(text.contains("WorkoutTracker"), "pbxproj usage description still mentions WorkoutTracker: \(text)")
+            }
+        }
+
+        let catalogURL = repoRoot.appendingPathComponent("WorkoutTracker/Localizable.xcstrings")
+        if FileManager.default.fileExists(atPath: catalogURL.path) {
+            let data = try Data(contentsOf: catalogURL)
+            let root = try XCTUnwrap(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+            let strings = try XCTUnwrap(root["strings"] as? [String: Any])
+            for (key, raw) in strings {
+                guard let entry = raw as? [String: Any], entry["extractionState"] as? String != "stale" else { continue }
+                XCTAssertFalse(
+                    key.localizedCaseInsensitiveContains("WorkoutTracker"),
+                    "Active xcstrings key still mentions WorkoutTracker: \(key)"
+                )
+            }
+        }
+    }
 }

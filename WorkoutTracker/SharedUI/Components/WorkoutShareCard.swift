@@ -140,7 +140,7 @@ struct MilestoneShareCard: View {
 
                 HStack {
                     Image(systemName: "applewatch")
-                    Text(LocalizedStringKey("Tracked with WorkoutTracker"))
+                    Text(LocalizedStringKey("Tracked with AI Workout"))
                 }
                 .font(.title)
                 .foregroundColor(themeManager.current.secondaryAccent.opacity(0.5))
@@ -285,7 +285,7 @@ struct WorkoutShareCard: View {
     private var receiptHeaderSection: some View {
         VStack(spacing: 4) {
             HStack {
-                Text("WorkoutTracker — certified receipt")
+                Text("AI Workout — certified receipt")
                     .font(.system(size: 10, weight: .black, design: .monospaced))
                     .tracking(0.5)
                     .foregroundColor(PastelTheme.pastelOat)
@@ -448,12 +448,12 @@ struct WorkoutShareCard: View {
             ReceiptBarcodeView()
 
             HStack {
-                Text("WorkoutTracker share card")
+                Text("AI Workout share card")
                     .font(.system(size: 8, weight: .bold, design: .monospaced))
                     .tracking(1)
                     .foregroundColor(PastelTheme.textTertiary)
                 Spacer()
-                Text("WorkoutTracker")
+                Text("AI Workout")
                     .font(.system(size: 8, weight: .black, design: .monospaced))
                     .tracking(0.5)
                     .foregroundColor(PastelTheme.pastelOat)

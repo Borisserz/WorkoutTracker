@@ -3844,7 +3844,7 @@ struct StorySlideOutro: View {
                         
                         HStack {
                             Image(systemName: "applewatch")
-                            Text("Logged in WorkoutTracker")
+                            Text("Logged in AI Workout")
                         }
                         .font(.caption)
                         .foregroundColor(PastelTheme.textMuted)

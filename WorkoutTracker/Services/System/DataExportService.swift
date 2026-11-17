@@ -149,7 +149,7 @@ final class DataManager: Sendable {
             let jsonData = try encoder.encode(bundle)
             let dateFormatter = DateFormatter()
             dateFormatter.dateFormat = "yyyy-MM-dd_HH-mm-ss"
-            let fileName = "WorkoutTracker_Export_\(dateFormatter.string(from: Date())).json"
+            let fileName = "AI_Workout_Export_\(dateFormatter.string(from: Date())).json"
             let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
             try jsonData.write(to: tempURL)
             return tempURL
@@ -224,7 +224,7 @@ final class DataManager: Sendable {
         do {
             let csvContent = csvLines.joined(separator: "\n")
             guard let csvData = csvContent.data(using: .utf8) else { return nil }
-            let fileName = "WorkoutTracker_Export_\(dateFormatter.string(from: Date())).csv"
+            let fileName = "AI_Workout_Export_\(dateFormatter.string(from: Date())).csv"
             let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
             try csvData.write(to: tempURL)
             return tempURL

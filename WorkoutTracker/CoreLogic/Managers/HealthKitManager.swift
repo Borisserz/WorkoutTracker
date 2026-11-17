@@ -200,7 +200,7 @@ actor HealthKitManager: Sendable {
             totalEnergyBurned: energyQuantity,
             totalDistance: nil,
             metadata: [
-                HKMetadataKeyWorkoutBrandName: "WorkoutTracker",
+                HKMetadataKeyWorkoutBrandName: "AI Workout",
                 "CustomTitle": title
             ]
         )
