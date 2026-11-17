@@ -25,11 +25,14 @@
 		AC55B4F42FCAC45E0081A8D1 /* FirebaseFunctions in Frameworks */ = {isa = PBXBuildFile; productRef = AC55B4F32FCAC45E0081A8D1 /* FirebaseFunctions */; };
 		AC90B40B2FCB7133004B8377 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = AC90B40A2FCB7133004B8377 /* GoogleSignIn */; };
 		AC90B4122FCB730C004B8377 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = AC90B4112FCB730C004B8377 /* GoogleService-Info.plist */; };
+		AC3CB9932F8176AB008A6777 /* WorkoutTrackerWatch Watch App.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = AC62B5672FCC5A640053AD14 /* WorkoutTrackerWatch Watch App.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		ACA421B42F9E576B000F61A8 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = ACA421B32F9E576B000F61A8 /* FirebaseStorage */; };
 		ACDA5B9F2F06CF77007FF65F /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ACE68D0D2EFC421700FD186D /* WidgetKit.framework */; };
 		ACDA5BA02F06CF77007FF65F /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ACE68D0F2EFC421700FD186D /* SwiftUI.framework */; };
+		ACDA5BAF2F06CF78007FF65F /* StatsWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = AC62B5662FCC5A640053AD14 /* StatsWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		ACE68D0E2EFC421700FD186D /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ACE68D0D2EFC421700FD186D /* WidgetKit.framework */; };
 		ACE68D102EFC421700FD186D /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ACE68D0F2EFC421700FD186D /* SwiftUI.framework */; };
+		ACE68D212EFC421800FD186D /* WorkoutTimerWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = AC62B5652FCC5A640053AD14 /* WorkoutTimerWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		ACF45A212F9E43F800206681 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = ACF45A202F9E43F800206681 /* FirebaseFirestore */; };
 		ACF45A232F9E43F800206681 /* FirebaseRemoteConfig in Frameworks */ = {isa = PBXBuildFile; productRef = ACF45A222F9E43F800206681 /* FirebaseRemoteConfig */; };
 		B22C33D44E5F60718293A0B21 /* PreTestFlightHonestyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B22C33D44E5F60718293A0B22 /* PreTestFlightHonestyTests.swift */; };
@@ -50,19 +53,12 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
-		AC71653F2F0169FC00C0DCDE /* PBXContainerItemProxy */ = {
+		AC3CB9912F8176AB008A6777 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = ACE68CD12EFBFD1900FD186D /* Project object */;
 			proxyType = 1;
-			remoteGlobalIDString = ACF4FC842F01579900850F6E;
-			remoteInfo = WorkoutTrackerWatch;
-		};
-		AC7165412F016A0000C0DCDE /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = ACE68CD12EFBFD1900FD186D /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = ACF4FC842F01579900850F6E;
-			remoteInfo = WorkoutTrackerWatch;
+			remoteGlobalIDString = AC3CB9882F8176AA008A6777;
+			remoteInfo = "WorkoutTrackerWatch Watch App";
 		};
 		ACDA5BAD2F06CF78007FF65F /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -77,27 +73,6 @@
 			proxyType = 1;
 			remoteGlobalIDString = ACE68D0A2EFC421700FD186D;
 			remoteInfo = WorkoutTimerWidgetExtension;
-		};
-		ACF4FCA42F01684800850F6E /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = ACE68CD12EFBFD1900FD186D /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = ACF4FC842F01579900850F6E;
-			remoteInfo = WorkoutTrackerWatch;
-		};
-		ACF4FCA62F01685000850F6E /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = ACE68CD12EFBFD1900FD186D /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = ACF4FC842F01579900850F6E;
-			remoteInfo = WorkoutTrackerWatch;
-		};
-		ACF4FCA82F01698C00850F6E /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = ACE68CD12EFBFD1900FD186D /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = ACF4FC842F01579900850F6E;
-			remoteInfo = WorkoutTrackerWatch;
 		};
 		F17CF40304A3F8FCB4209538 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -115,8 +90,21 @@
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
+				ACDA5BAF2F06CF78007FF65F /* StatsWidgetExtension.appex in Embed Foundation Extensions */,
+				ACE68D212EFC421800FD186D /* WorkoutTimerWidgetExtension.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		ACF4FCAD2F01698F00850F6E /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				AC3CB9932F8176AB008A6777 /* WorkoutTrackerWatch Watch App.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXCopyFilesBuildPhase section */
@@ -468,18 +456,15 @@
 				ACE68CD62EFBFD1900FD186D /* Frameworks */,
 				ACE68CD72EFBFD1900FD186D /* Resources */,
 				ACE68D262EFC421800FD186D /* Embed Foundation Extensions */,
+				ACF4FCAD2F01698F00850F6E /* Embed Watch Content */,
 				2C8C5B7DF210F68765FED759 /* Firebase Crashlytics */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 				ACE68D202EFC421800FD186D /* PBXTargetDependency */,
-				ACF4FCA52F01684800850F6E /* PBXTargetDependency */,
-				ACF4FCA72F01685000850F6E /* PBXTargetDependency */,
-				ACF4FCA92F01698C00850F6E /* PBXTargetDependency */,
-				AC7165402F0169FC00C0DCDE /* PBXTargetDependency */,
-				AC7165422F016A0000C0DCDE /* PBXTargetDependency */,
 				ACDA5BAE2F06CF78007FF65F /* PBXTargetDependency */,
+				AC3CB9922F8176AB008A6777 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				ACE68CDB2EFBFD1A00FD186D /* WorkoutTracker */,
@@ -701,13 +686,10 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		AC7165402F0169FC00C0DCDE /* PBXTargetDependency */ = {
+		AC3CB9922F8176AB008A6777 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			targetProxy = AC71653F2F0169FC00C0DCDE /* PBXContainerItemProxy */;
-		};
-		AC7165422F016A0000C0DCDE /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			targetProxy = AC7165412F016A0000C0DCDE /* PBXContainerItemProxy */;
+			target = AC3CB9882F8176AA008A6777 /* WorkoutTrackerWatch Watch App */;
+			targetProxy = AC3CB9912F8176AB008A6777 /* PBXContainerItemProxy */;
 		};
 		ACDA5BAE2F06CF78007FF65F /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
@@ -718,18 +700,6 @@
 			isa = PBXTargetDependency;
 			target = ACE68D0A2EFC421700FD186D /* WorkoutTimerWidgetExtension */;
 			targetProxy = ACE68D1F2EFC421800FD186D /* PBXContainerItemProxy */;
-		};
-		ACF4FCA52F01684800850F6E /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			targetProxy = ACF4FCA42F01684800850F6E /* PBXContainerItemProxy */;
-		};
-		ACF4FCA72F01685000850F6E /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			targetProxy = ACF4FCA62F01685000850F6E /* PBXContainerItemProxy */;
-		};
-		ACF4FCA92F01698C00850F6E /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			targetProxy = ACF4FCA82F01698C00850F6E /* PBXContainerItemProxy */;
 		};
 		E520BD795B1417A08F53238E /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
@@ -778,7 +748,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = "WorkoutTrackerWatch Watch App.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 8;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "WorkoutTrackerWatch-Watch-App-Info.plist";
@@ -815,7 +785,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = "WorkoutTrackerWatch Watch App.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 8;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "WorkoutTrackerWatch-Watch-App-Info.plist";
@@ -852,7 +822,7 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = StatsWidgetExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 8;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = StatsWidget/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = StatsWidget;
@@ -883,7 +853,7 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = StatsWidgetExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 8;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = StatsWidget/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = StatsWidget;
@@ -1043,7 +1013,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = WorkoutTracker/WorkoutTracker.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 8;
 				DEVELOPMENT_TEAM = LSCCP92LMG;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
@@ -1090,7 +1060,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = WorkoutTracker/WorkoutTracker.Release.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 8;
 				DEVELOPMENT_TEAM = LSCCP92LMG;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
@@ -1136,9 +1106,8 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
-				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 8;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = WorkoutTimerWidget/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = WorkoutTimerWidget;
@@ -1153,7 +1122,6 @@
 				MARKETING_VERSION = 1.0.8;
 				PRODUCT_BUNDLE_IDENTIFIER = com.borisdev.WorkoutTracker.WorkoutTimerWidget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				PROVISIONING_PROFILE_SPECIFIER = "";
 				SKIP_INSTALL = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -1169,9 +1137,8 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
-				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 8;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = WorkoutTimerWidget/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = WorkoutTimerWidget;
@@ -1186,7 +1153,6 @@
 				MARKETING_VERSION = 1.0.8;
 				PRODUCT_BUNDLE_IDENTIFIER = com.borisdev.WorkoutTracker.WorkoutTimerWidget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				PROVISIONING_PROFILE_SPECIFIER = "";
 				SKIP_INSTALL = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;

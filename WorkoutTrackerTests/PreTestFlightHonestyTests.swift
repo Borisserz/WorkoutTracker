@@ -423,4 +423,50 @@ final class PreTestFlightHonestyTests: XCTestCase {
             }
         }
     }
+
+    func testBuild8AndWatchPlusWidgetEmbeddingAreConfigured() throws {
+        let mainInfo = try XCTUnwrap(Bundle.main.infoDictionary)
+        XCTAssertEqual(mainInfo["CFBundleVersion"] as? String, "8", "Main app build number must be 8")
+
+        let appURL = Bundle.main.bundleURL
+        let requiredPlugins = [
+            "PlugIns/StatsWidgetExtension.appex/Info.plist",
+            "PlugIns/WorkoutTimerWidgetExtension.appex/Info.plist",
+        ]
+        for relPath in requiredPlugins {
+            let plistURL = appURL.appendingPathComponent(relPath)
+            XCTAssertTrue(
+                FileManager.default.fileExists(atPath: plistURL.path),
+                "Built app bundle must embed \(relPath)"
+            )
+        }
+
+        let pbxprojURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("WorkoutTracker.xcodeproj/project.pbxproj")
+        if FileManager.default.fileExists(atPath: pbxprojURL.path) {
+            let pbx = try String(contentsOf: pbxprojURL, encoding: .utf8)
+            let buildMatches = pbx.matches(of: /CURRENT_PROJECT_VERSION = ([^;]+);/).map { String($0.1) }
+            XCTAssertEqual(buildMatches.count, 8)
+            XCTAssertTrue(buildMatches.allSatisfy { $0 == "8" }, "All 8 target configs must use build 8, got \(buildMatches)")
+
+            XCTAssertTrue(
+                pbx.contains("StatsWidgetExtension.appex in Embed Foundation Extensions"),
+                "StatsWidgetExtension.appex must be in Embed Foundation Extensions"
+            )
+            XCTAssertTrue(
+                pbx.contains("WorkoutTimerWidgetExtension.appex in Embed Foundation Extensions"),
+                "WorkoutTimerWidgetExtension.appex must be in Embed Foundation Extensions"
+            )
+            XCTAssertTrue(
+                pbx.contains("WorkoutTrackerWatch Watch App.app in Embed Watch Content"),
+                "WorkoutTrackerWatch Watch App.app must be in Embed Watch Content"
+            )
+            XCTAssertFalse(
+                pbx.contains("CODE_SIGN_IDENTITY = \"Apple Development\";"),
+                "Do not hardcode Apple Development signing identity on Release widget target"
+            )
+        }
+    }
 }
