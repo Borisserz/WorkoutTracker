@@ -55,16 +55,15 @@ struct HistoryView: View {
     @State private var finishedFetchLimit = HistoryView.finishedPageSize
     @State private var hasMoreFinished = true
     @State private var isLoadingMore = false
-    /// Ranked across every finished session, not the loaded timeline page.
-    @State private var bestHistoricalWorkouts: [Workout] = []
+    /// Ranked across every finished session by active personal records.
+    @State private var bestHistoricalSessions: [BestSessionEntry] = []
+    @AppStorage(Constants.UserDefaultsKeys.includeWarmupsInStats.rawValue) private var includeWarmupsInStats: Bool = false
 
     @State private var searchText = ""
     @State private var isSearching = false
     @State private var selectedFilter: HistoryFilter = .all
     @State private var isEditingList = false
     @State private var navigateToActiveWorkout: Workout? = nil
-    @State private var workoutPendingDelete: Workout? = nil
-    @State private var showDeleteConfirm = false
 
     private static let finishedPageSize = 50
 
@@ -142,7 +141,27 @@ struct HistoryView: View {
         let fetched = (try? context.fetch(descriptor)) ?? []
         finishedPage = fetched
         hasMoreFinished = fetched.count >= finishedFetchLimit
-        bestHistoricalWorkouts = (try? context.fetch(HistoryBestSessionQuery.descriptor())) ?? []
+        bestHistoricalSessions = HistoryBestSessionQuery.fetchBestSessions(
+            in: context,
+            includeWarmups: includeWarmupsInStats
+        )
+    }
+
+    @MainActor
+    private func deleteWorkoutImmediately(_ workout: Workout) {
+        HapticManager.shared.impact(.medium)
+        let targetID = workout.id
+        withAnimation(.easeInOut(duration: 0.25)) {
+            finishedPage.removeAll { $0.id == targetID }
+            bestHistoricalSessions.removeAll { $0.workout.id == targetID }
+            if finishedPage.isEmpty {
+                isEditingList = false
+            }
+        }
+        Task {
+            await workoutService.deleteWorkout(workout)
+            refreshFinished(reset: false)
+        }
     }
 
     private func loadMoreFinished() {
@@ -308,9 +327,9 @@ struct HistoryView: View {
                         )
 
                         // 4.5. Golden splits and best-workout history (templates)
-                        if (!bestHistoricalWorkouts.isEmpty || !displayTemplates.isEmpty) && searchText.isEmpty && selectedFilter == .all {
+                        if (!bestHistoricalSessions.isEmpty || !displayTemplates.isEmpty) && searchText.isEmpty && selectedFilter == .all {
                             BestWorkoutsAndTemplatesShelf(
-                                bestWorkouts: bestHistoricalWorkouts,
+                                bestSessions: bestHistoricalSessions,
                                 presets: displayTemplates,
                                 unitsManager: unitsManager,
                                 onReplayWorkout: replayWorkout,
@@ -341,41 +360,55 @@ struct HistoryView: View {
                         ForEach(timelineGroups) { group in
                             Section {
                                 ForEach(group.workouts) { workout in
-                                    HStack(spacing: 12) {
+                                    ZStack(alignment: .trailing) {
                                         if isEditingList {
                                             Button {
-                                                HapticManager.shared.impact(.medium)
-                                                workoutPendingDelete = workout
-                                                showDeleteConfirm = true
+                                                deleteWorkoutImmediately(workout)
                                             } label: {
-                                                Image(systemName: "minus.circle.fill")
-                                                    .font(.title3)
-                                                    .foregroundStyle(PastelTheme.pastelPeach)
+                                                VStack(spacing: 5) {
+                                                    ZStack {
+                                                        Circle()
+                                                            .fill(Color(red: 1.0, green: 0.42, blue: 0.44))
+                                                            .frame(width: 48, height: 48)
+                                                        Image(systemName: "trash.fill")
+                                                            .font(.system(size: 18, weight: .semibold))
+                                                            .foregroundStyle(.white)
+                                                    }
+                                                    Text("Delete")
+                                                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                                                        .foregroundStyle(PastelTheme.textSecondary)
+                                                }
+                                                .frame(width: 68)
+                                                .contentShape(Rectangle())
                                             }
                                             .buttonStyle(.plain)
-                                            .transition(.move(edge: .leading).combined(with: .opacity))
+                                            .accessibilityIdentifier("wt.history.editDelete.\(workout.id)")
+                                            .transition(.opacity.combined(with: .scale(scale: 0.85)))
                                         }
 
                                         Button {
+                                            guard !isEditingList else { return }
                                             HapticManager.shared.impact(.light)
                                             navigateToActiveWorkout = workout
                                         } label: {
                                             PastelWorkoutCard(workout: workout, unitsManager: unitsManager)
                                         }
                                         .buttonStyle(.plain)
+                                        .allowsHitTesting(!isEditingList)
+                                        .offset(x: isEditingList ? -80 : 0)
                                     }
                                     .listRowInsets(EdgeInsets(top: 5, leading: 16, bottom: 5, trailing: 16))
                                     .listRowSeparator(.hidden)
                                     .listRowBackground(Color.clear)
                                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                        Button(role: .destructive) {
-                                            HapticManager.shared.impact(.medium)
-                                            workoutPendingDelete = workout
-                                            showDeleteConfirm = true
-                                        } label: {
-                                            Label("Delete", systemImage: "trash.fill")
+                                        if !isEditingList {
+                                            Button(role: .destructive) {
+                                                deleteWorkoutImmediately(workout)
+                                            } label: {
+                                                Label("Delete", systemImage: "trash.fill")
+                                            }
+                                            .tint(PastelTheme.pastelPeach)
                                         }
-                                        .tint(PastelTheme.pastelPeach)
                                     }
                                     .swipeActions(edge: .leading) {
                                         Button {
@@ -470,31 +503,18 @@ struct HistoryView: View {
                         refreshFinished(reset: true)
                     }
                 }
+                .onChange(of: includeWarmupsInStats) { _, _ in
+                    bestHistoricalSessions = HistoryBestSessionQuery.fetchBestSessions(
+                        in: context,
+                        includeWarmups: includeWarmupsInStats
+                    )
+                }
             }
             .navigationDestination(item: $navigateToActiveWorkout) { workout in
                 WorkoutDetailView(workout: workout, viewModel: di.makeWorkoutDetailViewModel())
             }
             .navigationBarHidden(true)
             .accessibilityIdentifier("wt.history.root")
-            .confirmationDialog(
-                "Delete this workout?",
-                isPresented: $showDeleteConfirm,
-                titleVisibility: .visible
-            ) {
-                Button("Delete", role: .destructive) {
-                    guard let workout = workoutPendingDelete else { return }
-                    workoutPendingDelete = nil
-                    Task {
-                        await workoutService.deleteWorkout(workout)
-                        refreshFinished(reset: true)
-                    }
-                }
-                Button("Cancel", role: .cancel) {
-                    workoutPendingDelete = nil
-                }
-            } message: {
-                Text("This cannot be undone.")
-            }
         }
         .preferredColorScheme(.dark)
     }
@@ -507,7 +527,7 @@ private struct HistoryEditButton: View {
     var body: some View {
         Button {
             HapticManager.shared.impact(.soft)
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+            withAnimation(.spring(response: 0.34, dampingFraction: 0.84)) {
                 isEditing.toggle()
             }
         } label: {
@@ -1035,7 +1055,7 @@ private struct PastelHistoryEmptyState: View {
 
 // MARK: - Best Workouts & Templates Shelf
 struct BestWorkoutsAndTemplatesShelf: View {
-    let bestWorkouts: [Workout]
+    let bestSessions: [BestSessionEntry]
     let presets: [WorkoutPreset]
     let unitsManager: UnitsManager
     let onReplayWorkout: (Workout) -> Void
@@ -1057,12 +1077,12 @@ struct BestWorkoutsAndTemplatesShelf: View {
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 12) {
-                    // Best Historical Workouts
-                    ForEach(bestWorkouts) { workout in
+                    // Sessions holding active exercise personal records (most PRs first, then latest)
+                    ForEach(bestSessions) { entry in
                         BestWorkoutReplayCard(
-                            workout: workout,
+                            entry: entry,
                             unitsManager: unitsManager,
-                            onReplay: { onReplayWorkout(workout) }
+                            onReplay: { onReplayWorkout(entry.workout) }
                         )
                     }
 
@@ -1088,9 +1108,11 @@ struct BestWorkoutsAndTemplatesShelf: View {
 }
 
 private struct BestWorkoutReplayCard: View {
-    let workout: Workout
+    let entry: BestSessionEntry
     let unitsManager: UnitsManager
     let onReplay: () -> Void
+
+    private var workout: Workout { entry.workout }
 
     private var formattedDate: String {
         HistoryView.shortDateFormatter.string(from: workout.date)
@@ -1098,11 +1120,16 @@ private struct BestWorkoutReplayCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .top) {
+            HStack(alignment: .top, spacing: 6) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Record")
-                        .font(.system(size: 10, weight: .bold, design: .rounded))
-                        .foregroundStyle(PastelTheme.pastelAmber)
+                    HStack(spacing: 3) {
+                        Text("Record")
+                        Text("· \(entry.recordCount)")
+                        Text("PR")
+                    }
+                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                    .foregroundStyle(PastelTheme.pastelAmber)
+                    .lineLimit(1)
 
                     Text(workout.title.isEmpty ? "Workout" : workout.title)
                         .font(.system(size: 14, weight: .bold, design: .rounded))
@@ -1110,7 +1137,7 @@ private struct BestWorkoutReplayCard: View {
                         .lineLimit(1)
                 }
 
-                Spacer()
+                Spacer(minLength: 4)
 
                 Text(formattedDate)
                     .font(.system(size: 10, weight: .semibold, design: .rounded))
@@ -1119,17 +1146,29 @@ private struct BestWorkoutReplayCard: View {
 
             let tons = workout.totalStrengthVolume / 1000.0
             HStack(spacing: 6) {
-                Text(String(format: "%.1f t", tons))
-                    .font(.system(size: 11, weight: .bold, design: .rounded))
-                    .foregroundStyle(PastelTheme.pastelSage)
-                    .padding(.horizontal, 7)
-                    .padding(.vertical, 3)
-                    .background(PastelTheme.cardSurfaceSubtle)
-                    .clipShape(Capsule())
+                if tons > 0 {
+                    Text(String(format: "%.1f t", tons))
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .foregroundStyle(PastelTheme.pastelSage)
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 3)
+                        .background(PastelTheme.cardSurfaceSubtle)
+                        .clipShape(Capsule())
+                } else if let highlightedPR = entry.recordExercises.first {
+                    Text(highlightedPR)
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .foregroundStyle(PastelTheme.pastelSage)
+                        .lineLimit(1)
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 3)
+                        .background(PastelTheme.cardSurfaceSubtle)
+                        .clipShape(Capsule())
+                }
 
                 Text("\(workout.exercises.count) exercises")
                     .font(.system(size: 11, weight: .medium, design: .rounded))
                     .foregroundStyle(PastelTheme.textSecondary)
+                    .lineLimit(1)
             }
 
             Spacer(minLength: 0)

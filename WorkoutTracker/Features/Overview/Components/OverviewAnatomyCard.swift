@@ -196,7 +196,7 @@ struct OverviewAnatomyCard: View {
                     perspective: 0.35
                 )
                 .gesture(
-                    DragGesture(minimumDistance: 14)
+                    DragGesture(minimumDistance: 24)
                         .onChanged { val in
                             withAnimation(.interactiveSpring(response: 0.22, dampingFraction: 0.8)) {
                                 dragRotationY = Double(val.translation.width / 3.2)

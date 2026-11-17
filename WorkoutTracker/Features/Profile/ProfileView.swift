@@ -33,8 +33,6 @@ struct ProfileView: View {
     @Environment(ProfileViewModel.self) private var profileVM
     @Environment(UserStatsViewModel.self) private var userStatsViewModel
 
-    @AppStorage("show_foodtracker_promo_enabled", store: UserDefaults(suiteName: "group.com.borisdev.WorkoutTracker")) private var showFoodTrackerPromo = false
-
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var profileImage: UIImage?
 
@@ -98,10 +96,8 @@ struct ProfileView: View {
                             )
                         ) { showEditMetrics = true }
 
-                        if showFoodTrackerPromo {
-                            moreFromUsSection
-                                .padding(.horizontal, 20)
-                        }
+                        moreFromUsSection
+                            .padding(.horizontal, 20)
 
                         Spacer().frame(height: 40)
                     }

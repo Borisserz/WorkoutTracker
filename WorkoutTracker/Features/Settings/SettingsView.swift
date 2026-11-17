@@ -40,6 +40,7 @@ struct SettingsView: View {
                 workoutOptionsSection
                 gamificationSection
                 supportAndDataSection
+                moreFromUsSection
                 accountSection
 
                 #if DEBUG
@@ -291,6 +292,19 @@ struct SettingsView: View {
                 .disabled(isProcessing)
             }
         }
+    }
+
+    @ViewBuilder
+    private var moreFromUsSection: some View {
+        Section(header: Text(LocalizedStringKey("More from us"))) {
+            ForEach(SisterAppsCatalog.all) { app in
+                SisterAppTile(app: app)
+                    .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+            }
+        }
+        .accessibilityIdentifier("wt.settings.moreFromUs")
     }
 
     @ViewBuilder

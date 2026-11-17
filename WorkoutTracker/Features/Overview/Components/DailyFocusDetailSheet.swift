@@ -50,6 +50,7 @@ struct DailyFocusDetailSheet: View {
                                 .lineSpacing(4)
                                 .foregroundStyle(PastelTheme.textPrimary)
                         }
+                        .frame(maxWidth: .infinity, alignment: .leading)
                         .pastelCard(padding: 16)
 
                         // MARK: - 2. Prescribed Target Split & Rationale
@@ -73,6 +74,7 @@ struct DailyFocusDetailSheet: View {
                                 .lineSpacing(3)
                                 .foregroundStyle(PastelTheme.textSecondary)
                         }
+                        .frame(maxWidth: .infinity, alignment: .leading)
                         .pastelCard(padding: 16)
 
                         // MARK: - 3. Tactical Coaching Tips
@@ -103,6 +105,7 @@ struct DailyFocusDetailSheet: View {
                                 }
                             }
                         }
+                        .frame(maxWidth: .infinity, alignment: .leading)
                         .pastelCard(padding: 16)
 
                         // MARK: - 4. Recommended Exercises
@@ -137,8 +140,11 @@ struct DailyFocusDetailSheet: View {
                                             .overlay(Capsule().stroke(PastelTheme.cardBorder, lineWidth: 1))
                                         }
                                     }
+                                    .padding(.horizontal, 1)
+                                    .padding(.vertical, 2)
                                 }
                             }
+                            .frame(maxWidth: .infinity, alignment: .leading)
                             .pastelCard(padding: 16)
                         }
 
@@ -161,6 +167,7 @@ struct DailyFocusDetailSheet: View {
                                         .lineSpacing(2)
                                 }
                             }
+                            .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(14)
                             .background(PastelTheme.pastelAmber.opacity(0.08))
                             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))

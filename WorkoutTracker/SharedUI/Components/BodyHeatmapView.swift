@@ -2,6 +2,108 @@
 
 internal import SwiftUI
 
+enum BodyAnatomyHitTester {
+    /// Non-muscle silhouette/joint parts that should not hijack finger taps meant for adjacent muscles.
+    static let nonInteractiveSlugs: Set<String> = ["hair", "head", "hands", "feet", "ankles", "knees"]
+
+    static func combinedPath(from strings: [String]) -> Path {
+        var result = Path()
+        for str in strings {
+            result.addPath(SVGParser.path(from: str))
+        }
+        return result
+    }
+
+    static func shiftedPath(
+        for muscle: MuscleGroup,
+        isFront: Bool,
+        centeringOffset: CGFloat,
+        backViewOffset: CGFloat = 740
+    ) -> Path {
+        let rawPath = combinedPath(from: muscle.paths)
+        let baseXOffset: CGFloat = isFront ? 0 : -backViewOffset
+        let xOffset = baseXOffset + centeringOffset
+        let finalXOffset = (!isFront && muscle.slug == "head") ? xOffset + 37.0 : xOffset
+        return rawPath.offsetBy(dx: finalXOffset, dy: 0)
+    }
+
+    /// Resolves a canvas-space tap point to the best matching interactive muscle group,
+    /// combining exact path containment with scaled finger-radius proximity matching.
+    static func hitTest(
+        point: CGPoint,
+        muscles: [MuscleGroup],
+        isFront: Bool,
+        centeringOffset: CGFloat,
+        scale: CGFloat,
+        backViewOffset: CGFloat = 740,
+        fingerRadiusPts: CGFloat = 22.0
+    ) -> MuscleGroup? {
+        let interactive = muscles.filter { !nonInteractiveSlugs.contains($0.slug) }
+        guard !interactive.isEmpty else { return nil }
+
+        let baseXOffset: CGFloat = isFront ? 0 : -backViewOffset
+        let xOffset = baseXOffset + centeringOffset
+
+        let resolved: [(muscle: MuscleGroup, path: Path)] = interactive.map { muscle in
+            (muscle, shiftedPath(for: muscle, isFront: isFront, centeringOffset: centeringOffset, backViewOffset: backViewOffset))
+        }
+
+        // Pass 1: Direct interior containment (top-most first).
+        for entry in resolved.reversed() where entry.path.contains(point) {
+            return entry.muscle
+        }
+
+        // Pass 2: Closest muscle within fingertip radius (covers thin strips like forearm/calves/tibialis and inter-strip gaps).
+        let maxCanvasRadius = min(105.0, max(24.0, fingerRadiusPts / max(scale, 0.15)))
+        var bestMuscle: MuscleGroup?
+        var bestDistance = maxCanvasRadius
+
+        for entry in resolved {
+            let nearAnySubpath = entry.muscle.paths.contains { raw in
+                let bounds = SVGParser.path(from: raw).offsetBy(dx: xOffset, dy: 0).boundingRect
+                return !bounds.isEmpty && bounds.insetBy(dx: -maxCanvasRadius, dy: -maxCanvasRadius).contains(point)
+            }
+            guard nearAnySubpath else { continue }
+
+            let cgPath = entry.path.cgPath
+            guard isPoint(point, within: maxCanvasRadius, of: cgPath) else { continue }
+
+            let dist = minDistance(from: point, to: cgPath, upperBound: bestDistance)
+            if dist < bestDistance {
+                bestDistance = dist
+                bestMuscle = entry.muscle
+            }
+        }
+
+        return bestMuscle
+    }
+
+    private static func isPoint(_ point: CGPoint, within radius: CGFloat, of cgPath: CGPath) -> Bool {
+        guard radius > 0 else { return cgPath.contains(point) }
+        let halo = cgPath.copy(
+            strokingWithWidth: radius * 2.0,
+            lineCap: .round,
+            lineJoin: .round,
+            miterLimit: 2.0
+        )
+        return halo.contains(point)
+    }
+
+    private static func minDistance(from point: CGPoint, to cgPath: CGPath, upperBound: CGFloat) -> CGFloat {
+        var low: CGFloat = 0.0
+        var high = upperBound
+        for _ in 0..<7 {
+            let mid = (low + high) * 0.5
+            if isPoint(point, within: mid, of: cgPath) {
+                high = mid
+            } else {
+                low = mid
+            }
+        }
+        return high
+    }
+}
+
 struct BodyHeatmapView: View {
     let muscleIntensities: [String: Int]
     let rawMuscleCounts: [String: Int]?
@@ -77,33 +179,51 @@ struct BodyHeatmapView: View {
                 let scale = min(geo.size.width / canvasWidth, geo.size.height / canvasHeight)
                 let currentMuscles = getMuscles(isFront: activeIsFront)
                 let centeringOffset = getCenteringOffset(isFront: activeIsFront, muscles: currentMuscles)
+                let renderedWidth = canvasWidth * scale
+                let renderedHeight = canvasHeight * scale
+                let originX = (geo.size.width - renderedWidth) / 2.0
+                let originY = (geo.size.height - renderedHeight) / 2.0
 
                 ZStack {
-                    Color.clear
-                        .contentShape(Rectangle())
-                        .onTapGesture { clearSelection() }
-
                     ZStack {
                         ForEach(currentMuscles) { muscle in
                             drawGhostMuscle(muscle, centeringOffset: centeringOffset)
                         }
-                    }
 
-                    if showLabels {
-                        if let sel = selectedMuscle ?? (selectedMuscleSlug != nil ? currentMuscles.first(where: { $0.slug == selectedMuscleSlug }) : nil) {
-                            drawMuscleTag(sel, centeringOffset: centeringOffset, scale: scale)
-                                .transition(.scale(scale: 0.85).combined(with: .opacity))
+                        if showLabels {
+                            if let sel = selectedMuscle ?? (selectedMuscleSlug != nil ? currentMuscles.first(where: { $0.slug == selectedMuscleSlug }) : nil) {
+                                drawMuscleTag(sel, centeringOffset: centeringOffset, scale: scale)
+                                    .transition(.scale(scale: 0.85).combined(with: .opacity))
+                            }
                         }
                     }
+                    .frame(width: canvasWidth, height: canvasHeight)
+                    .scaleEffect(scale)
+                    .frame(width: renderedWidth, height: renderedHeight)
                 }
-                .frame(width: canvasWidth, height: canvasHeight)
-                .scaleEffect(scale)
-                .frame(width: canvasWidth * scale, height: canvasHeight * scale)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(
-                    Color.clear
-                        .contentShape(Rectangle())
-                        .onTapGesture { clearSelection() }
+                .frame(width: geo.size.width, height: geo.size.height)
+                .contentShape(Rectangle())
+                .gesture(
+                    SpatialTapGesture(coordinateSpace: .local)
+                        .onEnded { value in
+                            guard scale > 0 else { return }
+                            let canvasPoint = CGPoint(
+                                x: (value.location.x - originX) / scale,
+                                y: (value.location.y - originY) / scale
+                            )
+                            if let hit = BodyAnatomyHitTester.hitTest(
+                                point: canvasPoint,
+                                muscles: currentMuscles,
+                                isFront: activeIsFront,
+                                centeringOffset: centeringOffset,
+                                scale: scale,
+                                backViewOffset: backViewOffset
+                            ) {
+                                selectMuscle(hit)
+                            } else {
+                                clearSelection()
+                            }
+                        }
                 )
                 .overlay(alignment: .bottom) {
                     if let muscle = selectedMuscle, !isCompactMode {
@@ -155,11 +275,12 @@ struct BodyHeatmapView: View {
     }
 
     func drawGhostMuscle(_ muscle: MuscleGroup, centeringOffset: CGFloat) -> some View {
-        let rawPath = combinedPath(from: muscle.paths)
-        let baseXOffset: CGFloat = activeIsFront ? 0 : -backViewOffset
-        let xOffset = baseXOffset + centeringOffset
-        let finalXOffset = (activeIsFront == false && muscle.slug == "head") ? xOffset + 37.0 : xOffset
-        let finalPath = rawPath.offsetBy(dx: finalXOffset, dy: 0)
+        let finalPath = BodyAnatomyHitTester.shiftedPath(
+            for: muscle,
+            isFront: activeIsFront,
+            centeringOffset: centeringOffset,
+            backViewOffset: backViewOffset
+        )
 
         let isSelected = (selectedMuscle?.id == muscle.id) || (selectedMuscleSlug == muscle.slug)
         let themeColor = activeIsFront ? Color.blue : Color.red
@@ -195,18 +316,16 @@ struct BodyHeatmapView: View {
             finalPath.fill(fillColor)
             finalPath.stroke(isSelected ? PastelTheme.pastelOat : strokeColor, lineWidth: isSelected ? 2.5 : 1.2)
         }
-        .contentShape(finalPath)
-        .onTapGesture {
-            selectMuscle(muscle)
-        }
+        .allowsHitTesting(false)
     }
 
     func drawMuscleTag(_ muscle: MuscleGroup, centeringOffset: CGFloat, scale: CGFloat) -> some View {
-        let rawPath = combinedPath(from: muscle.paths)
-        let baseXOffset: CGFloat = activeIsFront ? 0 : -backViewOffset
-        let xOffset = baseXOffset + centeringOffset
-        let finalXOffset = (activeIsFront == false && muscle.slug == "head") ? xOffset + 37.0 : xOffset
-        let finalPath = rawPath.offsetBy(dx: finalXOffset, dy: 0)
+        let finalPath = BodyAnatomyHitTester.shiftedPath(
+            for: muscle,
+            isFront: activeIsFront,
+            centeringOffset: centeringOffset,
+            backViewOffset: backViewOffset
+        )
 
         let bounds = finalPath.boundingRect
         var centerX = bounds.midX
@@ -235,6 +354,9 @@ struct BodyHeatmapView: View {
                 centerX += (centerX > canvasWidth / 2 ? 100 : -100)
             }
         }
+
+        centerX = min(max(centerX, 115), canvasWidth - 115)
+        centerY = min(max(centerY, 70), canvasHeight - 70)
 
         let isSelected = (selectedMuscle?.id == muscle.id) || (selectedMuscleSlug == muscle.slug)
         let themeColor = activeIsFront ? Color.blue : Color.red

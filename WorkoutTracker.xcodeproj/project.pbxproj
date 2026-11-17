@@ -36,6 +36,8 @@
 		ACF45A212F9E43F800206681 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = ACF45A202F9E43F800206681 /* FirebaseFirestore */; };
 		ACF45A232F9E43F800206681 /* FirebaseRemoteConfig in Frameworks */ = {isa = PBXBuildFile; productRef = ACF45A222F9E43F800206681 /* FirebaseRemoteConfig */; };
 		B22C33D44E5F60718293A0B21 /* PreTestFlightHonestyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B22C33D44E5F60718293A0B22 /* PreTestFlightHonestyTests.swift */; };
+		C33D44E5F60718293A0B31 /* BodyHeatmapHitTestingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C33D44E5F60718293A0B32 /* BodyHeatmapHitTestingTests.swift */; };
+		C33D44E5F60718293A0B41 /* BestSessionRankingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C33D44E5F60718293A0B42 /* BestSessionRankingTests.swift */; };
 		B2C3D4E5F60718293A4B5C6D /* AIResponseParsingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5C /* AIResponseParsingTests.swift */; };
 		C0FFEE11A7B80910293A0C01 /* LocalizationCatalogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0FFEE11A7B80910293A0C02 /* LocalizationCatalogTests.swift */; };
 		C3F81C26EAC348EB8FC229FA /* ImprovePassSmokeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BD6A05972714141ACF5DE83 /* ImprovePassSmokeTests.swift */; };
@@ -139,6 +141,8 @@
 		ACE68D0D2EFC421700FD186D /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		ACE68D0F2EFC421700FD186D /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		B22C33D44E5F60718293A0B22 /* PreTestFlightHonestyTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PreTestFlightHonestyTests.swift; sourceTree = "<group>"; };
+		C33D44E5F60718293A0B32 /* BodyHeatmapHitTestingTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BodyHeatmapHitTestingTests.swift; sourceTree = "<group>"; };
+		C33D44E5F60718293A0B42 /* BestSessionRankingTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BestSessionRankingTests.swift; sourceTree = "<group>"; };
 		C0FFEE11A7B80910293A0C02 /* LocalizationCatalogTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LocalizationCatalogTests.swift; sourceTree = "<group>"; };
 		DCC4E71E0628C8F616ACDE3C /* UnitsManagerTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = UnitsManagerTests.swift; sourceTree = "<group>"; };
 		E7A1B2C3D4E5F60718293A02 /* WatchConnectivityTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchConnectivityTests.swift; sourceTree = "<group>"; };
@@ -383,6 +387,8 @@
 				E8B2C3D4E5F60718293A0B02 /* SisterAppsCatalogTests.swift */,
 				A11B22C33D4E5F60718293A12 /* HonestyWindowTests.swift */,
 				B22C33D44E5F60718293A0B22 /* PreTestFlightHonestyTests.swift */,
+				C33D44E5F60718293A0B32 /* BodyHeatmapHitTestingTests.swift */,
+				C33D44E5F60718293A0B42 /* BestSessionRankingTests.swift */,
 			);
 			path = WorkoutTrackerTests;
 			sourceTree = "<group>";
@@ -680,6 +686,8 @@
 				E8B2C3D4E5F60718293A0B01 /* SisterAppsCatalogTests.swift in Sources */,
 				A11B22C33D4E5F60718293A11 /* HonestyWindowTests.swift in Sources */,
 				B22C33D44E5F60718293A0B21 /* PreTestFlightHonestyTests.swift in Sources */,
+				C33D44E5F60718293A0B31 /* BodyHeatmapHitTestingTests.swift in Sources */,
+				C33D44E5F60718293A0B41 /* BestSessionRankingTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
