@@ -1,89 +1,134 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="360" viewBox="0 0 1200 360" role="img" aria-labelledby="title desc">
-  <title id="title">WorkoutTracker</title>
-  <desc id="desc">Native iOS and watchOS gym tracker with CoreML pose tracking, CNS recovery heatmap, and an AI coach.</desc>
+  <title id="title">AI Workout</title>
+  <desc id="desc">Native iOS, iPadOS, and watchOS strength training app with HealthKit CNS recovery, on-device Vision form tracking, and AI coaching.</desc>
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#14161C"/>
-      <stop offset="55%" stop-color="#1B1F2A"/>
-      <stop offset="100%" stop-color="#12151C"/>
+      <stop offset="0%" stop-color="#0B0C10"/>
+      <stop offset="52%" stop-color="#12151C"/>
+      <stop offset="100%" stop-color="#0D1016"/>
     </linearGradient>
-    <linearGradient id="quad" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#5BB6FF"/>
-      <stop offset="100%" stop-color="#2F7FE0"/>
-    </linearGradient>
-    <linearGradient id="cns" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#3AA0FF"/>
-      <stop offset="100%" stop-color="#F05138"/>
-    </linearGradient>
-    <radialGradient id="glow" cx="78%" cy="40%" r="38%">
-      <stop offset="0%" stop-color="#3AA0FF" stop-opacity="0.22"/>
-      <stop offset="100%" stop-color="#3AA0FF" stop-opacity="0"/>
+    <radialGradient id="glowGreen" cx="79%" cy="46%" r="40%">
+      <stop offset="0%" stop-color="#34C759" stop-opacity="0.16"/>
+      <stop offset="100%" stop-color="#34C759" stop-opacity="0"/>
     </radialGradient>
+    <radialGradient id="glowOat" cx="16%" cy="22%" r="36%">
+      <stop offset="0%" stop-color="#EFE3D3" stop-opacity="0.09"/>
+      <stop offset="100%" stop-color="#EFE3D3" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="sageGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#4ADE80"/>
+      <stop offset="100%" stop-color="#22C55E"/>
+    </linearGradient>
+    <linearGradient id="amberGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FBBF24"/>
+      <stop offset="100%" stop-color="#F59E0B"/>
+    </linearGradient>
+    <linearGradient id="cnsBar" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#34C759"/>
+      <stop offset="65%" stop-color="#EFE3D3"/>
+      <stop offset="100%" stop-color="#FBBF24"/>
+    </linearGradient>
   </defs>
 
   <rect width="1200" height="360" rx="28" fill="url(#bg)"/>
-  <rect width="1200" height="360" rx="28" fill="url(#glow)"/>
-  <rect x="1.5" y="1.5" width="1197" height="357" rx="26.5" fill="none" stroke="#2A3140" stroke-width="1.5"/>
+  <rect width="1200" height="360" rx="28" fill="url(#glowGreen)"/>
+  <rect width="1200" height="360" rx="28" fill="url(#glowOat)"/>
+  <rect x="1.5" y="1.5" width="1197" height="357" rx="26.5" fill="none" stroke="#242936" stroke-width="1.5"/>
 
-  <g transform="translate(56 48)">
-    <text x="0" y="18" fill="#7F8DA3" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="18" font-weight="600" letter-spacing="2.4">IOS  |  WATCHOS  |  SWIFTUI</text>
-    <text x="0" y="78" fill="#F4F6FA" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="54" font-weight="750">WorkoutTracker</text>
-    <text x="0" y="124" fill="#A7B2C5" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="23" font-weight="500">AI gym coach with live pose tracking</text>
-    <text x="0" y="156" fill="#A7B2C5" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="23" font-weight="500">and HealthKit CNS recovery.</text>
+  <!-- Left column: Title, value prop & tech pills -->
+  <g transform="translate(56 54)">
+    <text x="0" y="16" fill="#8C97AA" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="700" letter-spacing="2.2">IOS 17.6+  ·  IPADOS  ·  WATCHOS 11.6+  ·  WIDGETS</text>
+    <text x="0" y="82" fill="#F8FAFC" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif" font-size="58" font-weight="800" letter-spacing="-1">AI Workout</text>
+    <text x="0" y="126" fill="#B6C0D1" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif" font-size="22" font-weight="500">Strength logging, anatomical muscle recovery</text>
+    <text x="0" y="156" fill="#B6C0D1" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif" font-size="22" font-weight="500">and an AI coach built around your CNS readiness.</text>
 
-    <g transform="translate(0 196)">
-      <rect width="118" height="36" rx="18" fill="#232A38"/>
-      <text x="59" y="24" text-anchor="middle" fill="#D7DEEA" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="15" font-weight="650">CoreML</text>
-      <rect x="128" width="108" height="36" rx="18" fill="#232A38"/>
-      <text x="182" y="24" text-anchor="middle" fill="#D7DEEA" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="15" font-weight="650">Vision</text>
-      <rect x="246" width="124" height="36" rx="18" fill="#232A38"/>
-      <text x="308" y="24" text-anchor="middle" fill="#D7DEEA" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="15" font-weight="650">HealthKit</text>
-      <rect x="380" width="110" height="36" rx="18" fill="#232A38"/>
-      <text x="435" y="24" text-anchor="middle" fill="#D7DEEA" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="15" font-weight="650">Gemini</text>
+    <!-- Feature pills -->
+    <g transform="translate(0 198)">
+      <g>
+        <rect width="154" height="38" rx="19" fill="#171A23" stroke="#2B3140" stroke-width="1.2"/>
+        <circle cx="20" cy="19" r="4.5" fill="#A78BFA"/>
+        <text x="34" y="24" fill="#E5E9F2" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="650">CoreML · Vision</text>
+      </g>
+      <g transform="translate(166 0)">
+        <rect width="144" height="38" rx="19" fill="#171A23" stroke="#2B3140" stroke-width="1.2"/>
+        <circle cx="20" cy="19" r="4.5" fill="#34C759"/>
+        <text x="34" y="24" fill="#E5E9F2" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="650">HealthKit CNS</text>
+      </g>
+      <g transform="translate(322 0)">
+        <rect width="152" height="38" rx="19" fill="#171A23" stroke="#2B3140" stroke-width="1.2"/>
+        <circle cx="20" cy="19" r="4.5" fill="#EFE3D3"/>
+        <text x="34" y="24" fill="#E5E9F2" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="650">OpenRouter AI</text>
+      </g>
+      <g transform="translate(486 0)">
+        <rect width="146" height="38" rx="19" fill="#171A23" stroke="#2B3140" stroke-width="1.2"/>
+        <circle cx="20" cy="19" r="4.5" fill="#FBBF24"/>
+        <text x="34" y="24" fill="#E5E9F2" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="650">CloudKit Sync</text>
+      </g>
     </g>
   </g>
 
-  <!-- recovery card: text left, anatomy right, no overlap -->
-  <g transform="translate(760 40)">
-    <rect width="384" height="280" rx="24" fill="#171B24" stroke="#2C3444" stroke-width="1.5"/>
+  <!-- Right column: Pastel OLED Muscle Readiness card -->
+  <g transform="translate(756 36)">
+    <rect width="388" height="288" rx="24" fill="#13161E" stroke="#272D3B" stroke-width="1.5"/>
 
-    <text x="24" y="36" fill="#8B97AB" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="14" font-weight="650" letter-spacing="1.6">MUSCLE RECOVERY</text>
-    <text x="24" y="72" fill="#F4F6FA" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="26" font-weight="700">Readiness 100%</text>
-
-    <g transform="translate(24 96)">
-      <rect width="64" height="8" rx="4" fill="#253041"/>
-      <rect width="64" height="8" rx="4" fill="url(#cns)"/>
-      <text x="76" y="9" fill="#7F8DA3" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="13" font-weight="600">CNS 82</text>
+    <!-- Top status row -->
+    <text x="24" y="38" fill="#8C97AA" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif" font-size="12" font-weight="700" letter-spacing="1.5">SUGGESTED FROM RECOVERY</text>
+    <g transform="translate(268 18)">
+      <rect width="96" height="28" rx="14" fill="#142C1E" stroke="#235737" stroke-width="1"/>
+      <circle cx="15" cy="14" r="4" fill="#34C759"/>
+      <text x="26" y="18.5" fill="#4ADE80" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="700">87% ready</text>
     </g>
 
-    <!-- anatomy silhouette, right side only -->
-    <g transform="translate(248 86)">
+    <text x="24" y="74" fill="#F8FAFC" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif" font-size="22" font-weight="750">Legs · Quad &amp; Glute</text>
+    <text x="24" y="98" fill="#9AA4B6" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif" font-size="13.5" font-weight="500">Fresh: Quads, Core, Calves</text>
+
+    <!-- CNS bar -->
+    <g transform="translate(24 120)">
+      <rect width="160" height="8" rx="4" fill="#202532"/>
+      <rect width="138" height="8" rx="4" fill="url(#cnsBar)"/>
+      <text x="0" y="28" fill="#A7B2C5" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif" font-size="12" font-weight="650">CNS Readiness · 92%</text>
+    </g>
+
+    <!-- Bottom metric chips -->
+    <g transform="translate(24 176)">
+      <rect width="174" height="36" rx="12" fill="#1A1E28" stroke="#282E3C" stroke-width="1"/>
+      <circle cx="16" cy="18" r="3.5" fill="#A78BFA"/>
+      <text x="28" y="22.5" fill="#D8E0EC" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="650">Apple Health Sync</text>
+    </g>
+    <g transform="translate(24 224)">
+      <rect width="174" height="40" rx="14" fill="#EFE3D3"/>
+      <text x="87" y="25" text-anchor="middle" fill="#111318" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="750">Start Session</text>
+    </g>
+
+    <!-- Anatomical silhouette on right -->
+    <g transform="translate(298 78)">
+      <!-- subtle container -->
+      <rect x="-60" y="-6" width="120" height="196" rx="16" fill="#0E1016" stroke="#222734" stroke-width="1"/>
       <!-- head -->
-      <ellipse cx="0" cy="0" rx="16" ry="19" fill="#2E384A"/>
+      <ellipse cx="0" cy="18" rx="13" ry="15" fill="#2A303E"/>
       <!-- torso -->
-      <path d="M-28 24 C-34 48 -30 78 -18 102 L18 102 C30 78 34 48 28 24 C16 14 -16 14 -28 24 Z" fill="#343E52"/>
-      <!-- arms -->
-      <path d="M-28 28 C-48 42 -52 78 -40 108 L-26 108 C-34 78 -32 48 -22 34 Z" fill="#2E384A"/>
-      <path d="M28 28 C48 42 52 78 40 108 L26 108 C34 78 32 48 22 34 Z" fill="#2E384A"/>
+      <path d="M-22 38 C-26 56 -23 82 -14 100 L14 100 C23 82 26 56 22 38 C13 30 -13 30 -22 38 Z" fill="#2F3646"/>
+      <!-- abs ready green -->
+      <rect x="-8" y="54" width="7" height="12" rx="2.5" fill="url(#sageGrad)"/>
+      <rect x="1" y="54" width="7" height="12" rx="2.5" fill="url(#sageGrad)"/>
+      <rect x="-8" y="69" width="7" height="12" rx="2.5" fill="url(#sageGrad)"/>
+      <rect x="1" y="69" width="7" height="12" rx="2.5" fill="url(#sageGrad)"/>
+      <!-- shoulders green -->
+      <ellipse cx="-24" cy="44" rx="7" ry="8" fill="url(#sageGrad)"/>
+      <ellipse cx="24" cy="44" rx="7" ry="8" fill="url(#sageGrad)"/>
+      <!-- arms amber -->
+      <path d="M-24 52 C-34 64 -36 88 -28 108 L-19 108 C-25 88 -24 66 -18 54 Z" fill="url(#amberGrad)"/>
+      <path d="M24 52 C34 64 36 88 28 108 L19 108 C25 88 24 66 18 54 Z" fill="url(#amberGrad)"/>
       <!-- legs base -->
-      <path d="M-16 102 L-22 168 L-6 168 L2 102 Z" fill="#2E384A"/>
-      <path d="M16 102 L22 168 L6 168 L-2 102 Z" fill="#2E384A"/>
-      <!-- highlighted quads -->
-      <path d="M-14 108 L-18 150 L-8 150 L-2 108 Z" fill="url(#quad)"/>
-      <path d="M14 108 L18 150 L8 150 L2 108 Z" fill="url(#quad)"/>
-      <!-- status pill -->
-      <rect x="-54" y="178" width="108" height="26" rx="13" fill="#1E3A5F"/>
-      <text x="0" y="196" text-anchor="middle" fill="#7EC2FF" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="12" font-weight="700">Quads ready</text>
-    </g>
-
-    <g transform="translate(24 232)">
-      <rect width="86" height="28" rx="14" fill="#1F2836"/>
-      <text x="43" y="19" text-anchor="middle" fill="#9BB0CC" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="13" font-weight="650">HRV</text>
-      <rect x="96" width="86" height="28" rx="14" fill="#1F2836"/>
-      <text x="139" y="19" text-anchor="middle" fill="#9BB0CC" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="13" font-weight="650">RHR</text>
-      <rect x="192" width="96" height="28" rx="14" fill="#1F2836"/>
-      <text x="240" y="19" text-anchor="middle" fill="#9BB0CC" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="13" font-weight="650">Sleep</text>
+      <path d="M-14 102 L-19 168 L-6 168 L-1 102 Z" fill="#2A303E"/>
+      <path d="M14 102 L19 168 L6 168 L1 102 Z" fill="#2A303E"/>
+      <!-- quads green -->
+      <path d="M-13 106 L-17 142 L-7 142 L-2 106 Z" fill="url(#sageGrad)"/>
+      <path d="M13 106 L17 142 L7 142 L2 106 Z" fill="url(#sageGrad)"/>
+      <!-- calves green -->
+      <path d="M-15 147 L-17 166 L-8 166 L-7 147 Z" fill="url(#sageGrad)"/>
+      <path d="M15 147 L17 166 L8 166 L7 147 Z" fill="url(#sageGrad)"/>
     </g>
   </g>
 </svg>

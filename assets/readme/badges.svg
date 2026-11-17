@@ -1,29 +1,33 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="72" viewBox="0 0 1200 72" role="img" aria-labelledby="title desc">
-  <title id="title">WorkoutTracker badges</title>
-  <desc id="desc">Platform and stack badges for WorkoutTracker.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="64" viewBox="0 0 1200 64" role="img" aria-labelledby="title desc">
+  <title id="title">AI Workout platform and stack badges</title>
+  <desc id="desc">App Store, version 1.0.8 build 8, iOS 17.6+, watchOS 11.6+, SwiftUI, SwiftData, CoreML and Vision, and 7 languages.</desc>
   <defs>
     <linearGradient id="store" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#3AA0FF"/>
-      <stop offset="100%" stop-color="#2F7FE0"/>
+      <stop offset="0%" stop-color="#34C759"/>
+      <stop offset="100%" stop-color="#1E9E45"/>
     </linearGradient>
   </defs>
-  <g font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">
-    <a href="https://apps.apple.com/us/app/ai-workout-coach-gym-tracker/id6774895106">
-      <rect x="0" y="12" width="168" height="48" rx="24" fill="url(#store)"/>
-      <text x="84" y="42" text-anchor="middle" fill="#FFFFFF" font-size="16" font-weight="700">App Store</text>
-    </a>
-    <rect x="180" y="12" width="118" height="48" rx="24" fill="#1B2130" stroke="#2E3A4F"/>
-    <text x="239" y="42" text-anchor="middle" fill="#D7DEEA" font-size="15" font-weight="650">iOS 17+</text>
-    <rect x="310" y="12" width="138" height="48" rx="24" fill="#1B2130" stroke="#2E3A4F"/>
-    <text x="379" y="42" text-anchor="middle" fill="#D7DEEA" font-size="15" font-weight="650">watchOS 10+</text>
-    <rect x="460" y="12" width="118" height="48" rx="24" fill="#1B2130" stroke="#2E3A4F"/>
-    <text x="519" y="42" text-anchor="middle" fill="#D7DEEA" font-size="15" font-weight="650">SwiftUI</text>
-    <rect x="590" y="12" width="128" height="48" rx="24" fill="#1B2130" stroke="#2E3A4F"/>
-    <text x="654" y="42" text-anchor="middle" fill="#D7DEEA" font-size="15" font-weight="650">SwiftData</text>
-    <rect x="730" y="12" width="108" height="48" rx="24" fill="#1B2130" stroke="#2E3A4F"/>
-    <text x="784" y="42" text-anchor="middle" fill="#D7DEEA" font-size="15" font-weight="650">CoreML</text>
-    <rect x="850" y="12" width="118" height="48" rx="24" fill="#1B2130" stroke="#2E3A4F"/>
-    <text x="909" y="42" text-anchor="middle" fill="#D7DEEA" font-size="15" font-weight="650">EN / RU</text>
+  <g transform="translate(82 10)" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif">
+    <rect x="0" y="0" width="142" height="44" rx="22" fill="url(#store)"/>
+    <text x="71" y="27.5" text-anchor="middle" fill="#FFFFFF" font-size="15" font-weight="750">App Store</text>
+
+    <rect x="154" y="0" width="124" height="44" rx="22" fill="#13161E" stroke="#282E3D" stroke-width="1.2"/>
+    <text x="216" y="27.5" text-anchor="middle" fill="#EFE3D3" font-size="14.5" font-weight="700">v1.0.8 (8)</text>
+
+    <rect x="290" y="0" width="118" height="44" rx="22" fill="#13161E" stroke="#282E3D" stroke-width="1.2"/>
+    <text x="349" y="27.5" text-anchor="middle" fill="#DCE3EE" font-size="14.5" font-weight="650">iOS 17.6+</text>
+
+    <rect x="420" y="0" width="144" height="44" rx="22" fill="#13161E" stroke="#282E3D" stroke-width="1.2"/>
+    <text x="492" y="27.5" text-anchor="middle" fill="#DCE3EE" font-size="14.5" font-weight="650">watchOS 11.6+</text>
+
+    <rect x="576" y="0" width="174" height="44" rx="22" fill="#13161E" stroke="#282E3D" stroke-width="1.2"/>
+    <text x="663" y="27.5" text-anchor="middle" fill="#DCE3EE" font-size="14.5" font-weight="650">SwiftUI · SwiftData</text>
+
+    <rect x="762" y="0" width="146" height="44" rx="22" fill="#13161E" stroke="#282E3D" stroke-width="1.2"/>
+    <text x="835" y="27.5" text-anchor="middle" fill="#DCE3EE" font-size="14.5" font-weight="650">CoreML · Vision</text>
+
+    <rect x="920" y="0" width="116" height="44" rx="22" fill="#13161E" stroke="#282E3D" stroke-width="1.2"/>
+    <text x="978" y="27.5" text-anchor="middle" fill="#4ADE80" font-size="14.5" font-weight="700">7 Locales</text>
   </g>
 </svg>
