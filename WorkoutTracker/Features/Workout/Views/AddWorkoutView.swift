@@ -170,13 +170,18 @@ struct AddWorkoutView: View {
         HStack {
             Group {
                 if isSystemIcon {
-                    Image(systemName: iconName).font(.title2).foregroundColor(themeManager.current.secondaryAccent)
+                    Image(systemName: iconName)
+                        .font(.title2)
+                        .foregroundColor(themeManager.current.secondaryAccent)
                 } else {
-                    if UIImage(named: iconName) != nil {
-                        Image(iconName).resizable().aspectRatio(contentMode: .fit).frame(width: 50, height: 50).cornerRadius(8).shadow(radius: 2)
-                    } else {
-                        Image(systemName: "dumbbell.fill").resizable().aspectRatio(contentMode: .fit).frame(width: 24, height: 24).padding(13).background(themeManager.current.surfaceVariant).cornerRadius(8).foregroundColor(themeManager.current.primaryAccent)
-                    }
+                    TemplateIconBadge(
+                        iconName: iconName,
+                        tint: PastelTheme.pastelOat,
+                        boxSize: 44,
+                        glyphSize: 18,
+                        assetSize: 24,
+                        cornerRadius: 12
+                    )
                 }
             }
 

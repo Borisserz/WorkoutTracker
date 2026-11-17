@@ -280,4 +280,27 @@ final class PreTestFlightHonestyTests: XCTestCase {
         XCTAssertFalse(state.isPresented)
         XCTAssertNil(state.consumeOnDismiss())
     }
+
+    func testTemplateIconResolverDistinguishesAssetsSymbolsAndFallbacks() {
+        XCTAssertEqual(
+            TemplateIconResolver.resolve("dumbbell.fill"),
+            .systemSymbol("dumbbell.fill")
+        )
+        XCTAssertEqual(
+            TemplateIconResolver.resolve("img_default"),
+            .assetTemplate("img_default")
+        )
+        XCTAssertEqual(
+            TemplateIconResolver.resolve("battle-rope"),
+            .assetTemplate("battle-rope")
+        )
+        XCTAssertEqual(
+            TemplateIconResolver.resolve(""),
+            .fallback("dumbbell.fill")
+        )
+        XCTAssertEqual(
+            TemplateIconResolver.resolve("nonexistent_icon_xyz"),
+            .fallback("dumbbell.fill")
+        )
+    }
 }

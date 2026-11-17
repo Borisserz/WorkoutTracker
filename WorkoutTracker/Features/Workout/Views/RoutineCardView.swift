@@ -29,19 +29,15 @@ struct PremiumRoutineCard: View {
             // Header Row: Squircle Icon + Title + Overflow Menu
             HStack(alignment: .center, spacing: 12) {
                 // Squircle Icon (40x40)
-                ZStack {
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(PastelTheme.cardSurfaceSubtle)
-                        .frame(width: 40, height: 40)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                .stroke(PastelTheme.cardBorder, lineWidth: 1)
-                        )
-
-                    Image(systemName: preset.icon.isEmpty ? "figure.strengthtraining.traditional" : preset.icon)
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(PastelTheme.pastelOat)
-                }
+                TemplateIconBadge(
+                    iconName: preset.icon,
+                    tint: PastelTheme.pastelOat,
+                    boxSize: 40,
+                    glyphSize: 16,
+                    assetSize: 22,
+                    cornerRadius: 11,
+                    fallback: "figure.strengthtraining.traditional"
+                )
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(LocalizedStringKey(preset.name))

@@ -203,7 +203,7 @@ struct PresetEditorView: View {
                             .resizable()
                             .scaledToFit()
                             .frame(width: 30, height: 30)
-                            .foregroundColor(isSelected ? .white : (colorScheme == .dark ? .gray.opacity(0.6) : .black.opacity(0.6)))
+                            .foregroundColor(isSelected ? .white : (colorScheme == .dark ? PastelTheme.pastelOat.opacity(0.85) : .black.opacity(0.65)))
                     }
                     .scaleEffect(isSelected ? 1.1 : 1.0)
                     .padding(.vertical, 10)

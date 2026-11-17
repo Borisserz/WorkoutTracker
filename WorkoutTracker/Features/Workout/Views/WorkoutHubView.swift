@@ -1001,11 +1001,15 @@ struct WorkoutHubView: View {
                 HStack(spacing: 12) {
                     if !myRoutines.isEmpty {
                         ForEach(myRoutines) { preset in
+                            let muscles = Array(
+                                Set(preset.exercises.compactMap { $0.muscleGroup.isEmpty ? nil : MuscleDisplayHelper.getDisplayName(for: $0.muscleGroup) })
+                            ).sorted().prefix(2).joined(separator: " · ")
+
                             compactRoutineDeckCard(
                                 name: preset.name,
                                 icon: preset.icon.isEmpty ? "dumbbell.fill" : preset.icon,
                                 count: preset.exercises.count,
-                                subtitle: "\(preset.exercises.count) exercises",
+                                subtitle: muscles.isEmpty ? String(localized: "Template") : muscles,
                                 ctaLabel: String(localized: "Start"),
                                 onStart: { startWorkoutFromPreset(preset) },
                                 onInspect: { selectedPreview = .preset(preset) }
@@ -1056,27 +1060,14 @@ struct WorkoutHubView: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 10) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(PastelTheme.cardSurfaceSubtle)
-                        .frame(width: 36, height: 36)
-                        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(PastelTheme.cardBorder, lineWidth: 1))
-
-                    if UIImage(systemName: icon) != nil {
-                        Image(systemName: icon)
-                            .font(.system(size: 15, weight: .bold))
-                            .foregroundStyle(PastelTheme.pastelOat)
-                    } else if UIImage(named: icon) != nil {
-                        Image(icon)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 20, height: 20)
-                    } else {
-                        Image(systemName: "dumbbell.fill")
-                            .font(.system(size: 15, weight: .bold))
-                            .foregroundStyle(PastelTheme.pastelOat)
-                    }
-                }
+                TemplateIconBadge(
+                    iconName: icon,
+                    tint: PastelTheme.pastelOat,
+                    boxSize: 38,
+                    glyphSize: 15,
+                    assetSize: 21,
+                    cornerRadius: 11
+                )
 
                 VStack(alignment: .leading, spacing: 1) {
                     Text(name)
@@ -1139,19 +1130,15 @@ struct WorkoutHubView: View {
     private func userPresetHevyCard(preset: WorkoutPreset) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .center, spacing: 12) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(PastelTheme.cardSurfaceSubtle)
-                        .frame(width: 40, height: 40)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                .stroke(PastelTheme.cardBorder, lineWidth: 1)
-                        )
-
-                    Image(systemName: preset.icon.isEmpty ? "figure.strengthtraining.traditional" : preset.icon)
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(PastelTheme.pastelOat)
-                }
+                TemplateIconBadge(
+                    iconName: preset.icon,
+                    tint: PastelTheme.pastelOat,
+                    boxSize: 40,
+                    glyphSize: 16,
+                    assetSize: 22,
+                    cornerRadius: 11,
+                    fallback: "figure.strengthtraining.traditional"
+                )
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(preset.name)
@@ -1752,19 +1739,15 @@ private struct PastelRoutineCard: View {
     var body: some View {
         HStack(spacing: 12) {
             // Icon Rounded Square (40x40)
-            ZStack {
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(PastelTheme.cardSurfaceSubtle)
-                    .frame(width: 40, height: 40)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .stroke(PastelTheme.cardBorder, lineWidth: 1)
-                    )
-
-                Image(systemName: preset.icon.isEmpty ? "figure.strengthtraining.traditional" : preset.icon)
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(PastelTheme.pastelOat)
-            }
+            TemplateIconBadge(
+                iconName: preset.icon,
+                tint: PastelTheme.pastelOat,
+                boxSize: 40,
+                glyphSize: 16,
+                assetSize: 22,
+                cornerRadius: 11,
+                fallback: "figure.strengthtraining.traditional"
+            )
 
             // Routine Details
             VStack(alignment: .leading, spacing: 3) {

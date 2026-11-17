@@ -656,3 +656,85 @@ extension HapticManager {
     static func playWarning() { shared.notification(.warning) }
     static func playError() { shared.notification(.error) }
 }
+
+enum TemplateIconKind: Equatable, Sendable {
+    case systemSymbol(String)
+    case assetTemplate(String)
+    case fallback(String)
+}
+
+enum TemplateIconResolver {
+    /// Resolves a template/preset icon name into either a native SF Symbol or a
+    /// template-tinted bundle asset image so dark-ink asset icons never blend into dark cards.
+    static func resolve(_ rawName: String, fallback: String = "dumbbell.fill") -> TemplateIconKind {
+        let trimmed = rawName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return .fallback(fallback) }
+        if UIImage(systemName: trimmed) != nil {
+            return .systemSymbol(trimmed)
+        }
+        if UIImage(named: trimmed) != nil {
+            return .assetTemplate(trimmed)
+        }
+        return .fallback(fallback)
+    }
+}
+
+/// Renders either an SF Symbol or a template-tinted bundle image consistently.
+struct TemplateIconGlyph: View {
+    let iconName: String
+    var tint: Color = PastelTheme.pastelOat
+    var pointSize: CGFloat = 15
+    var assetSize: CGFloat = 20
+    var fallback: String = "dumbbell.fill"
+
+    var body: some View {
+        switch TemplateIconResolver.resolve(iconName, fallback: fallback) {
+        case .systemSymbol(let name):
+            Image(systemName: name)
+                .font(.system(size: pointSize, weight: .bold))
+                .foregroundStyle(tint)
+        case .assetTemplate(let name):
+            Image(name)
+                .renderingMode(.template)
+                .resizable()
+                .scaledToFit()
+                .frame(width: assetSize, height: assetSize)
+                .foregroundStyle(tint)
+        case .fallback(let name):
+            Image(systemName: name)
+                .font(.system(size: pointSize, weight: .bold))
+                .foregroundStyle(tint)
+        }
+    }
+}
+
+/// Luxury Pastel rounded-square icon badge with warm tint and hairline contrast border.
+struct TemplateIconBadge: View {
+    let iconName: String
+    var tint: Color = PastelTheme.pastelOat
+    var boxSize: CGFloat = 38
+    var glyphSize: CGFloat = 15
+    var assetSize: CGFloat = 21
+    var cornerRadius: CGFloat = 11
+    var fallback: String = "dumbbell.fill"
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                .fill(tint.opacity(0.14))
+                .frame(width: boxSize, height: boxSize)
+                .overlay(
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .stroke(tint.opacity(0.28), lineWidth: 1)
+                )
+
+            TemplateIconGlyph(
+                iconName: iconName,
+                tint: tint,
+                pointSize: glyphSize,
+                assetSize: assetSize,
+                fallback: fallback
+            )
+        }
+    }
+}

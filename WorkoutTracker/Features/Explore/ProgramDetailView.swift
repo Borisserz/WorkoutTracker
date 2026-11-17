@@ -210,6 +210,7 @@ struct RoutinePreviewCard: View {
                             .resizable()
                             .scaledToFit()
                             .frame(width: 24, height: 24)
+                            .foregroundColor(themeManager.current.primaryAccent)
                     } else {
                         Image(systemName: routine.icon) .foregroundColor(themeManager.current.primaryAccent)
                     }

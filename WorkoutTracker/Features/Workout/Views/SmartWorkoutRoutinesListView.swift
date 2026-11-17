@@ -176,9 +176,11 @@ struct CompactPresetCardView: View {
                             .foregroundStyle(LinearGradient(colors: cardGradients, startPoint: .topLeading, endPoint: .bottomTrailing))
                     } else if UIImage(named: preset.icon) != nil {
                         Image(preset.icon)
+                            .renderingMode(.template)
                             .resizable()
                             .scaledToFit()
-                            .frame(width: 18, height: 18)
+                            .frame(width: 19, height: 19)
+                            .foregroundStyle(LinearGradient(colors: cardGradients, startPoint: .topLeading, endPoint: .bottomTrailing))
                     } else {
                         Image(systemName: preset.icon.isEmpty ? "dumbbell.fill" : preset.icon)
                             .font(.system(size: 16, weight: .semibold))

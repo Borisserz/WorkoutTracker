@@ -611,26 +611,14 @@ fileprivate struct LibraryGridCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .top) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(PastelTheme.cardSurfaceSubtle)
-                        .frame(width: 36, height: 36)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                .stroke(PastelTheme.cardBorder, lineWidth: 1)
-                        )
-
-                    if isFavorite || UIImage(named: iconName) == nil {
-                        Image(systemName: UIImage(systemName: iconName) != nil ? iconName : "dumbbell.fill")
-                            .font(.system(size: 15, weight: .bold))
-                            .foregroundStyle(accentColor)
-                    } else {
-                        Image(iconName)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 20, height: 20)
-                    }
-                }
+                TemplateIconBadge(
+                    iconName: isFavorite ? "star.fill" : iconName,
+                    tint: accentColor,
+                    boxSize: 38,
+                    glyphSize: 15,
+                    assetSize: 21,
+                    cornerRadius: 11
+                )
 
                 Spacer()
 
