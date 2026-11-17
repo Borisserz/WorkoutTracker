@@ -303,4 +303,73 @@ final class PreTestFlightHonestyTests: XCTestCase {
             .fallback("dumbbell.fill")
         )
     }
+
+    func testBundleContainsNoForeignLocalizationOrPythonArtifacts() throws {
+        let appURL = Bundle(for: PreTestFlightHonestyTests.self).bundleURL
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let contents = try FileManager.default.contentsOfDirectory(
+            at: appURL,
+            includingPropertiesForKeys: nil,
+            options: [.skipsHiddenFiles]
+        )
+        let forbidden = contents.map(\.lastPathComponent).filter { name in
+            name.hasSuffix(".xcloc")
+                || name.localizedCaseInsensitiveContains("FoodTracker")
+                || name.hasSuffix(".py")
+        }
+        XCTAssertTrue(
+            forbidden.isEmpty,
+            "App bundle must not ship .xcloc, FoodTracker artifacts, or Python scripts: \(forbidden)"
+        )
+    }
+
+    func testExtensionsMatchMainAppBundleVersionAndShortVersion() throws {
+        let mainBundle = Bundle.main
+        let expectedShort = try XCTUnwrap(mainBundle.infoDictionary?["CFBundleShortVersionString"] as? String)
+        let expectedBuild = try XCTUnwrap(mainBundle.infoDictionary?["CFBundleVersion"] as? String)
+
+        let appURL = mainBundle.bundleURL
+        let embeddedURLs = [
+            appURL.appendingPathComponent("PlugIns/StatsWidgetExtension.appex"),
+            appURL.appendingPathComponent("PlugIns/WorkoutTimerWidgetExtension.appex"),
+            appURL.appendingPathComponent("Watch/WorkoutTrackerWatch Watch App.app"),
+        ].filter { FileManager.default.fileExists(atPath: $0.appendingPathComponent("Info.plist").path) }
+
+        for extURL in embeddedURLs {
+            let plistData = try Data(contentsOf: extURL.appendingPathComponent("Info.plist"))
+            let plist = try XCTUnwrap(
+                PropertyListSerialization.propertyList(from: plistData, format: nil) as? [String: Any]
+            )
+            XCTAssertEqual(
+                plist["CFBundleShortVersionString"] as? String,
+                expectedShort,
+                "\(extURL.lastPathComponent) MARKETING_VERSION mismatch"
+            )
+            XCTAssertEqual(
+                plist["CFBundleVersion"] as? String,
+                expectedBuild,
+                "\(extURL.lastPathComponent) CURRENT_PROJECT_VERSION mismatch"
+            )
+        }
+
+        // Verify all Debug/Release build settings across iOS, Watch, and Widget targets in project.pbxproj stay aligned.
+        let pbxprojURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("WorkoutTracker.xcodeproj/project.pbxproj")
+        if FileManager.default.fileExists(atPath: pbxprojURL.path) {
+            let contents = try String(contentsOf: pbxprojURL, encoding: .utf8)
+            let marketingMatches = contents.matches(of: /MARKETING_VERSION = ([^;]+);/).map { String($0.1) }
+            let buildMatches = contents.matches(of: /CURRENT_PROJECT_VERSION = ([^;]+);/).map { String($0.1) }
+            XCTAssertEqual(marketingMatches.count, 8, "Expected 8 MARKETING_VERSION entries across 4 shipped targets (Debug+Release)")
+            XCTAssertEqual(buildMatches.count, 8, "Expected 8 CURRENT_PROJECT_VERSION entries across 4 shipped targets (Debug+Release)")
+            for value in marketingMatches {
+                XCTAssertEqual(value, expectedShort, "All target MARKETING_VERSIONs must match main app \(expectedShort)")
+            }
+            for value in buildMatches {
+                XCTAssertEqual(value, expectedBuild, "All target CURRENT_PROJECT_VERSIONs must match main app \(expectedBuild)")
+            }
+        }
+    }
 }

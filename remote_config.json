@@ -2,7 +2,7 @@
   "parameters": {
     "minimum_ios_version": {
       "defaultValue": {
-        "value": "1.0.5"
+        "value": "1.0.6"
       },
       "valueType": "STRING"
     },
@@ -15,7 +15,7 @@
     },
     "recommended_ios_version": {
       "defaultValue": {
-        "value": "1.0.1"
+        "value": "1.0.8"
       },
       "valueType": "STRING"
     },
@@ -48,9 +48,9 @@
     },
     "show_foodtracker_promo": {
       "defaultValue": {
-        "value": "1"
+        "value": "0"
       },
-      "description": "Legacy sister-apps gate (also enables Profile More from us + one-time sheet).",
+      "description": "Legacy sister-apps gate (set 0 during App Review; flip to 1 after approval if desired).",
       "valueType": "STRING"
     },
     "ai_proxy_url": {

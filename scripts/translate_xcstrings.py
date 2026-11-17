@@ -5,7 +5,11 @@ from deep_translator import GoogleTranslator
 
 # Target languages (Google Translate codes)
 TARGET_LANGS = ["ru", "es", "fr", "de", "it"]
-XCSTRINGS_PATH = "Localizable.xcstrings"
+XCSTRINGS_PATH = (
+    "Localizable.xcstrings"
+    if os.path.exists("Localizable.xcstrings")
+    else os.path.join("WorkoutTracker", "Localizable.xcstrings")
+)
 
 def translate_text(text, target_lang):
     if not text or len(text.strip()) == 0:

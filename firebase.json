@@ -18,7 +18,8 @@
         "*.local",
         ".env",
         ".secret.local",
-        "smoke_openrouter.js"
+        "smoke_openrouter.js",
+        "index.test.js"
       ]
     }
   ]

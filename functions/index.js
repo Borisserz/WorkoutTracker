@@ -1,9 +1,8 @@
-const { onRequest } = require("firebase-functions/v2/https");
+const { onRequest, onCall, HttpsError } = require("firebase-functions/v2/https");
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { initializeApp } = require("firebase-admin/app");
 const { getAppCheck } = require("firebase-admin/app-check");
 const { getFirestore, FieldValue } = require("firebase-admin/firestore");
-const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { getAuth } = require("firebase-admin/auth");
 const { defineSecret } = require("firebase-functions/params");
 
@@ -11,6 +10,7 @@ const { defineSecret } = require("firebase-functions/params");
 // cap abuse, but count only successful upstream calls.
 const AI_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 const DEFAULT_AI_WEEKLY_LIMIT = 200;
+const UPSTREAM_TIMEOUT_MS = 15000;
 
 initializeApp();
 
@@ -22,19 +22,42 @@ const SERVICE_ACCOUNT =
   "firebase-adminsdk-fbsvc@serzhanovich-ecosystem-ce700.iam.gserviceaccount.com";
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 
-// Structured-capable free models first, then broader free fallbacks.
+// Live OpenRouter :free models with structured_outputs + response_format support, ordered by reliability.
 const FREE_MODELS_STRUCTURED = [
-  "xingchen-agi/xing4.0-29b-a4b:free",
-  "liquid/lfm-2.5-2.6b:free",
-  "dots-studio/dots-3-note-preview:free",
+  "particle-ai/particle-1:free",
   "nvidia/nemotron-3.5-super-vl:free",
+  "baidu/ernie-5.5-flash-preview:free",
+  "inclusionai/ling-3.2-flash:free",
+  "liquid/lfm-3-1.7b:free",
+  "dots-studio/dots-3-note-preview:free",
 ];
+// Broader JSON/text fallbacks plus OpenRouter's auto-routing :free pool.
 const FREE_MODELS_FALLBACK = [
   "google/gemma-4-26b-a4b-it:free",
-  "recursive/flint-v1.0:free",
-  "nvidia/nemotron-3.5-lightning:free",
   "google/gemma-4-31b-it:free",
+  "recursive/flint-v1.0:free",
+  "openrouter/free",
 ];
+const VISION_MODELS = [
+  "nvidia/nemotron-3.5-super-vl:free",
+  "particle-ai/particle-1:free",
+  "inclusionai/ling-3.2-flash:free",
+  "dots-studio/dots-3-note-preview:free",
+  "google/gemma-4-31b-it:free",
+  "google/gemma-4-26b-a4b-it:free",
+  "openrouter/free",
+];
+
+const STRUCTURED_MODELS = new Set([
+  ...FREE_MODELS_STRUCTURED,
+  "openrouter/free",
+]);
+const JSON_OBJECT_MODELS = new Set([
+  ...STRUCTURED_MODELS,
+  "google/gemma-4-26b-a4b-it:free",
+  "google/gemma-4-31b-it:free",
+  "recursive/flint-v1.0:free",
+]);
 
 const AUTO_BLOCK_REPORT_THRESHOLD = 3;
 
@@ -47,10 +70,29 @@ class RateLimitError extends Error {
 }
 
 function parseApiKeys(raw) {
-  return String(raw || "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
+  const seen = new Set();
+  const keys = [];
+  for (const part of String(raw || "").split(",")) {
+    const trimmed = part.trim();
+    if (trimmed && !seen.has(trimmed)) {
+      seen.add(trimmed);
+      keys.push(trimmed);
+    }
+  }
+  return keys;
+}
+
+function supportsResponseFormat(model) {
+  return JSON_OBJECT_MODELS.has(model);
+}
+
+function hasImageContent(body) {
+  if (!Array.isArray(body?.contents)) return false;
+  return body.contents.some(
+    (c) =>
+      Array.isArray(c?.parts) &&
+      c.parts.some((p) => p?.inlineData && p.inlineData.data)
+  );
 }
 
 function geminiTypeToJson(type) {
@@ -89,13 +131,25 @@ function convertGeminiSchema(schema) {
   return out;
 }
 
-function extractTextFromGeminiContents(contents) {
-  if (!Array.isArray(contents)) return "";
-  return contents
-    .flatMap((c) => (Array.isArray(c.parts) ? c.parts : []))
-    .map((p) => (typeof p?.text === "string" ? p.text : ""))
-    .filter(Boolean)
-    .join("\n");
+function geminiPartsToOpenAIContent(parts) {
+  if (!Array.isArray(parts)) return "";
+  const hasInlineImage = parts.some((p) => p?.inlineData && p.inlineData.data);
+  if (!hasInlineImage) {
+    return parts.map((p) => p?.text).filter(Boolean).join("\n");
+  }
+  const items = [];
+  for (const p of parts) {
+    if (typeof p?.text === "string" && p.text) {
+      items.push({ type: "text", text: p.text });
+    } else if (p?.inlineData?.data) {
+      const mimeType = p.inlineData.mimeType || "image/jpeg";
+      items.push({
+        type: "image_url",
+        image_url: { url: `data:${mimeType};base64,${p.inlineData.data}` },
+      });
+    }
+  }
+  return items.length > 0 ? items : "";
 }
 
 /**
@@ -115,10 +169,13 @@ function geminiBodyToOpenAI(body, { streaming, model }) {
   if (Array.isArray(body?.contents)) {
     for (const content of body.contents) {
       const role = content.role === "model" ? "assistant" : content.role || "user";
-      const text = Array.isArray(content.parts)
-        ? content.parts.map((p) => p?.text).filter(Boolean).join("\n")
-        : "";
-      if (text) messages.push({ role, content: text });
+      const mapped = geminiPartsToOpenAIContent(content.parts);
+      if (
+        (typeof mapped === "string" && mapped) ||
+        (Array.isArray(mapped) && mapped.length > 0)
+      ) {
+        messages.push({ role, content: mapped });
+      }
     }
   }
 
@@ -136,9 +193,9 @@ function geminiBodyToOpenAI(body, { streaming, model }) {
 
   const wantsJson =
     gen.responseMimeType === "application/json" || Boolean(gen.responseSchema);
-  if (wantsJson) {
+  if (wantsJson && supportsResponseFormat(model)) {
     const jsonSchema = convertGeminiSchema(gen.responseSchema);
-    if (jsonSchema) {
+    if (jsonSchema && STRUCTURED_MODELS.has(model)) {
       openAIBody.response_format = {
         type: "json_schema",
         json_schema: {
@@ -222,6 +279,16 @@ function openAIStreamChunkToGemini(line) {
   }
 }
 
+async function fetchWithTimeout(url, options, timeoutMs = UPSTREAM_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function enforceRateLimit(uid) {
   const db = getFirestore();
   const configSnap = await db.collection("config").doc("ai_settings").get();
@@ -289,82 +356,32 @@ async function recordSuccessfulAIUse(uid) {
 }
 
 function modelChainForRequest(body) {
+  if (hasImageContent(body)) {
+    return [...VISION_MODELS];
+  }
   const wantsSchema = Boolean(body?.generationConfig?.responseSchema);
   if (wantsSchema) {
     return [...FREE_MODELS_STRUCTURED, ...FREE_MODELS_FALLBACK];
   }
-  // Prefer fast Liquid for plain chat/stream, then the rest.
+  // Prefer low-latency reliable models for plain chat/stream, then the rest.
   return [
-    "liquid/lfm-2.5-2.6b:free",
-    ...FREE_MODELS_STRUCTURED.filter((m) => m !== "liquid/lfm-2.5-2.6b:free"),
+    "particle-ai/particle-1:free",
+    "nvidia/nemotron-3.5-super-vl:free",
+    ...FREE_MODELS_STRUCTURED.filter(
+      (m) =>
+        m !== "particle-ai/particle-1:free" &&
+        m !== "nvidia/nemotron-3.5-super-vl:free"
+    ),
     ...FREE_MODELS_FALLBACK,
   ];
 }
 
-async function openRouterFetch({ apiKeys, openAIBody, streaming }) {
-  let lastError = null;
-
-  for (const apiKey of apiKeys) {
-    // Mutate model per attempt; keep a fresh copy of the body.
-    const models = [openAIBody.model, ...(openAIBody.models || [])].filter(
-      (m, i, arr) => m && arr.indexOf(m) === i
-    );
-
-    for (const model of models) {
-      const attemptBody = { ...openAIBody, model };
-      delete attemptBody.models;
-
-      try {
-        const resp = await fetch(OPENROUTER_URL, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-            "HTTP-Referer": `https://${PROJECT_HINT}.web.app`,
-            "X-OpenRouter-Title": "WorkoutTracker",
-          },
-          body: JSON.stringify(attemptBody),
-        });
-
-        if (resp.status === 429 || resp.status >= 500) {
-          const errText = await resp.text();
-          lastError = new Error(
-            `OpenRouter ${resp.status} model=${model}: ${errText.slice(0, 400)}`
-          );
-          console.warn(lastError.message);
-          continue;
-        }
-
-        if (!resp.ok) {
-          const errText = await resp.text();
-          // Non-retryable for this model (e.g. 400 schema) — try next model.
-          lastError = new Error(
-            `OpenRouter ${resp.status} model=${model}: ${errText.slice(0, 400)}`
-          );
-          console.warn(lastError.message);
-          continue;
-        }
-
-        return { resp, model, apiKeyIndex: apiKeys.indexOf(apiKey) };
-      } catch (e) {
-        lastError = e;
-        console.warn("OpenRouter fetch failed:", e);
-      }
-    }
-  }
-
-  throw lastError || new Error("All OpenRouter models/keys failed");
-}
-
-async function callOpenRouterText({ apiKeys, geminiBody }) {
+async function callOpenRouterText({ apiKeys, geminiBody, timeoutMs = UPSTREAM_TIMEOUT_MS }) {
   const chain = modelChainForRequest(geminiBody);
-  const openAIBody = geminiBodyToOpenAI(geminiBody, {
-    streaming: false,
-    model: chain[0],
-  });
-  openAIBody.models = chain.slice(1);
+  const expectJSON =
+    geminiBody?.generationConfig?.responseMimeType === "application/json" ||
+    Boolean(geminiBody?.generationConfig?.responseSchema);
 
-  // Manual fallback loop so we can strip json_schema on later attempts.
   let lastError = null;
   for (const apiKey of apiKeys) {
     for (let i = 0; i < chain.length; i++) {
@@ -373,50 +390,68 @@ async function callOpenRouterText({ apiKeys, geminiBody }) {
         streaming: false,
         model,
       });
-      // After structured models fail, fall back to json_object.
-      if (
-        i >= FREE_MODELS_STRUCTURED.length &&
-        attempt.response_format?.type === "json_schema"
-      ) {
-        attempt.response_format = { type: "json_object" };
-      }
 
-      const resp = await fetch(OPENROUTER_URL, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-          "HTTP-Referer": `https://${PROJECT_HINT}.web.app`,
-          "X-OpenRouter-Title": "WorkoutTracker",
-        },
-        body: JSON.stringify(attempt),
-      });
-      const text = await resp.text();
-      if (!resp.ok) {
-        lastError = new Error(`OpenRouter ${resp.status} ${model}: ${text.slice(0, 400)}`);
-        console.warn(lastError.message);
-        continue;
-      }
-      let data;
       try {
-        data = JSON.parse(text);
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeoutMs);
+        let text;
+        let ok;
+        let status;
+        try {
+          const resp = await fetch(OPENROUTER_URL, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${apiKey}`,
+              "Content-Type": "application/json",
+              "HTTP-Referer": `https://${PROJECT_HINT}.web.app`,
+              "X-OpenRouter-Title": "WorkoutTracker",
+            },
+            body: JSON.stringify(attempt),
+            signal: controller.signal,
+          });
+          ok = resp.ok;
+          status = resp.status;
+          text = await resp.text();
+        } finally {
+          clearTimeout(timer);
+        }
+
+        if (!ok) {
+          lastError = new Error(`OpenRouter ${status} ${model}: ${text.slice(0, 400)}`);
+          console.warn(lastError.message);
+          continue;
+        }
+        const data = JSON.parse(text);
+        const gemini = openAIToGeminiResponse(data, { expectJSON });
+        const outText = gemini.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        if (!outText) {
+          lastError = new Error(`Empty completion from ${model}`);
+          continue;
+        }
+        if (expectJSON) {
+          // Verify JSON actually parses; otherwise fall through to next model.
+          JSON.parse(outText);
+        }
+        return gemini;
       } catch (e) {
-        lastError = e;
-        continue;
+        lastError = new Error(`OpenRouter err ${model}: ${String(e?.message || e).slice(0, 300)}`);
+        console.warn(lastError.message);
       }
-      const expectJSON =
-        geminiBody?.generationConfig?.responseMimeType === "application/json" ||
-        Boolean(geminiBody?.generationConfig?.responseSchema);
-      const gemini = openAIToGeminiResponse(data, { expectJSON });
-      const outText = gemini.candidates?.[0]?.content?.parts?.[0]?.text || "";
-      if (!outText) {
-        lastError = new Error(`Empty completion from ${model}`);
-        continue;
-      }
-      return gemini;
     }
   }
   throw lastError || new Error("OpenRouter text call failed");
+}
+
+function resolveReportUpdate({
+  currentData,
+  alreadyReportedByUser,
+  threshold = AUTO_BLOCK_REPORT_THRESHOLD,
+}) {
+  if (alreadyReportedByUser) return null;
+  const newCount = ((currentData && currentData.reportCount) || 0) + 1;
+  const shouldBlock =
+    newCount >= threshold && currentData?.status !== "blocked";
+  return { reportCount: newCount, shouldBlock };
 }
 
 // ==========================================
@@ -431,6 +466,11 @@ exports.vertexProxy = onRequest(
     secrets: [openRouterApiKey],
   },
   async (req, res) => {
+    if (req.method !== "POST") {
+      res.status(405).json({ error: "Method Not Allowed" });
+      return;
+    }
+
     const appCheckToken = req.header("X-Firebase-AppCheck");
     if (!appCheckToken) {
       res.status(401).json({ error: "Missing App Check token" });
@@ -493,38 +533,43 @@ exports.vertexProxy = onRequest(
         return;
       }
 
-      // Streaming: try models until one returns a live SSE body.
+      // Streaming: try models until one returns a live SSE body (timeout on initial handshake).
       let upstream = null;
       let lastError = null;
       for (const apiKey of apiKeys) {
         for (let i = 0; i < chain.length; i++) {
           const model = chain[i];
           const attempt = geminiBodyToOpenAI(body, { streaming: true, model });
-          if (
-            i >= FREE_MODELS_STRUCTURED.length &&
-            attempt.response_format?.type === "json_schema"
-          ) {
-            attempt.response_format = { type: "json_object" };
-          }
-          const resp = await fetch(OPENROUTER_URL, {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${apiKey}`,
-              "Content-Type": "application/json",
-              "HTTP-Referer": `https://${PROJECT_HINT}.web.app`,
-              "X-OpenRouter-Title": "WorkoutTracker",
-            },
-            body: JSON.stringify(attempt),
-          });
-          if (!resp.ok || !resp.body) {
+          try {
+            const resp = await fetchWithTimeout(
+              OPENROUTER_URL,
+              {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${apiKey}`,
+                  "Content-Type": "application/json",
+                  "HTTP-Referer": `https://${PROJECT_HINT}.web.app`,
+                  "X-OpenRouter-Title": "WorkoutTracker",
+                },
+                body: JSON.stringify(attempt),
+              },
+              UPSTREAM_TIMEOUT_MS
+            );
+            if (!resp.ok || !resp.body) {
+              lastError = new Error(
+                `stream ${resp.status} ${model}: ${(await resp.text()).slice(0, 300)}`
+              );
+              console.warn(lastError.message);
+              continue;
+            }
+            upstream = resp;
+            break;
+          } catch (e) {
             lastError = new Error(
-              `stream ${resp.status} ${model}: ${(await resp.text()).slice(0, 300)}`
+              `stream err ${model}: ${String(e?.message || e).slice(0, 300)}`
             );
             console.warn(lastError.message);
-            continue;
           }
-          upstream = resp;
-          break;
         }
         if (upstream) break;
       }
@@ -670,7 +715,7 @@ Respond ONLY with JSON: {"decision":"approved"|"blocked","reason":"short reason"
 );
 
 // ==========================================
-// 3) On every report — increment count + auto-block past threshold
+// 3) On every report — deduplicate per reporter + auto-block past threshold
 // ==========================================
 exports.onReportCreated = onDocumentCreated(
   {
@@ -683,13 +728,17 @@ exports.onReportCreated = onDocumentCreated(
     if (!snap) return;
     const data = snap.data() || {};
     const workoutId = data.workoutId;
+    // Skip FitRPG reports (app == "fitrpg", no workoutId).
     if (!workoutId || typeof workoutId !== "string") {
-      console.warn("Report has no workoutId:", event.params.reportId);
       return;
     }
 
     const db = getFirestore();
     const workoutRef = db.collection("shared_workouts").doc(workoutId);
+    const reporterUid =
+      typeof data.reporterUid === "string" && data.reporterUid.trim()
+        ? data.reporterUid.trim()
+        : null;
 
     try {
       await db.runTransaction(async (tx) => {
@@ -698,16 +747,36 @@ exports.onReportCreated = onDocumentCreated(
           console.warn(`Reported workout ${workoutId} does not exist`);
           return;
         }
-        const current = doc.data() || {};
-        const newCount = (current.reportCount || 0) + 1;
-        const updates = { reportCount: newCount };
-        if (
-          newCount >= AUTO_BLOCK_REPORT_THRESHOLD &&
-          current.status !== "blocked"
-        ) {
+        const reporterRef = reporterUid
+          ? workoutRef.collection("reporters").doc(reporterUid)
+          : null;
+        const alreadyReportedByUser = reporterRef
+          ? (await tx.get(reporterRef)).exists
+          : false;
+
+        const outcome = resolveReportUpdate({
+          currentData: doc.data() || {},
+          alreadyReportedByUser,
+          threshold: AUTO_BLOCK_REPORT_THRESHOLD,
+        });
+        if (!outcome) {
+          console.log(
+            `Duplicate report ${event.params.reportId} ignored for workout ${workoutId} by uid=${reporterUid}`
+          );
+          return;
+        }
+
+        const updates = { reportCount: outcome.reportCount };
+        if (outcome.shouldBlock) {
           updates.status = "blocked";
-          updates.moderationReason = `Auto-blocked after ${newCount} user reports`;
+          updates.moderationReason = `Auto-blocked after ${outcome.reportCount} user reports`;
           updates.moderatedAt = FieldValue.serverTimestamp();
+        }
+        if (reporterRef) {
+          tx.set(reporterRef, {
+            reportId: event.params.reportId,
+            createdAt: FieldValue.serverTimestamp(),
+          });
         }
         tx.update(workoutRef, updates);
       });
@@ -747,18 +816,20 @@ exports.deleteAccount = onCall(
       .where("creatorUid", "==", uid)
       .get();
 
+    // Recursively delete each shared workout (including any `reporters` subcollection).
+    for (const sharedDoc of sharedSnap.docs) {
+      await db.recursiveDelete(sharedDoc.ref);
+    }
+
     const reportsSnap = await db
       .collection("reports")
       .where("reporterUid", "==", uid)
       .get();
 
-    const refs = [
-      ...sharedSnap.docs.map((d) => d.ref),
-      ...reportsSnap.docs.map((d) => d.ref),
-    ];
-    for (let i = 0; i < refs.length; i += 450) {
+    const reportRefs = reportsSnap.docs.map((d) => d.ref);
+    for (let i = 0; i < reportRefs.length; i += 450) {
       const batch = db.batch();
-      refs.slice(i, i + 450).forEach((ref) => batch.delete(ref));
+      reportRefs.slice(i, i + 450).forEach((ref) => batch.delete(ref));
       await batch.commit();
     }
 
@@ -776,7 +847,12 @@ module.exports._test = {
   modelChainForRequest,
   parseApiKeys,
   stripModelJSON,
+  hasImageContent,
+  supportsResponseFormat,
+  resolveReportUpdate,
+  UPSTREAM_TIMEOUT_MS,
   FREE_MODELS_STRUCTURED,
   FREE_MODELS_FALLBACK,
+  VISION_MODELS,
   callOpenRouterText,
 };
