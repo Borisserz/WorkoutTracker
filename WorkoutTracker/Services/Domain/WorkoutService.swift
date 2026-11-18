@@ -33,6 +33,9 @@ final class WorkoutService {
     private var watchStartReservedUntil: Date?
     /// Token for LiveWorkoutSyncEvent; `@ObservationIgnored` and `nonisolated(unsafe)` so `deinit` can unregister.
     @ObservationIgnored nonisolated(unsafe) private var liveSyncObserver: (any NSObjectProtocol)?
+    @ObservationIgnored nonisolated private let watchNotificationCenter: NotificationCenter
+    @ObservationIgnored nonisolated(unsafe) private var watchSyncContinuation: AsyncStream<LiveSyncPayload>.Continuation?
+    @ObservationIgnored nonisolated(unsafe) private var watchSyncConsumerTask: Task<Void, Never>?
 
     var isFinishTransitionPending: Bool { finishTransitionDepth > 0 }
     /// Sync gate for UI (History/Hub) — covers in-flight start, finish-undo, and Watch start reservation.
@@ -68,8 +71,10 @@ final class WorkoutService {
 
     deinit {
         if let liveSyncObserver {
-            NotificationCenter.default.removeObserver(liveSyncObserver)
+            watchNotificationCenter.removeObserver(liveSyncObserver)
         }
+        watchSyncContinuation?.finish()
+        watchSyncConsumerTask?.cancel()
     }
 
     init(workoutStore: WorkoutStoreProtocol,
@@ -80,7 +85,8 @@ final class WorkoutService {
          notificationManager: NotificationManager,
          progressManager: ProgressManager,
          appState: AppStateManager,
-         liveActivityManager: LiveActivityManager) {
+         liveActivityManager: LiveActivityManager,
+         watchNotificationCenter: NotificationCenter = .default) {
 
         self.workoutStore = workoutStore
         self.analyticsService = analyticsService
@@ -91,14 +97,30 @@ final class WorkoutService {
         self.progressManager = progressManager
         self.appState = appState
         self.liveActivityManager = liveActivityManager
+        self.watchNotificationCenter = watchNotificationCenter
 
-        liveSyncObserver = NotificationCenter.default.addObserver(forName: NSNotification.Name("LiveWorkoutSyncEvent"), object: nil, queue: .main) { [weak self] notification in
-            guard let self = self,
-                  let payloadDict = notification.userInfo?["payload"],
+        var capturedContinuation: AsyncStream<LiveSyncPayload>.Continuation?
+        let stream = AsyncStream<LiveSyncPayload> { continuation in
+            capturedContinuation = continuation
+        }
+        self.watchSyncContinuation = capturedContinuation
+
+        let container = analyticsService.modelContainer
+        self.watchSyncConsumerTask = Task.detached { [weak self] in
+            for await payload in stream {
+                guard !Task.isCancelled, let self else { break }
+                await self.handleSerializedWatchPayload(payload, container: container)
+            }
+        }
+
+        liveSyncObserver = watchNotificationCenter.addObserver(forName: NSNotification.Name("LiveWorkoutSyncEvent"), object: nil, queue: .main) { [weak self] notification in
+            guard let payloadDict = notification.userInfo?["payload"],
                   let payload = payloadDict as? LiveSyncPayload else { return }
+            self?.watchSyncContinuation?.yield(payload)
+        }
+    }
 
-            Task.detached {
-                let container = self.analyticsService.modelContainer
+    nonisolated private func handleSerializedWatchPayload(_ payload: LiveSyncPayload, container: ModelContainer) async {
                 let bgContext = ModelContext(container)
                 let workoutUUID = UUID(uuidString: payload.workoutID)
 
@@ -354,11 +376,9 @@ final class WorkoutService {
                         }
                     }
 
-                case .requestActiveState, .syncFullState, .updateHeartRate:
+                case .requestActiveState, .syncFullState, .updateHeartRate, .clearLocalData:
                     break
                 }
-            }
-        }
     }
 
     func syncPresetsWithWatch(presets: [WorkoutPreset]) {

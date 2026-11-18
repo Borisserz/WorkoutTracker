@@ -370,6 +370,10 @@ struct StatsContentView: View {
                 showAchievementsFolder = true
                 di.appState.showAchievementsSheet = false
             }
+            if di.appState.showProfileSheet {
+                showProfile = true
+                di.appState.showProfileSheet = false
+            }
             if UserDefaults.standard.bool(forKey: "hasSeenFeatureDiscovery") {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
                     if tutorialManager.currentStep == .completed {
@@ -3706,7 +3710,7 @@ struct StorySlideOutro: View {
                                 Text("\(cal.component(.day, from: date))")
                                     .font(.caption)
                                     .fontWeight(isActive ? .bold : .regular)
-                                    .foregroundColor(isActive ? .white : .primary)
+                                    .foregroundColor(isActive ? PastelTheme.textOnOat : .primary)
                             }
                             .aspectRatio(1, contentMode: .fit)
                         }
@@ -3762,21 +3766,21 @@ struct StorySlideOutro: View {
             VStack(alignment: .leading, spacing: 10) {
                 Image(systemName: icon)
                     .font(.title2)
-                    .foregroundColor(isSelected ? .white : themeManager.current.primaryAccent)
+                    .foregroundColor(isSelected ? PastelTheme.textOnOat : themeManager.current.primaryAccent)
 
                 Text(value)
                     .font(.system(size: 28, weight: .bold, design: .rounded))
                     .contentTransition(.numericText())
-                    .foregroundColor(isSelected ? .white : .primary)
+                    .foregroundColor(isSelected ? PastelTheme.textOnOat : .primary)
 
                 VStack(alignment: .leading) {
                     Text(title)
                         .font(.caption)
-                        .foregroundColor(isSelected ? .white.opacity(0.8) : .secondary)
+                        .foregroundColor(isSelected ? PastelTheme.textOnOat.opacity(0.75) : .secondary)
 
                     Text("\(change >= 0 ? "+" : "")\(change, specifier: "%.0f")%")
                         .font(.caption.bold())
-                        .foregroundColor(isSelected ? .white : (change >= 0 ? .green : .red))
+                        .foregroundColor(isSelected ? PastelTheme.textOnOat : (change >= 0 ? .green : .red))
                 }
             }
             .padding()

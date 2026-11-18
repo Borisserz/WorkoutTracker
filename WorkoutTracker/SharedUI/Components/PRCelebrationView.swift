@@ -17,7 +17,7 @@ struct PRCelebrationView: View {
             VStack(spacing: 20) {
                 Text(prLevel.title)
                     .font(.system(size: 36, weight: .heavy, design: .rounded))
-                    .foregroundColor(themeManager.current.background)
+                    .foregroundColor(PastelTheme.pastelOat)
                     .padding()
             }
             .scaleEffect(isAnimating ? 1.0 : 0.5)

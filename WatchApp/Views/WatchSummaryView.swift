@@ -29,7 +29,7 @@ struct WatchSummaryView: View {
 
                         summaryRow(title: "Time", value: formatTime(viewModel.totalDurationSeconds), icon: "stopwatch.fill", color: .orange)
 
-                        summaryRow(title: "Volume", value: "\(Int(viewModel.totalVolume)) kg", icon: "scalemass.fill", color: .purple)
+                        summaryRow(title: "Volume", value: UnitsManager.shared.displayWeightWithUnit(forKg: viewModel.totalVolume), icon: "scalemass.fill", color: .purple)
 
                         summaryRow(title: "Sets", value: "\(viewModel.totalSets)", icon: "number.circle.fill", color: WatchTheme.green)
 

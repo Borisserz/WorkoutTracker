@@ -38,6 +38,9 @@ final class PhoneWatchManager: NSObject, WCSessionDelegate {
         }
         if state == .activated {
             TrackingManager.shared.setUserProperty(name: "has_apple_watch", value: String(session.isWatchAppInstalled))
+            Task { @MainActor in
+                self.syncUserSettingsToWatch()
+            }
         }
     }
 
@@ -183,6 +186,53 @@ final class PhoneWatchManager: NSObject, WCSessionDelegate {
         }
     }
 
+    private func encodedUserSettingsData() -> Data? {
+        let rest = UserDefaults.standard.integer(forKey: Constants.UserDefaultsKeys.defaultRestTime.rawValue)
+        let settings = WatchUserSettings(
+            weightUnit: UnitsManager.shared.weightUnit.rawValue,
+            distanceUnit: UnitsManager.shared.distanceUnit.rawValue,
+            defaultRestTime: rest > 0 ? rest : 60
+        )
+        return try? JSONEncoder().encode(settings)
+    }
+
+    func syncUserSettingsToWatch() {
+        guard WCSession.isSupported() else { return }
+        let session = WCSession.default
+        guard session.activationState == .activated,
+              let settingsData = encodedUserSettingsData() else { return }
+        let payloadDict: [String: Any] = [
+            WatchSyncEnvelope.settingsKey: settingsData,
+            "ts": Date().timeIntervalSince1970
+        ]
+        try? session.updateApplicationContext(payloadDict)
+        if session.isReachable {
+            session.sendMessage([WatchSyncEnvelope.settingsKey: settingsData], replyHandler: nil)
+        }
+    }
+
+    func sendClearStateToWatch() {
+        guard WCSession.isSupported() else { return }
+        let session = WCSession.default
+        guard session.activationState == .activated else { return }
+        let clearPayload = LiveSyncPayload(action: .clearLocalData, workoutID: "")
+        guard let data = try? JSONEncoder().encode(clearPayload) else { return }
+        var envelope = WatchSyncEnvelope.userInfo(carrying: data)
+        envelope[WatchSyncEnvelope.clearStateKey] = true
+        if session.isReachable {
+            session.sendMessage(envelope, replyHandler: nil) { _ in
+                session.transferUserInfo(envelope)
+            }
+        } else {
+            session.transferUserInfo(envelope)
+        }
+        try? session.updateApplicationContext([
+            WatchSyncEnvelope.clearStateKey: true,
+            "presetsBatch": Data(),
+            "ts": Date().timeIntervalSince1970
+        ])
+    }
+
     private func sendPresetsToWatch() {
         let trace = TrackingManager.shared.startTrace(name: "watch_send_presets")
         guard let container = modelContainer else { 
@@ -198,14 +248,22 @@ final class PhoneWatchManager: NSObject, WCSessionDelegate {
             let data = try JSONEncoder().encode(dtos)
             AppLog.watch.debug("📱 sending \(presets.count) presets, \(data.count) bytes")
 
-            // ГАРАНТИРОВАННАЯ доставка на симуляторе — не зависит от reachability.
-            try WCSession.default.updateApplicationContext([
+            var ctx: [String: Any] = [
                 "presetsBatch": data,
                 "ts": Date().timeIntervalSince1970
-            ])
+            ]
+            if let settingsData = encodedUserSettingsData() {
+                ctx[WatchSyncEnvelope.settingsKey] = settingsData
+            }
+            // ГАРАНТИРОВАННАЯ доставка на симуляторе — не зависит от reachability.
+            try WCSession.default.updateApplicationContext(ctx)
 
             if WCSession.default.isReachable {
-                WCSession.default.sendMessage(["presetsBatch": data], replyHandler: nil)
+                var liveMsg: [String: Any] = ["presetsBatch": data]
+                if let settingsData = encodedUserSettingsData() {
+                    liveMsg[WatchSyncEnvelope.settingsKey] = settingsData
+                }
+                WCSession.default.sendMessage(liveMsg, replyHandler: nil)
             }
             trace?.stop()
         } catch {

@@ -168,7 +168,7 @@ struct FilterChip: View {
                 .padding(.vertical, 12)
 
                 .background(isSelected ? themeManager.current.primaryAccent : (colorScheme == .dark ? themeManager.current.surface : Color(UIColor.systemGray6)))
-                .foregroundColor(isSelected ? .white : (colorScheme == .dark ? .white : .black))
+                .foregroundColor(isSelected ? PastelTheme.textOnOat : (colorScheme == .dark ? .white : .black))
                 .cornerRadius(20)
                 .overlay(
                     RoundedRectangle(cornerRadius: 20)

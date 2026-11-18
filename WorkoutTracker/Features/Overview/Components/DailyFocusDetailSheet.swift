@@ -21,8 +21,7 @@ struct DailyFocusDetailSheet: View {
     }
 
     private var cleanSplitTitle: String {
-        advice.recommendedSplitTitle
-            .replacingOccurrences(of: "Next session: ", with: "")
+        NextWorkoutAdvice.stripSessionPrefix(from: advice.recommendedSplitTitle)
     }
 
     var body: some View {

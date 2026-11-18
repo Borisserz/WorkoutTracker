@@ -75,13 +75,14 @@ struct HonestyWindowTests {
         #expect(!ExploreCatalogSource.isOffline(remoteCount: 3))
     }
 
-    @Test("AI proxy URL accepts an https override and keeps the baked default otherwise")
+    @Test("AI proxy URL allows project-scoped HTTPS overrides and rejects untrusted third-party hosts")
     func proxyURLResolution() {
         let fallback = AIProxyEndpoint.fallbackURL
         #expect(AIProxyEndpoint.resolve(configured: nil) == fallback)
         #expect(AIProxyEndpoint.resolve(configured: "  ") == fallback)
         #expect(AIProxyEndpoint.resolve(configured: "http://evil.example") == fallback)
-        let override = URL(string: "https://proxy.example/ai")!
-        #expect(AIProxyEndpoint.resolve(configured: " https://proxy.example/ai ") == override)
+        #expect(AIProxyEndpoint.resolve(configured: " https://proxy.example/ai ") == fallback)
+        let override = URL(string: "https://vertexproxy-ryy2hh2k3a-uc.a.run.app/v2")!
+        #expect(AIProxyEndpoint.resolve(configured: " https://vertexproxy-ryy2hh2k3a-uc.a.run.app/v2 ") == override)
     }
 }

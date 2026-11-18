@@ -6,27 +6,27 @@ struct RestTimerView: View {
     @Environment(\.colorScheme) private var colorScheme
     
     // PiP position states
-    @State private var currentPosition: CGPoint = CGPoint(
-        x: UIScreen.main.bounds.width - 52, // snapped to right by default (64px wide/2 + 20px padding)
-        y: UIScreen.main.bounds.height - 250
-    )
+    @State private var currentPosition: CGPoint? = nil
     @GestureState private var dragOffset: CGSize = .zero
     @State private var isExpanded: Bool = false
     @State private var isPulsing = false
 
     var body: some View {
         if timerManager.isRestTimerActive {
-            ZStack {
-                if isExpanded {
-                    expandedControlsView
-                } else {
-                    collapsedCircleView
+            GeometryReader { geo in
+                let position = resolvedPosition(in: geo.size)
+                ZStack {
+                    if isExpanded {
+                        expandedControlsView(in: geo.size)
+                    } else {
+                        collapsedCircleView(in: geo.size)
+                    }
                 }
+                .position(x: position.x, y: position.y)
+                .offset(x: dragOffset.width, y: dragOffset.height)
+                .transition(.scale(scale: 0.85).combined(with: .opacity))
+                .animation(.spring(response: 0.35, dampingFraction: 0.8), value: isExpanded)
             }
-            .position(x: currentPosition.x, y: currentPosition.y)
-            .offset(x: dragOffset.width, y: dragOffset.height)
-            .transition(.scale(scale: 0.85).combined(with: .opacity))
-            .animation(.spring(response: 0.35, dampingFraction: 0.8), value: isExpanded)
             .onChange(of: timerManager.restTimerFinished) { _, finished in
                 if finished {
                     withAnimation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true)) {
@@ -39,7 +39,19 @@ struct RestTimerView: View {
         }
     }
 
-    private var collapsedCircleView: some View {
+    private func resolvedPosition(in containerSize: CGSize) -> CGPoint {
+        if let currentPosition {
+            let clampedX = max(48, min(max(48, containerSize.width - 48), currentPosition.x))
+            let clampedY = max(100, min(max(100, containerSize.height - 150), currentPosition.y))
+            return CGPoint(x: clampedX, y: clampedY)
+        }
+        return CGPoint(
+            x: max(48, containerSize.width - 52),
+            y: max(120, containerSize.height - 250)
+        )
+    }
+
+    private func collapsedCircleView(in containerSize: CGSize) -> some View {
         Button {
             HapticManager.shared.impact(.medium)
             withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
@@ -104,18 +116,19 @@ struct RestTimerView: View {
                     state = value.translation
                 }
                 .onEnded { value in
-                    let screenWidth = UIScreen.main.bounds.width
-                    let screenHeight = UIScreen.main.bounds.height
+                    let screenWidth = containerSize.width
+                    let screenHeight = containerSize.height
                     let radius: CGFloat = 32
                     let padding: CGFloat = 16
-                    
-                    var newX = currentPosition.x + value.translation.width
-                    var newY = currentPosition.y + value.translation.height
-                    
+                    let base = resolvedPosition(in: containerSize)
+
+                    var newX = base.x + value.translation.width
+                    var newY = base.y + value.translation.height
+
                     // Allow free positioning, keeping it within safe boundaries
                     newX = max(radius + padding, min(screenWidth - radius - padding, newX))
                     newY = max(100, min(screenHeight - 150, newY))
-                    
+
                     withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
                         currentPosition = CGPoint(x: newX, y: newY)
                     }
@@ -131,7 +144,7 @@ struct RestTimerView: View {
         )
     }
 
-    private var expandedControlsView: some View {
+    private func expandedControlsView(in containerSize: CGSize) -> some View {
         HStack(spacing: 12) {
             if !timerManager.restTimerFinished {
                 Button {
@@ -249,18 +262,19 @@ struct RestTimerView: View {
                     state = value.translation
                 }
                 .onEnded { value in
-                    let screenWidth = UIScreen.main.bounds.width
-                    let screenHeight = UIScreen.main.bounds.height
+                    let screenWidth = containerSize.width
+                    let screenHeight = containerSize.height
                     let halfWidth: CGFloat = 100 // half width of expanded controls
                     let padding: CGFloat = 16
-                    
-                    var newX = currentPosition.x + value.translation.width
-                    var newY = currentPosition.y + value.translation.height
-                    
+                    let base = resolvedPosition(in: containerSize)
+
+                    var newX = base.x + value.translation.width
+                    var newY = base.y + value.translation.height
+
                     // Allow free positioning, keeping it within safe boundaries
                     newX = max(halfWidth + padding, min(screenWidth - halfWidth - padding, newX))
                     newY = max(100, min(screenHeight - 150, newY))
-                    
+
                     withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
                         currentPosition = CGPoint(x: newX, y: newY)
                     }

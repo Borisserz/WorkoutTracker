@@ -163,17 +163,34 @@ final class WatchSyncManager: NSObject, WCSessionDelegate {
     nonisolated private func handleIncoming(_ dict: [String : Any]) {
         let syncData = WatchSyncEnvelope.liveSyncData(from: dict)
         let presetsData = dict["presetsBatch"] as? Data
+        let settingsData = WatchSyncEnvelope.settingsData(from: dict)
+        let shouldClearState = (dict[WatchSyncEnvelope.clearStateKey] as? Bool) == true
 
         Task { @MainActor in
+            if shouldClearState {
+                await self.clearAllWatchData()
+            }
+
+            if let settingsData,
+               let settings = try? JSONDecoder().decode(WatchUserSettings.self, from: settingsData) {
+                self.applyUserSettings(settings)
+            }
+
             if let data = syncData,
                let payload = try? JSONDecoder().decode(LiveSyncPayload.self, from: data) {
+                if payload.action == .clearLocalData {
+                    await self.clearAllWatchData()
+                    return
+                }
                 let name = payload.action == .syncFullState ? "WatchStateRecoveryEvent" : "WatchLiveSyncEvent"
                 NotificationCenter.default.post(name: .init(name), object: nil, userInfo: ["payload": payload])
             }
 
             if let presetsData {
                 SyncLog.logger.debug("⌚️ got presetsBatch \(presetsData.count) bytes")
-                if let dtos = try? JSONDecoder().decode([WorkoutPresetDTO].self, from: presetsData) {
+                if presetsData.isEmpty {
+                    await self.clearPresetsLocally()
+                } else if let dtos = try? JSONDecoder().decode([WorkoutPresetDTO].self, from: presetsData) {
                     SyncLog.logger.debug("⌚️ decoded \(dtos.count) presets → saving")
                     await self.savePresetsLocally(dtos)
                 } else {
@@ -181,6 +198,34 @@ final class WatchSyncManager: NSObject, WCSessionDelegate {
                 }
             }
         }
+    }
+
+    private func applyUserSettings(_ settings: WatchUserSettings) {
+        if let weightUnit = WeightUnit(rawValue: settings.weightUnit) {
+            UnitsManager.shared.setWeightUnit(weightUnit)
+        }
+        if let distanceUnit = DistanceUnit(rawValue: settings.distanceUnit) {
+            UnitsManager.shared.setDistanceUnit(distanceUnit)
+        }
+        UserDefaults.standard.set(settings.defaultRestTime, forKey: "defaultRestTime")
+    }
+
+    private func clearPresetsLocally() async {
+        guard let context = modelContext else { return }
+        let fetchDescriptor = FetchDescriptor<WorkoutPreset>(predicate: #Predicate { $0.isSystem == false })
+        if let existing = try? context.fetch(fetchDescriptor) {
+            for p in existing { context.delete(p) }
+            try? context.save()
+        }
+    }
+
+    private func clearAllWatchData() async {
+        guard let context = modelContext else { return }
+        try? context.delete(model: Workout.self)
+        try? context.delete(model: Exercise.self)
+        try? context.delete(model: WorkoutSet.self)
+        await clearPresetsLocally()
+        try? context.save()
     }
 
     private func savePresetsLocally(_ dtos: [WorkoutPresetDTO]) async {

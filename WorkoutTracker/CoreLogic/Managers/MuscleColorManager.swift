@@ -42,6 +42,10 @@ class MuscleColorManager {
         }
     }
 
+    func reset() {
+        colors.removeAll()
+    }
+
     func save(muscle: String, hex: String, context: ModelContext) {
         colors[muscle] = hex
 

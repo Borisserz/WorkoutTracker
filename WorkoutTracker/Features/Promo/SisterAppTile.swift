@@ -41,7 +41,7 @@ struct SisterAppTile: View {
 
                     Image(systemName: app.symbolName)
                         .font(.system(size: 24, weight: .semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(PastelTheme.textOnOat)
                 }
 
                 VStack(alignment: .leading, spacing: 4) {

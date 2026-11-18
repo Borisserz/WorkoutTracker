@@ -271,7 +271,7 @@
         "pt-PT": {
           "stringUnit": {
             "state": "translated",
-            "value": "%,1f toneladas"
+            "value": "%.1f toneladas"
           }
         },
         "ru": {
@@ -2185,7 +2185,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$llter Tag%2$@"
+            "value": "%1$lld Tag%2$@"
           }
         },
         "en": {
@@ -2197,7 +2197,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$ll día%2$@"
+            "value": "%1$lld día%2$@"
           }
         },
         "fr": {
@@ -2668,7 +2668,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Todos los ejercicios principales incluidos."
+            "value": "%lld ejercicios principales incluidos."
           }
         },
         "fr": {
@@ -3020,7 +3020,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Todos los grupos de músculos necesitan descansar."
+            "value": "%lld grupos musculares necesitan descanso."
           }
         },
         "fr": {
@@ -3038,7 +3038,7 @@
         "pt-PT": {
           "stringUnit": {
             "state": "translated",
-            "value": "% de todos os grupos musculares precisam de descanso."
+            "value": "%lld grupos musculares precisam de descanso."
           }
         },
         "ru": {
@@ -4226,7 +4226,7 @@
         "pt-PT": {
           "stringUnit": {
             "state": "translated",
-            "value": "%ld toneladas"
+            "value": "%lld toneladas"
           }
         },
         "ru": {
@@ -4982,7 +4982,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%ld%%"
+            "value": "%lld%%"
           }
         },
         "it": {
@@ -5024,7 +5024,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%ld%%"
+            "value": "%lld%% "
           }
         },
         "it": {
@@ -6337,7 +6337,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "+%ld%%"
+            "value": "+%lld%%"
           }
         },
         "it": {
@@ -12685,7 +12685,7 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Тыберите в зависимости от времени вашего восстановления. По умолчанию 48 часов"
+            "value": "Выберите в зависимости от времени вашего восстановления. По умолчанию 48 часов."
           }
         }
       }
@@ -13286,7 +13286,7 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Тыровняй тело в кадре."
+            "value": "Выровняйте тело в кадре."
           }
         }
       }
@@ -16831,7 +16831,7 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Средний вес: % от кг"
+            "value": "Средний вес: %@ кг"
           }
         }
       }
@@ -22256,7 +22256,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Stornieren"
+            "value": "Abbrechen"
           }
         },
         "es": {
@@ -22274,7 +22274,7 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cancellare"
+            "value": "Annulla"
           }
         },
         "pt-PT": {
@@ -23734,7 +23734,7 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Сундук: 85% активен"
+            "value": "Грудь: 85% активна"
           }
         }
       }
@@ -23776,7 +23776,7 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Тыберите цвет для %@"
+            "value": "Выберите цвет для %@"
           }
         }
       }
@@ -23818,7 +23818,7 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Тыберите шаблон"
+            "value": "Выберите шаблон"
           }
         }
       }
@@ -23907,7 +23907,7 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Тыбрать из галереи"
+            "value": "Выбрать из галереи"
           }
         }
       }
@@ -24923,7 +24923,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cerca"
+            "value": "Cerrar"
           }
         },
         "fr": {
@@ -24935,7 +24935,7 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Vicino"
+            "value": "Chiudi"
           }
         },
         "pt-PT": {
@@ -33305,7 +33305,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Lass deine %ll-Tage-Serie nicht sterben! 15 Minuten genügen!"
+            "value": "Lass deine %lld-Tage-Serie nicht abreißen! 15 Minuten genügen!"
           }
         },
         "es": {
@@ -50006,7 +50006,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Lasst uns gemeinsam diese mindestens 10-tägige Serie am Leben erhalten! Nur eine kurze Sitzung?"
+            "value": "Lasst uns gemeinsam deine %lld-Tage-Serie am Leben erhalten! Nur eine kurze Einheit?"
           }
         },
         "es": {
@@ -53000,7 +53000,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Behalten Sie Ihre %ll-Tage-Strähne bei, um eine neurologische Beeinträchtigung zu verhindern."
+            "value": "Halten Sie Ihre %lld-Tage-Serie aufrecht, um neurologisches Detraining zu vermeiden."
           }
         },
         "es": {
@@ -53024,7 +53024,7 @@
         "pt-PT": {
           "stringUnit": {
             "state": "translated",
-            "value": "Mantenha sua sequência de 1 dia para evitar destreinamento neurológico."
+            "value": "Mantenha a sua sequência de %lld dias para evitar o destreino neurológico."
           }
         },
         "ru": {
@@ -63177,7 +63177,7 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Тыбери быстрый пресет или собери кастомную программу за секунды."
+            "value": "Выберите быстрый пресет или соберите кастомную программу за секунды."
           }
         }
       }
@@ -64287,7 +64287,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Zurück: %d Sätze × %d Wiederholungen"
+            "value": "Vorheriges: %d Sätze × %d Wiederholungen"
           }
         },
         "en": {
@@ -64333,7 +64333,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Zurück: %d Sätze × %d Wiederholungen bei %.1f kg"
+            "value": "Vorheriges: %d Sätze × %d Wiederholungen bei %.1f kg"
           }
         },
         "en": {
@@ -64379,7 +64379,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Zurück: %d Sätze × %dm %ds"
+            "value": "Vorheriges: %d Sätze × %dm %ds"
           }
         },
         "en": {
@@ -64403,7 +64403,7 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Precedente: %d imposta × %dm %ds"
+            "value": "Precedente: %d serie × %dm %ds"
           }
         },
         "pt-PT": {
@@ -64415,7 +64415,7 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Предыдущий: %d устанавливает × %dm %ds"
+            "value": "Предыдущее: %d подходов × %dm %ds"
           }
         }
       }
@@ -73411,7 +73411,7 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Тыберите %@ фото"
+            "value": "Выберите фото (%@)"
           }
         }
       }
@@ -73453,7 +73453,7 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Тыберите цвет"
+            "value": "Выберите цвет"
           }
         }
       }
@@ -73496,7 +73496,7 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Тыбрать упражнение"
+            "value": "Выбрать упражнение"
           }
         }
       }
@@ -73577,7 +73577,7 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Тыберите фото"
+            "value": "Выберите фото"
           }
         }
       }
@@ -73619,7 +73619,7 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Тыберите тип подхода"
+            "value": "Выберите тип подхода"
           }
         }
       }
@@ -73662,7 +73662,7 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Тыберите быстрый пресет или создайте пользовательскую программу за секунды."
+            "value": "Выберите быстрый пресет или создайте пользовательскую программу за секунды."
           }
         }
       }
@@ -73826,7 +73826,7 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Тыбрано"
+            "value": "Выбрано"
           }
         }
       }
@@ -84254,7 +84254,7 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Тыбранный тон будет использоваться во всех ответах ИИ тренера."
+            "value": "Выбранный тон будет использоваться во всех ответах ИИ-тренера."
           }
         }
       }
@@ -98768,7 +98768,7 @@
         "pt-PT": {
           "stringUnit": {
             "state": "translated",
-            "value": "~%ld min"
+            "value": "~%lld min"
           }
         },
         "ru": {
@@ -102907,6 +102907,334 @@
           "stringUnit": {
             "state": "translated",
             "value": "Распознавание речи для вашего языка недоступно на этом устройстве."
+          }
+        }
+      }
+    },
+    "Couldn't start the microphone. Please try again.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das Mikrofon konnte nicht gestartet werden. Bitte versuche es erneut."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't start the microphone. Please try again."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo iniciar el micrófono. Inténtalo de nuevo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de démarrer le micro. Veuillez réessayer."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossibile avviare il microfono. Riprova."
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível iniciar o microfone. Tenta novamente."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось запустить микрофон. Попробуйте ещё раз."
+          }
+        }
+      }
+    },
+    "%@ lifted": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ lifted"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ gehoben"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ levantado"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ soulevé"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ sollevato"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ levantado"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ поднято"
+          }
+        }
+      }
+    },
+    "Photos unavailable": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Photos unavailable"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fotos nicht verfügbar"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fotos no disponibles"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Photos indisponibles"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Foto non disponibili"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fotos indisponíveis"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Фотографии недоступны"
+          }
+        }
+      }
+    },
+    "Saved progress photos could not be loaded.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saved progress photos could not be loaded."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gespeicherte Fortschrittsfotos konnten nicht geladen werden."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudieron cargar las fotos de progreso guardadas."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de charger les photos de progression enregistrées."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossibile caricare le foto dei progressi salvate."
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível carregar as fotos de progresso guardadas."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось загрузить сохранённые фото прогресса."
+          }
+        }
+      }
+    },
+    "Time for your committed workout": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Time for your committed workout"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zeit für dein geplantes Training"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hora de tu entrenamiento programado"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "C’est l’heure de votre séance prévue"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "È ora del tuo allenamento programmato"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hora do seu treino agendado"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Время для запланированной тренировки"
+          }
+        }
+      }
+    },
+    "Your future self is ready. Start your session now!": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your future self is ready. Start your session now!"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dein zukünftiges Ich ist bereit. Starte jetzt deine Einheit!"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu yo del futuro está listo. ¡Empieza tu sesión ahora!"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Votre futur vous est prêt. Lancez votre séance maintenant !"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il tuo io futuro è pronto. Inizia subito la sessione!"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O seu eu do futuro está pronto. Comece a sessão agora!"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ваше будущее «я» готово. Начните тренировку прямо сейчас!"
+          }
+        }
+      }
+    },
+    "This workout could not be found.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This workout could not be found."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieses Training konnte nicht gefunden werden."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo encontrar este entrenamiento."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette séance est introuvable."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossibile trovare questo allenamento."
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível encontrar este treino."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось найти эту тренировку."
           }
         }
       }

@@ -157,9 +157,37 @@ struct WorkoutShareCard: View {
     @Environment(UnitsManager.self) private var unitsManager
 
     let workout: Workout
+    var hasPersonalRecord: Bool = false
 
     private var totalVolume: Int {
-        Int(workout.totalStrengthVolume)
+        Self.convertedVolume(kilograms: workout.totalStrengthVolume, unitsManager: unitsManager)
+    }
+
+    @MainActor
+    static func convertedVolume(kilograms: Double, unitsManager: UnitsManager) -> Int {
+        Int(unitsManager.convertFromKilograms(kilograms).rounded())
+    }
+
+    static func shouldShowPersonalRecordBadge(
+        workout: Workout,
+        recordsCache: [String: Double],
+        recordedPRCount: Int = 0
+    ) -> Bool {
+        if recordedPRCount > 0 { return true }
+        for ex in workout.exercises {
+            let targets = ex.isSuperset ? ex.subExercises : [ex]
+            for target in targets where target.type == .strength {
+                let completedMax = target.setsList
+                    .filter { $0.isCompleted }
+                    .compactMap { $0.weight }
+                    .max() ?? 0
+                let oldRecord = recordsCache[target.name] ?? 0
+                if completedMax > oldRecord && oldRecord > 0 {
+                    return true
+                }
+            }
+        }
+        return false
     }
 
     private var totalSetsCount: Int {
@@ -300,13 +328,15 @@ struct WorkoutShareCard: View {
                     .font(.system(size: 9, weight: .bold, design: .monospaced))
                     .foregroundColor(PastelTheme.textSecondary)
                 Spacer()
-                HStack(spacing: 4) {
-                    Circle()
-                        .fill(PastelTheme.pastelEmerald)
-                        .frame(width: 6, height: 6)
-                    Text("Personal record")
-                        .font(.system(size: 9, weight: .black, design: .monospaced))
-                        .foregroundColor(PastelTheme.pastelEmerald)
+                if hasPersonalRecord {
+                    HStack(spacing: 4) {
+                        Circle()
+                            .fill(PastelTheme.pastelEmerald)
+                            .frame(width: 6, height: 6)
+                        Text("Personal record")
+                            .font(.system(size: 9, weight: .black, design: .monospaced))
+                            .foregroundColor(PastelTheme.pastelEmerald)
+                    }
                 }
             }
         }
@@ -330,7 +360,7 @@ struct WorkoutShareCard: View {
                     .font(.system(size: 38, weight: .heavy, design: .rounded))
                     .monospacedDigit()
                     .foregroundColor(PastelTheme.textPrimary)
-                Text("kg lifted")
+                Text("\(unitsManager.weightUnitString()) \(String(localized: "lifted"))")
                     .font(.system(size: 13, weight: .black, design: .rounded))
                     .tracking(1)
                     .foregroundColor(PastelTheme.pastelOat)
@@ -405,6 +435,7 @@ struct WorkoutShareCard: View {
             ForEach(Array(completedExercises.prefix(3).enumerated()), id: \.element.id) { idx, ex in
                 let completedCount = ex.sortedSets.filter { $0.isCompleted }.count
                 let maxWeight = ex.sortedSets.filter { $0.isCompleted }.compactMap { $0.weight }.max() ?? 0
+                let convertedMax = Int(unitsManager.convertFromKilograms(maxWeight).rounded())
 
                 HStack {
                     Text(String(format: "%02d.", idx + 1))
@@ -418,7 +449,7 @@ struct WorkoutShareCard: View {
 
                     Spacer()
 
-                    Text("\(completedCount) sets, \(Int(maxWeight)) kg")
+                    Text("\(completedCount) sets, \(convertedMax) \(unitsManager.weightUnitString())")
                         .font(.system(size: 10, weight: .semibold, design: .monospaced))
                         .foregroundColor(PastelTheme.textSecondary)
                 }

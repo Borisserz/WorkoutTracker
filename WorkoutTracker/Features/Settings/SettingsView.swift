@@ -7,6 +7,7 @@ import FirebaseAuth
 import AuthenticationServices
 import GoogleSignIn
 import FirebaseFunctions
+import UserNotifications
 import WidgetKit
 
 struct SettingsView: View {
@@ -14,6 +15,7 @@ struct SettingsView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(DIContainer.self) private var di
     @Environment(AuthManager.self) private var authManager
+    @Environment(RestTimerManager.self) private var timerManager
     @AppStorage(Constants.UserDefaultsKeys.includeWarmupsInStats.rawValue) private var includeWarmupsInStats: Bool = false
     @State private var isProcessing = false
     @State private var showTestDataAlert = false
@@ -41,7 +43,9 @@ struct SettingsView: View {
                 workoutOptionsSection
                 gamificationSection
                 supportAndDataSection
-                moreFromUsSection
+                if RemoteConfigManager.shared.showSisterAppsPromo {
+                    moreFromUsSection
+                }
                 accountSection
 
                 #if DEBUG
@@ -676,37 +680,40 @@ struct SettingsView: View {
         isProcessing = true
         defer { isProcessing = false }
         do {
-            // 0) Re-authenticate the user and, for Sign in with Apple, revoke the
-            //    Apple refresh token. Nothing destructive runs until this succeeds.
-            //    If the user cancels the auth sheet, this throws and we abort with
-            //    all data still intact.
-            try await SocialAuthService.shared.reauthenticateForDeletion()
-
-            // 1) Delete all server-side Firestore data (shared_workouts, reports,
-            //    users/{uid} + blocked subcollection) using the Admin SDK.
             let deletedUID = Auth.auth().currentUser?.uid
             let functions = Functions.functions(region: "us-central1")
-            _ = try await functions.httpsCallable("deleteAccount").call()
 
-            // 2) Server deletes the Auth user too; still delete/sign out locally if needed.
-            do {
-                try await Auth.auth().currentUser?.delete()
-            } catch let authError as NSError where authError.domain == AuthErrorDomain
-                && (authError.code == AuthErrorCode.userNotFound.rawValue
-                    || authError.code == AuthErrorCode.userTokenExpired.rawValue
-                    || authError.code == AuthErrorCode.invalidUserToken.rawValue) {
-                try? Auth.auth().signOut()
-            }
-            AuthIdentityCache.clear(uid: deletedUID)
-
-            // 3) Stop the blocked-list listener and wipe local storage.
-            await BlockedUsersStore.shared.stopListening()
-            deleteLocalData()
-            // 4) Guest session so the app is usable without a restart.
-            try? await AnonymousAuthBootstrap.shared.ensureSignedIn()
-            authManager.refresh()
-            signInSuccessBannerText = nil
-            await BlockedUsersStore.shared.startListening()
+            try await AccountDeletionCoordinator.execute(
+                reauthenticate: {
+                    try await SocialAuthService.shared.reauthenticateForDeletion()
+                },
+                wipeServerData: {
+                    _ = try await functions.httpsCallable("deleteAccount").call(["deleteAuthUser": false])
+                },
+                revokeAppleToken: { code in
+                    try await SocialAuthService.shared.revokeAppleToken(authorizationCode: code)
+                },
+                deleteAuthUser: {
+                    try await Auth.auth().currentUser?.delete()
+                },
+                fallbackServerDeleteAuth: {
+                    _ = try await functions.httpsCallable("deleteAccount").call(["deleteAuthUser": true])
+                },
+                signOutProviders: {
+                    SocialAuthService.shared.signOutProvidersOnly()
+                },
+                wipeLocalState: {
+                    AuthIdentityCache.clear(uid: deletedUID)
+                    await BlockedUsersStore.shared.stopListening()
+                    deleteLocalData()
+                    signInSuccessBannerText = nil
+                },
+                bootstrapAnonymous: {
+                    _ = try await AnonymousAuthBootstrap.shared.ensureSignedIn()
+                    authManager.refresh()
+                    await BlockedUsersStore.shared.startListening()
+                }
+            )
             showDeleteSuccessAlert = true
         } catch {
             deleteAccountError = error.localizedDescription
@@ -777,10 +784,15 @@ struct SettingsView: View {
         UserDefaults.standard.set(1, forKey: "userLevel")
 
         WorkoutStore.clearSharedAppGroupState()
+        WorkoutDetailViewModel.wipeSupplementaryDefaultsAndFiles()
         UserDefaults.standard.removeObject(forKey: WidgetDataManager.key)
         WidgetCenter.shared.reloadAllTimelines()
         LiveActivityManager().stopAllActivities()
+        timerManager.stopRestTimer()
+        UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
         di.progressManager.resetProgress()
+        MuscleColorManager.shared.reset()
+        PhoneWatchManager.shared.sendClearStateToWatch()
         ProfileImageManager.shared.deleteImage()
         if !weightImageNames.isEmpty {
             Task {
@@ -822,6 +834,12 @@ struct UnitsSettingsView: View {
         }
         .navigationTitle(LocalizedStringKey("Units of Measure"))
         .navigationBarTitleDisplayMode(.inline)
+        .onChange(of: unitsManager.weightUnit) { _, _ in
+            PhoneWatchManager.shared.syncUserSettingsToWatch()
+        }
+        .onChange(of: unitsManager.distanceUnit) { _, _ in
+            PhoneWatchManager.shared.syncUserSettingsToWatch()
+        }
     }
 }
 
@@ -912,6 +930,9 @@ struct TimerSettingsView: View {
         }
         .navigationTitle(LocalizedStringKey("Rest Timer"))
         .navigationBarTitleDisplayMode(.inline)
+        .onChange(of: defaultRestTime) { _, _ in
+            PhoneWatchManager.shared.syncUserSettingsToWatch()
+        }
     }
 }
 

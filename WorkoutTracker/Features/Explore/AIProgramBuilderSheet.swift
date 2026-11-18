@@ -137,7 +137,7 @@ struct AIProgramBuilderSheet: View {
                                             .frame(maxWidth: .infinity)
                                             .padding(.vertical, 12)
                                             .background(isSelected ? themeManager.current.primaryAccent : (colorScheme == .dark ? Color.white.opacity(0.05) : Color(UIColor.systemGray6)))
-                                            .foregroundColor(isSelected ? .white : (colorScheme == .dark ? .white : .black))
+                                            .foregroundColor(isSelected ? PastelTheme.textOnOat : (colorScheme == .dark ? .white : .black))
                                             .clipShape(Circle())
                                     }
                                     .buttonStyle(.plain)
@@ -238,7 +238,7 @@ struct AIProgramBuilderSheet: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 18)
                 .background(themeManager.current.primaryGradient)
-                .foregroundColor(.white)
+                .foregroundColor(PastelTheme.textOnOat)
                 .clipShape(Capsule())
                 .shadow(color: themeManager.current.deepPremiumAccent.opacity(0.4), radius: 15, x: 0, y: 8)
             }
@@ -424,7 +424,7 @@ struct AIProgramBuilderSheet: View {
                         Text("Save to My Programs").font(.headline).bold()
                     }
                 }
-                .foregroundColor(.white)
+                .foregroundColor(viewModel.isSaving ? .white : PastelTheme.textOnOat)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 18)
                 .background(viewModel.isSaving ? Color.gray : themeManager.current.primaryAccent)

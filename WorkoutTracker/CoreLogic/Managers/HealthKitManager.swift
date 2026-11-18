@@ -21,6 +21,7 @@ enum HealthKitError: LocalizedError {
 actor HealthKitManager: Sendable {
     static let shared = HealthKitManager()
     private let healthStore = HKHealthStore()
+    private var heartRateObserverQuery: HKObserverQuery?
 
     private init() {}
 
@@ -216,36 +217,38 @@ actor HealthKitManager: Sendable {
         }
 
         let payload = Self.buildWorkoutPayload(title: title, calories: calories, distanceMeters: distanceMeters)
+        let configuration = HKWorkoutConfiguration()
+        configuration.activityType = payload.activityType
+        configuration.locationType = .indoor
 
-        let workout = HKWorkout(
-            activityType: payload.activityType,
-            start: startDate,
-            end: endDate,
-            workoutEvents: nil,
-            totalEnergyBurned: payload.energyQuantity,
-            totalDistance: payload.distanceQuantity,
-            metadata: [
-                HKMetadataKeyWorkoutBrandName: "AI Workout",
-                "CustomTitle": title
-            ]
+        let builder = HKWorkoutBuilder(
+            healthStore: healthStore,
+            configuration: configuration,
+            device: .local()
         )
 
         do {
-            try await healthStore.save(workout)
-            AppLog.health.debug("✅ SUCCESS: HKWorkout written to DB!")
+            try await builder.beginCollection(at: startDate)
 
+            var samples: [HKSample] = []
             if calories > 0, let energyType = HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned) {
-                let energySample = HKQuantitySample(type: energyType, quantity: payload.energyQuantity, start: startDate, end: endDate)
-                try await healthStore.save(energySample)
-                AppLog.health.debug("✅ SUCCESS: Calories added to Move Ring!")
+                samples.append(HKQuantitySample(type: energyType, quantity: payload.energyQuantity, start: startDate, end: endDate))
             }
-
             if let distanceQuantity = payload.distanceQuantity,
                let distanceType = HKQuantityType.quantityType(forIdentifier: .distanceWalkingRunning) {
-                let distanceSample = HKQuantitySample(type: distanceType, quantity: distanceQuantity, start: startDate, end: endDate)
-                try await healthStore.save(distanceSample)
-                AppLog.health.debug("✅ SUCCESS: Cardio distance written to Apple Health!")
+                samples.append(HKQuantitySample(type: distanceType, quantity: distanceQuantity, start: startDate, end: endDate))
             }
+
+            if !samples.isEmpty {
+                try await builder.addSamples(samples)
+            }
+            try await builder.addMetadata([
+                HKMetadataKeyWorkoutBrandName: "AI Workout",
+                "CustomTitle": title
+            ])
+            try await builder.endCollection(at: endDate)
+            _ = try await builder.finishWorkout()
+            AppLog.health.debug("✅ SUCCESS: Workout saved via HKWorkoutBuilder!")
         } catch {
             AppLog.health.error("❌ HealthKit save ERROR: \(error.localizedDescription)")
             throw HealthKitError.saveFailed(error)
@@ -280,6 +283,10 @@ actor HealthKitManager: Sendable {
     func startHeartRateObservation(onUpdate: @escaping @Sendable (Double, Date) -> Void) {
         guard let heartRateType = HKObjectType.quantityType(forIdentifier: .heartRate) else { return }
 
+        if let existing = heartRateObserverQuery {
+            healthStore.stop(existing)
+            heartRateObserverQuery = nil
+        }
 
         let query = HKObserverQuery(sampleType: heartRateType, predicate: nil) { [weak self] _, completionHandler, error in
             guard error == nil else {
@@ -295,6 +302,7 @@ actor HealthKitManager: Sendable {
             }
         }
 
+        heartRateObserverQuery = query
         healthStore.execute(query)
     }
     func fetchSteps(for date: Date = Date()) async throws -> Int {

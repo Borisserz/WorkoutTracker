@@ -1,0 +1,90 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "CFBundleDisplayName" : {
+      "comment" : "Bundle display name",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout" } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout" } }
+      }
+    },
+    "NSCameraUsageDescription" : {
+      "comment" : "Privacy - Camera Usage Description",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout verwendet die Kamera, um deine Übungsausführung zu analysieren, Wiederholungen lokal per Vision-KI zu zählen und Smart-Capture-Fortschrittsfotos aufzunehmen." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout uses the camera to analyze your exercise form, count repetitions with on-device Vision AI, and take Smart Capture progress photos." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout usa la cámara para analizar tu técnica, contar repeticiones en el dispositivo con Vision AI y tomar fotos de progreso con Captura Inteligente." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout utilise la caméra pour analyser votre posture, compter vos répétitions localement via Vision AI et prendre des photos de progression Smart Capture." } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout usa la fotocamera per analizzare la tua esecuzione, contare le ripetizioni sul dispositivo con Vision AI e scattare foto dei progressi con Smart Capture." } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "O AI Workout utiliza a câmara para analisar a sua execução, contar repetições no dispositivo com Vision AI e tirar fotografias de progresso Smart Capture." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout использует камеру для анализа техники упражнений, локального подсчёта повторений с Vision AI и съёмки фото прогресса в Smart Capture." } }
+      }
+    },
+    "NSHealthShareUsageDescription" : {
+      "comment" : "Privacy - Health Share Usage Description",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout liest Herzfrequenz, Ruhepuls, HRV, Aktivitätsenergie, Schlaf, Schritte, Wasseraufnahme und Körpergewicht aus Apple Health, um ZNS-Bereitschaft, Erholung, Hydration und Aktivitätswerte zu berechnen." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout reads your heart rate, resting heart rate, HRV, active energy, sleep, steps, dietary water, and body weight from Apple Health to calculate CNS readiness, recovery, hydration, and activity metrics." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout lee tu frecuencia cardíaca, pulso en reposo, VFC, energía activa, sueño, pasos, hidratación y peso corporal desde Apple Health para calcular la preparación del SNC, recuperación, hidratación y actividad." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout lit votre fréquence cardiaque, fréquence au repos, VFC, énergie active, sommeil, pas, hydratation et poids depuis Apple Santé pour calculer la récupération, l’état du SNC et les statistiques d’activité." } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout legge frequenza cardiaca, battito a riposo, HRV, energia attiva, sonno, passi, idratazione e peso corporeo da Apple Salute per calcolare prontezza del SNC, recupero, idratazione e metriche di attività." } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "O AI Workout lê a sua frequência cardíaca, frequência em repouso, VFC, energia ativa, sono, passos, água e peso corporal do Apple Saúde para calcular a prontidão do SNC, recuperação, hidratação e atividade." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout считывает пульс, пульс в покое, ВСР (HRV), активную энергию, сон, шаги, воду и вес тела из Apple Health для расчёта готовности ЦНС, восстановления, водного баланса и статистики активности." } }
+      }
+    },
+    "NSHealthUpdateUsageDescription" : {
+      "comment" : "Privacy - Health Update Usage Description",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout speichert abgeschlossene Workouts, aktive verbrannte Kalorien, Kardio-Distanz, Wasseraufnahme und Gewichtsaktualisierungen in Apple Health." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout saves your completed workouts, active calories burned, cardio distance, water intake, and body weight updates to Apple Health." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout guarda tus entrenamientos completados, calorías activas quemadas, distancia de cardio, consumo de agua y actualizaciones de peso corporal en Apple Health." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout enregistre vos séances terminées, calories actives dépensées, distances cardio, consommation d’eau et mises à jour de poids dans Apple Santé." } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout salva gli allenamenti completati, le calorie attive bruciate, la distanza cardio, l’acqua assunta e gli aggiornamenti del peso corporeo in Apple Salute." } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "O AI Workout guarda os seus treinos concluídos, calorias ativas queimadas, distância de cardio, ingestão de água e atualizações de peso corporal no Apple Saúde." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout сохраняет завершённые тренировки, сожжённые активные калории, кардио-дистанцию, потребление воды и обновления веса тела в Apple Health." } }
+      }
+    },
+    "NSMicrophoneUsageDescription" : {
+      "comment" : "Privacy - Microphone Usage Description",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout verwendet das Mikrofon, wenn du Nachrichten an den KI-Coach diktierst." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout uses the microphone when you dictate messages to the AI Coach." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout usa el micrófono cuando dictas mensajes al entrenador de IA." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout utilise le microphone lorsque vous dictez des messages au coach IA." } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout utilizza il microfono quando detti messaggi all’AI Coach." } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "O AI Workout utiliza o microfone quando dita mensagens para o treinador de IA." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout использует микрофон, когда вы диктуете сообщения ИИ-тренеру." } }
+      }
+    },
+    "NSPhotoLibraryUsageDescription" : {
+      "comment" : "Privacy - Photo Library Usage Description",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout greift auf deine Fotomediathek zu, damit du ein Profilbild auswählen und Vorher-/Nachher-Fortschrittsfotos zu deinen Gewichtseinträgen hinzufügen kannst." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout accesses your photo library so you can choose a profile photo and attach before/after progress photos to your weight logs." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout accede a tu fototeca para elegir una foto de perfil y adjuntar fotos de progreso de antes y después a tus registros de peso." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout accède à votre photothèque pour vous permettre de choisir une photo de profil et d’ajouter des photos avant/après à votre suivi de poids." } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout accede alla tua libreria foto per permetterti di scegliere una foto profilo e allegare foto dei progressi prima/dopo ai registri del peso." } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "O AI Workout acede à sua fototeca para escolher uma fotografia de perfil e anexar fotografias de progresso antes/depois aos seus registos de peso." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout использует доступ к медиатеке, чтобы вы могли выбрать фото профиля и прикреплять фото прогресса до/после к записям веса." } }
+      }
+    },
+    "NSSpeechRecognitionUsageDescription" : {
+      "comment" : "Privacy - Speech Recognition Usage Description",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout nutzt Spracherkennung, um deine Sprachnachrichten im KI-Coach-Chat in Text umzuwandeln." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout uses speech recognition to transcribe your voice messages into text in the AI Coach chat." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout usa el reconocimiento de voz para transcribir tus mensajes de voz a texto en el chat del entrenador de IA." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout utilise la reconnaissance vocale pour transcrire vos messages vocaux en texte dans la discussion avec le coach IA." } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout usa il riconoscimento vocale per trascrivere i tuoi messaggi vocali in testo nella chat dell’AI Coach." } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "O AI Workout utiliza o reconhecimento de voz para transcrever as suas mensagens de voz em texto no chat do treinador de IA." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout использует распознавание речи для преобразования ваших голосовых сообщений в текст в чате с ИИ-тренером." } }
+      }
+    }
+  },
+  "version" : "1.1"
+}

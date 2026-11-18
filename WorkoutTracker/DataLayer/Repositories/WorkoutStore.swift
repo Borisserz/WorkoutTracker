@@ -774,15 +774,33 @@ extension WorkoutStore {
                   let activeEx = workout.exercises[activeExIndex] as Exercise? else { return }
 
             if proposal.action == "swap" {
+                let candidateReplacement = (proposal.replacementExerciseName ?? "")
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                let fallbackCandidate = trimmedProposalName
+                let resolvedReplacement: String? = {
+                    if !candidateReplacement.isEmpty,
+                       candidateReplacement.caseInsensitiveCompare(activeEx.name) != .orderedSame {
+                        return candidateReplacement
+                    }
+                    if !fallbackCandidate.isEmpty,
+                       fallbackCandidate.caseInsensitiveCompare(activeEx.name) != .orderedSame {
+                        return fallbackCandidate
+                    }
+                    return nil
+                }()
+
+                guard let replacementName = resolvedReplacement else {
+                    return
+                }
 
                 let uncompletedSets = activeEx.setsList.filter { !$0.isCompleted }
-                activeEx.removeSafeSets(uncompletedSets) 
+                activeEx.removeSafeSets(uncompletedSets)
                 for set in uncompletedSets { modelContext.delete(set) }
 
                 activeEx.isCompleted = true
 
                 let newEx = Exercise(
-                    name: proposal.exerciseName,
+                    name: replacementName,
                     muscleGroup: activeEx.muscleGroup,
                     type: .strength,
                     sets: safeSets,

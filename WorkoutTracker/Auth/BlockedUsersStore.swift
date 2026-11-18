@@ -21,8 +21,32 @@ actor BlockedUsersStore {
     private var hydrated: Bool = false
     private var listener: ListenerRegistration?
     private var listeningUid: String?
+    nonisolated(unsafe) private var authObserver: NSObjectProtocol?
 
-    private init() {}
+    private init() {
+        authObserver = NotificationCenter.default.addObserver(
+            forName: .authSessionDidChange,
+            object: nil,
+            queue: nil
+        ) { [weak self] _ in
+            Task { await self?.handleAuthSessionChange() }
+        }
+    }
+
+    deinit {
+        if let authObserver {
+            NotificationCenter.default.removeObserver(authObserver)
+        }
+    }
+
+    private func handleAuthSessionChange() async {
+        let myUid = await MainActor.run { AnonymousAuthBootstrap.shared.currentUid }
+        if myUid != nil {
+            await startListening()
+        } else {
+            stopListening()
+        }
+    }
 
     /// Start listening for changes to the current user's blocked list. Idempotent per uid.
     func startListening() async {

@@ -34,6 +34,15 @@ struct MuscleMapping: Sendable {
         }
     }
 
+    /// Removes persisted user custom exercise → muscle mappings and resets in-memory cache.
+    nonisolated static func clearCustomMappings(defaults: UserDefaults = .standard) {
+        defaults.removeObject(forKey: customMappingKey)
+        try? FileManager.default.removeItem(at: customMappingsFileURL)
+        cacheLock.lock()
+        _cachedCustomMappings = nil
+        cacheLock.unlock()
+    }
+
     nonisolated private static func getJSONMappings() -> [String: [String]] {
         cacheLock.lock()
         if let cached = _jsonExerciseToMuscles {

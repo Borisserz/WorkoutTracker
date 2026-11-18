@@ -260,10 +260,13 @@ final class CameraDelegate: NSObject, AVCaptureVideoDataOutputSampleBufferDelega
         didOutput sampleBuffer: CMSampleBuffer,
         from connection: AVCaptureConnection
     ) {
-        // Тело обрабатываем каждые 2 фрейма — баланс CPU/точности
-        let shouldProcessBody = bodyFrameCounter.incrementAndCheck(stride: 2)
-        // Жесты — каждый фрейм для мгновенного отклика
-        let shouldProcessHand = handFrameCounter.incrementAndCheck(stride: 1)
+        let thermalState = ProcessInfo.processInfo.thermalState
+        let bodyStride = (thermalState == .serious || thermalState == .critical) ? 4 : 2
+        let handStride = (thermalState == .serious || thermalState == .critical) ? 3 : 1
+
+        // Adaptive strides keep CPU/GPU cool under sustained camera inference.
+        let shouldProcessBody = bodyFrameCounter.incrementAndCheck(stride: bodyStride)
+        let shouldProcessHand = handFrameCounter.incrementAndCheck(stride: handStride)
 
         guard shouldProcessBody || shouldProcessHand else { return }
 

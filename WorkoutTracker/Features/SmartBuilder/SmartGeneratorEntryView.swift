@@ -54,14 +54,22 @@ struct SmartGeneratorEntryView: View {
 
     /// Only recommend a preset when recovery data exists; never invent a “best” pick.
     private var recommendedPresetKey: String? {
-        guard !readyMuscles.isEmpty else { return nil }
-        let ready = readyMuscles.map { $0.muscleGroup.lowercased() }
-        if ready.contains(where: { $0.contains("chest") || $0.contains("arm") }) {
-            return "Quick Pump"
-        } else if ready.contains(where: { $0.contains("leg") }) {
-            return "Dumbbell Full Body"
-        } else if ready.contains(where: { $0.contains("cardio") }) {
+        Self.recommendedPreset(for: readyMuscles.map(\.muscleGroup))
+    }
+
+    nonisolated static func recommendedPreset(for muscleNames: [String]) -> String? {
+        guard !muscleNames.isEmpty else { return nil }
+        let ready = muscleNames.map { $0.lowercased() }
+        if ready.contains(where: { $0.contains("cardio") }) {
             return "Cardio Blast"
+        } else if ready.contains(where: {
+            $0.contains("leg") || $0.contains("quad") || $0.contains("hamstring") || $0.contains("glute") || $0.contains("calf") || $0.contains("calves") || $0.contains("adductor")
+        }) {
+            return "Dumbbell Full Body"
+        } else if ready.contains(where: {
+            $0.contains("chest") || $0.contains("arm") || $0.contains("bicep") || $0.contains("tricep") || $0.contains("forearm")
+        }) {
+            return "Quick Pump"
         }
         return "Quick Pump"
     }
@@ -385,6 +393,13 @@ struct SmartGeneratorEntryView: View {
                         .foregroundStyle(PastelTheme.textPrimary)
 
                     Spacer()
+
+                    Button {
+                        selectedInfoPreset = nil
+                    } label: {
+                        ChromeDismissMark()
+                    }
+                    .buttonStyle(.plain)
                 }
 
                 Text(item.reason)

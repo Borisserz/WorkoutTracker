@@ -11,7 +11,7 @@
 		24965D87A62E42B5987846A0 /* HapticManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F414296D08C64A43BAE5B983 /* HapticManagerTests.swift */; };
 		29661A4F4520FD432B45E791 /* FirebasePerformance in Frameworks */ = {isa = PBXBuildFile; productRef = 7C4118E39E451C7A1AA91DCF /* FirebasePerformance */; };
 		4A6CB846E170B5463319450A /* PatternClassifierTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4752778508CADACB44B9D18 /* PatternClassifierTests.swift */; };
-		4BB047E4CF6B99ACE11CB0B7 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = EC45B54F3282D8918AE7217B /* FirebaseAnalytics */; };
+		4BB047E4CF6B99ACE11CB0B7 /* FirebaseAnalyticsCore in Frameworks */ = {isa = PBXBuildFile; productRef = EC45B54F3282D8918AE7217B /* FirebaseAnalyticsCore */; };
 		51EB443716EB653E6304C70D /* CNSCalculatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B612D828C4C647FBCABFA55 /* CNSCalculatorTests.swift */; };
 		7332698C70030723F9E7630A /* OneRepMaxCalculatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37E04CF2637E84830C0ABCE9 /* OneRepMaxCalculatorTests.swift */; };
 		76042E56DE01DC8CF47AAB68 /* AITrackerEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB3FA907D5A3E4621EC02876 /* AITrackerEngineTests.swift */; };
@@ -21,9 +21,9 @@
 		A11B22C33D4E5F60718293A11 /* HonestyWindowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11B22C33D4E5F60718293A12 /* HonestyWindowTests.swift */; };
 		AC55B4DF2FCA034F0081A8D1 /* FirebaseAppCheck in Frameworks */ = {isa = PBXBuildFile; productRef = AC55B4DE2FCA034F0081A8D1 /* FirebaseAppCheck */; };
 		AC55B4E92FCA2A790081A8D1 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = AC55B4E82FCA2A790081A8D1 /* PrivacyInfo.xcprivacy */; };
-		C33D44E5F60718293A0B61 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = AC55B4E82FCA2A790081A8D1 /* PrivacyInfo.xcprivacy */; };
-		C33D44E5F60718293A0B62 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = AC55B4E82FCA2A790081A8D1 /* PrivacyInfo.xcprivacy */; };
-		C33D44E5F60718293A0B63 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = AC55B4E82FCA2A790081A8D1 /* PrivacyInfo.xcprivacy */; };
+		C33D44E5F60718293A0B61 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = C33D44E5F60718293A0B64 /* PrivacyInfo.xcprivacy */; };
+		C33D44E5F60718293A0B62 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = C33D44E5F60718293A0B65 /* PrivacyInfo.xcprivacy */; };
+		C33D44E5F60718293A0B63 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = C33D44E5F60718293A0B66 /* PrivacyInfo.xcprivacy */; };
 		AC55B4EB2FCA3A130081A8D1 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = AC55B4EA2FCA3A130081A8D1 /* FirebaseAuth */; };
 		AC55B4F42FCAC45E0081A8D1 /* FirebaseFunctions in Frameworks */ = {isa = PBXBuildFile; productRef = AC55B4F32FCAC45E0081A8D1 /* FirebaseFunctions */; };
 		AC90B40B2FCB7133004B8377 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = AC90B40A2FCB7133004B8377 /* GoogleSignIn */; };
@@ -45,6 +45,10 @@
 		C33D44E5F60718293A0B71 /* Wave2ProductionFixesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C33D44E5F60718293A0B72 /* Wave2ProductionFixesTests.swift */; };
 		C33D44E5F60718293A0B81 /* Wave3HealthAndFoodSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C33D44E5F60718293A0B82 /* Wave3HealthAndFoodSyncTests.swift */; };
 		C33D44E5F60718293A0B91 /* Wave4ProductionPolishTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C33D44E5F60718293A0B92 /* Wave4ProductionPolishTests.swift */; };
+		C33D44E5F60718293A0BA1 /* Wave1AppStoreReadinessTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C33D44E5F60718293A0BA2 /* Wave1AppStoreReadinessTests.swift */; };
+		C33D44E5F60718293A0BB1 /* Wave2SecurityAndDeletionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C33D44E5F60718293A0BB2 /* Wave2SecurityAndDeletionTests.swift */; };
+		C33D44E5F60718293A0BC1 /* Wave3FunctionalityFixesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C33D44E5F60718293A0BC2 /* Wave3FunctionalityFixesTests.swift */; };
+		C33D44E5F60718293A0BD1 /* Wave4UIAndLocalizationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C33D44E5F60718293A0BD2 /* Wave4UIAndLocalizationTests.swift */; };
 		B2C3D4E5F60718293A4B5C6D /* AIResponseParsingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5C /* AIResponseParsingTests.swift */; };
 		C0FFEE11A7B80910293A0C01 /* LocalizationCatalogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0FFEE11A7B80910293A0C02 /* LocalizationCatalogTests.swift */; };
 		C3F81C26EAC348EB8FC229FA /* ImprovePassSmokeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BD6A05972714141ACF5DE83 /* ImprovePassSmokeTests.swift */; };
@@ -139,6 +143,9 @@
 		AC3CB9AB2F81B127008A6777 /* WorkoutTrackerWatch-Watch-App-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "WorkoutTrackerWatch-Watch-App-Info.plist"; sourceTree = "<group>"; };
 		AC3CB9AC2F81B13A008A6777 /* WorkoutTrackerWatch Watch App.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "WorkoutTrackerWatch Watch App.entitlements"; sourceTree = "<group>"; };
 		AC55B4E82FCA2A790081A8D1 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		C33D44E5F60718293A0B64 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = PrivacyManifests/WatchApp/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		C33D44E5F60718293A0B65 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = PrivacyManifests/StatsWidget/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		C33D44E5F60718293A0B66 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = PrivacyManifests/WorkoutTimerWidget/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		AC62B5642FCC5A640053AD14 /* WorkoutTracker.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WorkoutTracker.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AC62B5652FCC5A640053AD14 /* WorkoutTimerWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = WorkoutTimerWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		AC62B5662FCC5A640053AD14 /* StatsWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = StatsWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -154,6 +161,10 @@
 		C33D44E5F60718293A0B72 /* Wave2ProductionFixesTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Wave2ProductionFixesTests.swift; sourceTree = "<group>"; };
 		C33D44E5F60718293A0B82 /* Wave3HealthAndFoodSyncTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Wave3HealthAndFoodSyncTests.swift; sourceTree = "<group>"; };
 		C33D44E5F60718293A0B92 /* Wave4ProductionPolishTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Wave4ProductionPolishTests.swift; sourceTree = "<group>"; };
+		C33D44E5F60718293A0BA2 /* Wave1AppStoreReadinessTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Wave1AppStoreReadinessTests.swift; sourceTree = "<group>"; };
+		C33D44E5F60718293A0BB2 /* Wave2SecurityAndDeletionTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Wave2SecurityAndDeletionTests.swift; sourceTree = "<group>"; };
+		C33D44E5F60718293A0BC2 /* Wave3FunctionalityFixesTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Wave3FunctionalityFixesTests.swift; sourceTree = "<group>"; };
+		C33D44E5F60718293A0BD2 /* Wave4UIAndLocalizationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Wave4UIAndLocalizationTests.swift; sourceTree = "<group>"; };
 		C0FFEE11A7B80910293A0C02 /* LocalizationCatalogTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LocalizationCatalogTests.swift; sourceTree = "<group>"; };
 		DCC4E71E0628C8F616ACDE3C /* UnitsManagerTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = UnitsManagerTests.swift; sourceTree = "<group>"; };
 		E7A1B2C3D4E5F60718293A02 /* WatchConnectivityTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchConnectivityTests.swift; sourceTree = "<group>"; };
@@ -306,7 +317,7 @@
 				AC55B4DF2FCA034F0081A8D1 /* FirebaseAppCheck in Frameworks */,
 				ACF45A232F9E43F800206681 /* FirebaseRemoteConfig in Frameworks */,
 				AC90B40B2FCB7133004B8377 /* GoogleSignIn in Frameworks */,
-				4BB047E4CF6B99ACE11CB0B7 /* FirebaseAnalytics in Frameworks */,
+				4BB047E4CF6B99ACE11CB0B7 /* FirebaseAnalyticsCore in Frameworks */,
 				CBC64DC6807C3445CA4DC264 /* FirebaseCrashlytics in Frameworks */,
 				29661A4F4520FD432B45E791 /* FirebasePerformance in Frameworks */,
 			);
@@ -336,6 +347,9 @@
 			isa = PBXGroup;
 			children = (
 				AC55B4E82FCA2A790081A8D1 /* PrivacyInfo.xcprivacy */,
+				C33D44E5F60718293A0B64 /* PrivacyInfo.xcprivacy */,
+				C33D44E5F60718293A0B65 /* PrivacyInfo.xcprivacy */,
+				C33D44E5F60718293A0B66 /* PrivacyInfo.xcprivacy */,
 				AC3CB9AC2F81B13A008A6777 /* WorkoutTrackerWatch Watch App.entitlements */,
 				AC3CB9AB2F81B127008A6777 /* WorkoutTrackerWatch-Watch-App-Info.plist */,
 				ACDA5BB42F06CF92007FF65F /* StatsWidgetExtension.entitlements */,
@@ -404,6 +418,10 @@
 				C33D44E5F60718293A0B72 /* Wave2ProductionFixesTests.swift */,
 				C33D44E5F60718293A0B82 /* Wave3HealthAndFoodSyncTests.swift */,
 				C33D44E5F60718293A0B92 /* Wave4ProductionPolishTests.swift */,
+				C33D44E5F60718293A0BA2 /* Wave1AppStoreReadinessTests.swift */,
+				C33D44E5F60718293A0BB2 /* Wave2SecurityAndDeletionTests.swift */,
+				C33D44E5F60718293A0BC2 /* Wave3FunctionalityFixesTests.swift */,
+				C33D44E5F60718293A0BD2 /* Wave4UIAndLocalizationTests.swift */,
 			);
 			path = WorkoutTrackerTests;
 			sourceTree = "<group>";
@@ -501,6 +519,7 @@
 				AC90B40A2FCB7133004B8377 /* GoogleSignIn */,
 				71E8212868B958014C937451 /* FirebaseCrashlytics */,
 				7C4118E39E451C7A1AA91DCF /* FirebasePerformance */,
+				EC45B54F3282D8918AE7217B /* FirebaseAnalyticsCore */,
 			);
 			productName = WorkoutTracker;
 			productReference = AC62B5642FCC5A640053AD14 /* WorkoutTracker.app */;
@@ -710,6 +729,10 @@
 				C33D44E5F60718293A0B71 /* Wave2ProductionFixesTests.swift in Sources */,
 				C33D44E5F60718293A0B81 /* Wave3HealthAndFoodSyncTests.swift in Sources */,
 				C33D44E5F60718293A0B91 /* Wave4ProductionPolishTests.swift in Sources */,
+				C33D44E5F60718293A0BA1 /* Wave1AppStoreReadinessTests.swift in Sources */,
+				C33D44E5F60718293A0BB1 /* Wave2SecurityAndDeletionTests.swift in Sources */,
+				C33D44E5F60718293A0BC1 /* Wave3FunctionalityFixesTests.swift in Sources */,
+				C33D44E5F60718293A0BD1 /* Wave4UIAndLocalizationTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -784,8 +807,6 @@
 				INFOPLIST_FILE = "WorkoutTrackerWatch-Watch-App-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "AI Workout";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "AI Workout reads your heart rate, active energy, and workout sessions from Apple Health during workouts so it can display live metrics, calculate recovery, and adjust AI coaching.";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "AI Workout saves your completed workouts and active energy (calories burned) to Apple Health so your activity is reflected across the Health app and your iPhone.";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.borisdev.WorkoutTracker;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -821,8 +842,6 @@
 				INFOPLIST_FILE = "WorkoutTrackerWatch-Watch-App-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "AI Workout";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "AI Workout reads your heart rate, active energy, and workout sessions from Apple Health during workouts so it can display live metrics, calculate recovery, and adjust AI coaching.";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "AI Workout saves your completed workouts and active energy (calories burned) to Apple Health so your activity is reflected across the Health app and your iPhone.";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.borisdev.WorkoutTracker;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1053,13 +1072,6 @@
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
 				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
-				INFOPLIST_KEY_NSCameraUsageDescription = "AI Workout uses the camera to capture before/after progress photos with the Smart Capture pose-alignment overlay, and to analyze exercise form when AI exercise recognition is enabled.";
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "AI Workout reads your heart rate, sleep, and steps data from Apple Health to accurately calculate your CNS fatigue, muscle recovery, and daily activity rings.";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "AI Workout saves your completed workouts, burned calories, and body weight updates to Apple Health to keep your fitness records synced.";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "AI Workout uses the microphone to recognize voice commands during workouts, so you can log sets and control the rest timer hands-free.";
-				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "AI Workout accesses your photo library so you can import existing photos as before/after progress shots.";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "AI Workout needs access to your photo library so you can choose a profile picture and attach before/after photos to track your physical progress over time.";
-				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "AI Workout uses on-device speech recognition to convert your voice commands into actions during workouts (start/stop timer, log set).";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -1101,13 +1113,6 @@
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
 				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
-				INFOPLIST_KEY_NSCameraUsageDescription = "AI Workout uses the camera to capture before/after progress photos with the Smart Capture pose-alignment overlay, and to analyze exercise form when AI exercise recognition is enabled.";
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "AI Workout reads your heart rate, sleep, and steps data from Apple Health to accurately calculate your CNS fatigue, muscle recovery, and daily activity rings.";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "AI Workout saves your completed workouts, burned calories, and body weight updates to Apple Health to keep your fitness records synced.";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "AI Workout uses the microphone to recognize voice commands during workouts, so you can log sets and control the rest timer hands-free.";
-				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "AI Workout accesses your photo library so you can import existing photos as before/after progress shots.";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "AI Workout needs access to your photo library so you can choose a profile picture and attach before/after photos to track your physical progress over time.";
-				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "AI Workout uses on-device speech recognition to convert your voice commands into actions during workouts (start/stop timer, log set).";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -1317,10 +1322,10 @@
 			package = ACF45A1D2F9E43F800206681 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseRemoteConfig;
 		};
-		EC45B54F3282D8918AE7217B /* FirebaseAnalytics */ = {
+		EC45B54F3282D8918AE7217B /* FirebaseAnalyticsCore */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = ACF45A1D2F9E43F800206681 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
-			productName = FirebaseAnalytics;
+			productName = FirebaseAnalyticsCore;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

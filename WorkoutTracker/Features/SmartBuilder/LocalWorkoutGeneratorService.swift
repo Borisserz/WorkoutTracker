@@ -49,6 +49,7 @@ actor LocalWorkoutGeneratorService {
             let countToPick = min(exercisesPerMuscle, remainingExercises)
 
             let pool = await filterCatalog(for: muscle, equipment: config.equipment)
+            let db = ExerciseDatabaseService.shared
 
             let scoredPool = pool.map { ex -> (String, Double) in
                 let hasHistory = config.history[ex] != nil
@@ -61,7 +62,13 @@ actor LocalWorkoutGeneratorService {
                 .map { $0.0 }
 
             for name in selectedNames {
-                let exerciseType: ExerciseType = (muscle == "Cardio" || name == "Plank" || name == "Running") ? (muscle == "Cardio" ? .cardio : .duration) : .strength
+                let catalogItem = await db.getExerciseItem(for: name)
+                let isCatalogCardio = catalogItem?.category?.lowercased() == "cardio"
+                let exerciseType: ExerciseType = {
+                    if muscle == "Cardio" || isCatalogCardio { return .cardio }
+                    if name == "Plank" || name.lowercased().contains("hold") { return .duration }
+                    return .strength
+                }()
                 let historyData = config.history[name]
                 var setsList: [WorkoutSetDTO] = []
 
@@ -110,13 +117,31 @@ actor LocalWorkoutGeneratorService {
                 return !low.contains("barbell") && !low.contains("machine") && !low.contains("cable")
             }
         case .bodyweight:
+            let nonBodyweightTokens = [
+                "machine", "cable", "barbell", "smith", "dumbbell",
+                "kettlebell", "kettle bell", "band", "medicine ball",
+                "stability ball", "swiss ball", "ez-bar", "ez bar",
+                "trap bar", "plate", "sled", "prowler"
+            ]
+            if muscle == "Cardio" {
+                let noMachineCardio = allExercises.filter { name in
+                    let low = name.lowercased()
+                    return !nonBodyweightTokens.contains(where: low.contains)
+                        && !low.contains("bike")
+                        && !low.contains("elliptical")
+                        && !low.contains("treadmill")
+                        && !low.contains("stairmaster")
+                        && !low.contains("step mill")
+                        && !low.contains("rowing")
+                }
+                return noMachineCardio.isEmpty ? allExercises : noMachineCardio
+            }
             return allExercises.filter { name in
                 let low = name.lowercased()
                     .replacingOccurrences(of: "-", with: " ")
                     .replacingOccurrences(of: "_", with: " ")
-                let tokens = ["push up", "pushup", "pull up", "pullup", "chin up", "plank", "crunch", "sit up", "squat", "lunge", "running", "burpee", "dip", "mountain climber", "jumping jack"]
-                let looksMachine = low.contains("machine") || low.contains("cable") || low.contains("barbell") || low.contains("smith")
-                return !looksMachine && tokens.contains(where: low.contains)
+                let tokens = ["push up", "pushup", "pull up", "pullup", "chin up", "plank", "crunch", "sit up", "squat", "lunge", "running", "burpee", "dip", "mountain climber", "jumping jack", "jump", "bridge", "leg raise"]
+                return !nonBodyweightTokens.contains(where: low.contains) && tokens.contains(where: low.contains)
             }
         }
     }

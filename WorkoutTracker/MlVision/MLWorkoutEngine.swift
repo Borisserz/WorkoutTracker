@@ -86,8 +86,7 @@ final class MLWorkoutEngine: ObservableObject {
             }
 
             if let res = result {
-
-                if res.confidence > 0.45 && res.label.lowercased() != "idle" {
+                if Self.isActivePrediction(label: res.label, confidence: res.confidence) {
                     self.isUserActive = true
                     self.confidence = res.confidence
                     self.lastConfidentPredictionTime = Date()
@@ -101,6 +100,12 @@ final class MLWorkoutEngine: ObservableObject {
             }
             self.isPredicting = false
         }
+    }
+
+    /// WorkoutClassifier.mlmodel outputs binary labels ["Background", "exercises"].
+    nonisolated static func isActivePrediction(label: String, confidence: Double) -> Bool {
+        let normalized = label.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return confidence > 0.45 && normalized == "exercises"
     }
 
     nonisolated private func performPrediction(on window: [MLMultiArray], model: MLModel) async -> (label: String, confidence: Double)? {

@@ -6,6 +6,8 @@ import Foundation
 enum WatchSyncEnvelope {
     static let syncPayloadKey = "syncPayload"
     static let guaranteedSyncPayloadKey = "guaranteedSyncPayload"
+    static let settingsKey = "watchSettings"
+    static let clearStateKey = "clearWatchState"
 
     static func liveSyncData(from dict: [String: Any]) -> Data? {
         if let data = dict[syncPayloadKey] as? Data { return data }
@@ -13,10 +15,20 @@ enum WatchSyncEnvelope {
         return nil
     }
 
+    static func settingsData(from dict: [String: Any]) -> Data? {
+        dict[settingsKey] as? Data
+    }
+
     /// Outbound dictionary accepted by both phone and Watch receivers.
     static func userInfo(carrying data: Data) -> [String: Any] {
         [syncPayloadKey: data, guaranteedSyncPayloadKey: data]
     }
+}
+
+struct WatchUserSettings: Codable, Sendable, Equatable {
+    let weightUnit: String
+    let distanceUnit: String
+    let defaultRestTime: Int
 }
 
 enum SyncActionType: String, Codable, Sendable {
@@ -30,6 +42,7 @@ enum SyncActionType: String, Codable, Sendable {
     case syncFullState
     case saveToHistory
     case updateHeartRate
+    case clearLocalData
 }
 
 struct LiveSyncPayload: Codable, Sendable {

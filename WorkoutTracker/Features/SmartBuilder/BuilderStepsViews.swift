@@ -30,12 +30,12 @@ struct MuscleSelectionView: View {
                                                             VStack {
                                                                 Image(systemName: icon(for: muscle))
                                                                     .font(.title)
-                                                                    .foregroundColor(isSelected ? .white : (colorScheme == .dark ? .secondary : themeManager.current.primaryAccent)) 
+                                                                    .foregroundColor(isSelected ? PastelTheme.textOnOat : (colorScheme == .dark ? .secondary : themeManager.current.primaryAccent)) 
                                                                     .padding(.bottom, 4)
 
                                                                 Text(LocalizedStringKey(muscle))
                                                                     .font(.headline)
-                                                                    .foregroundColor(isSelected ? .white : (colorScheme == .dark ? .primary : .black))
+                                                                    .foregroundColor(isSelected ? PastelTheme.textOnOat : (colorScheme == .dark ? .primary : .black))
                                                             }
                                                             .frame(maxWidth: .infinity)
                                                             .padding(.vertical, 24)
@@ -249,7 +249,7 @@ struct GeneratorSettingsView: View {
                         Text("Build routine")
                             .font(.headline).bold()
                     }
-                    .foregroundColor(.white)
+                    .foregroundColor(PastelTheme.textOnOat)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 18)
                     .background(themeManager.current.primaryGradient)

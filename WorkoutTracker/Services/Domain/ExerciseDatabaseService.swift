@@ -93,6 +93,10 @@ public actor ExerciseDatabaseService {
         }
         
         isLoading = true
+        defer {
+            isLoading = false
+            resumeLoadContinuations()
+        }
         
         let currentLang = Locale.current.language.languageCode?.identifier ?? "en"
         let langPrefix = String(currentLang.prefix(2))
@@ -188,6 +192,9 @@ public actor ExerciseDatabaseService {
                 let groupKey = item.primaryMuscles?.first?.capitalized ?? item.category?.capitalized ?? "Other"
                 let mappedGroup = mapUIGroup(groupKey)
                 catalog[mappedGroup, default: []].insert(item.name)
+                if item.category?.lowercased() == "cardio" {
+                    catalog["Cardio", default: []].insert(item.name)
+                }
             }
 
             LocalizationHelper.shared.setTranslations(names: tempNamesLoc, instructions: tempInstLoc)
@@ -200,12 +207,33 @@ public actor ExerciseDatabaseService {
             AppLog.catalog.error("❌ JSON parsing error for exercises: \(error.localizedDescription, privacy: .public)")
             #endif
         }
-        
-        self.isLoading = false
+    }
+
+    private func resumeLoadContinuations() {
         for continuation in loadContinuations {
             continuation.resume()
         }
         loadContinuations.removeAll()
+    }
+
+    public func resolveCatalogExerciseName(for rawName: String) async -> String {
+        await loadDatabase()
+        let trimmed = rawName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return rawName }
+        if let exact = exercisesDict[trimmed.lowercased()] {
+            return exact.name
+        }
+        let normalizedQuery = trimmed.lowercased()
+            .replacingOccurrences(of: "-", with: " ")
+            .replacingOccurrences(of: "_", with: " ")
+        if let fuzzy = exercisesDict.values.first(where: {
+            $0.name.lowercased()
+                .replacingOccurrences(of: "-", with: " ")
+                .replacingOccurrences(of: "_", with: " ") == normalizedQuery
+        }) {
+            return fuzzy.name
+        }
+        return rawName
     }
 
     public func getRelevantExercisesContext(for prompt: String, equipmentPref: String = "any", limit: Int = 20) async -> [String] {

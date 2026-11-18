@@ -38,7 +38,7 @@ struct ChatMessageView: View {
                     }
                 }
                 .font(.body)
-                .foregroundColor(message.isUser ? .white : .primary)
+                .foregroundColor(message.isUser ? PastelTheme.textOnOat : .primary)
                 .multilineTextAlignment(.leading)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)

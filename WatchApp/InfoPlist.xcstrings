@@ -1,0 +1,42 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "CFBundleDisplayName" : {
+      "comment" : "Bundle display name",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout" } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout" } }
+      }
+    },
+    "NSHealthShareUsageDescription" : {
+      "comment" : "Privacy - Health Share Usage Description",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout liest während des Trainings deine Herzfrequenz und aktive Energie aus Apple Health, um Live-Werte anzuzeigen und die Einheit aufzuzeichnen." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout reads your heart rate and active energy from Apple Health during workouts to display live metrics and track your session." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout lee tu frecuencia cardíaca y energía activa desde Apple Health durante los entrenamientos para mostrar métricas en vivo y registrar tu sesión." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout lit votre fréquence cardiaque et votre énergie active depuis Apple Santé pendant l’entraînement pour afficher les mesures en direct et suivre votre séance." } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout legge frequenza cardiaca ed energia attiva da Apple Salute durante gli allenamenti per mostrare i dati in tempo reale e tracciare la sessione." } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "O AI Workout lê a sua frequência cardíaca e energia ativa do Apple Saúde durante os treinos para mostrar métricas em direto e acompanhar a sessão." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout считывает пульс и активную энергию из Apple Health во время тренировок для отображения показателей в реальном времени и записи сессии." } }
+      }
+    },
+    "NSHealthUpdateUsageDescription" : {
+      "comment" : "Privacy - Health Update Usage Description",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout speichert deine abgeschlossenen Workouts und aktive verbrannte Energie (Kalorien) in Apple Health, damit deine Aktivität in der Health-App und auf dem iPhone erscheint." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout saves your completed workouts and active energy (calories burned) to Apple Health so your activity is reflected across the Health app and your iPhone." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout guarda tus entrenamientos completados y la energía activa (calorías quemadas) en Apple Health para que tu actividad se refleje en la app Salud y en tu iPhone." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout enregistre vos entraînements terminés et l’énergie active (calories brûlées) dans Apple Santé afin que votre activité apparaisse dans l’app Santé et sur votre iPhone." } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout salva gli allenamenti completati e l’energia attiva (calorie bruciate) in Apple Salute per riflettere la tua attività nell’app Salute e su iPhone." } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "O AI Workout guarda os seus treinos concluídos e a energia ativa (calorias queimadas) no Apple Saúde para que a sua atividade seja refletida na app Saúde e no iPhone." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "AI Workout сохраняет завершённые тренировки и активную энергию (сожжённые калории) в Apple Health, чтобы ваша активность отображалась в приложении «Здоровье» и на iPhone." } }
+      }
+    }
+  },
+  "version" : "1.1"
+}

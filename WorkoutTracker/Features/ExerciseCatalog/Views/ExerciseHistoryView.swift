@@ -898,23 +898,31 @@ struct WorkoutDetailWrapperView: View {
     @Environment(DIContainer.self) private var di
 
     @State private var workout: Workout?
+    @State private var isLoading = true
 
     var body: some View {
         Group {
             if let safeWorkout = workout {
                 WorkoutDetailView(workout: safeWorkout, viewModel: di.makeWorkoutDetailViewModel())
-            } else {
+            } else if isLoading {
                 VStack {
                     Spacer()
                     ProgressView()
                     Spacer()
                 }
+            } else {
+                ContentUnavailableView(
+                    LocalizedStringKey("Workout details unavailable"),
+                    systemImage: "dumbbell",
+                    description: Text(LocalizedStringKey("This workout could not be found."))
+                )
             }
         }
         .onAppear {
             if let fetchedWorkout = context.model(for: workoutID) as? Workout {
                 self.workout = fetchedWorkout
             }
+            self.isLoading = false
         }
     }
 }

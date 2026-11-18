@@ -4,6 +4,7 @@ internal import SwiftUI
 struct PulseExplanationSheet: View {
     let heartRate: Double
     let timeAgoText: String
+    var hasPulseData: Bool = false
     @Environment(\.dismiss) private var dismiss
 
     private var hasHeartRate: Bool { heartRate > 0 }
@@ -154,7 +155,7 @@ struct PulseExplanationSheet: View {
 
                         // HealthKit sync status — honest when empty
                         HStack(spacing: 8) {
-                            let hasPulse = !(timeAgoText.isEmpty || timeAgoText == "No data")
+                            let hasPulse = hasPulseData && !timeAgoText.isEmpty
                             Circle()
                                 .fill(hasPulse ? PastelTheme.pastelSage : PastelTheme.textTertiary.opacity(0.55))
                                 .frame(width: 6, height: 6)

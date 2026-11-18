@@ -31,6 +31,13 @@ final class LiveActivityManager: Sendable {
         }
     }
 
+    nonisolated static func resolvedStaleDate(existing: Date?, now: Date = Date()) -> Date {
+        if let existing, existing > now {
+            return existing
+        }
+        return now.addingTimeInterval(Self.maxWorkoutDuration)
+    }
+
     func updateRestTimer(endTime: Date, currentExerciseName: String?, upcomingWeight: String?) {
         Task {
             for activity in Activity<WorkoutActivityAttributes>.activities {
@@ -38,11 +45,12 @@ final class LiveActivityManager: Sendable {
                 newState.restTimerEndTime = endTime
                 newState.currentExerciseName = currentExerciseName
                 newState.upcomingWeight = upcomingWeight
-                
+
+                let staleDate = Self.resolvedStaleDate(existing: activity.content.staleDate)
                 await activity.update(
                     ActivityContent<WorkoutActivityAttributes.ContentState>(
                         state: newState,
-                        staleDate: nil
+                        staleDate: staleDate
                     )
                 )
             }
@@ -56,11 +64,12 @@ final class LiveActivityManager: Sendable {
                 newState.restTimerEndTime = nil
                 newState.currentExerciseName = nil
                 newState.upcomingWeight = nil
-                
+
+                let staleDate = Self.resolvedStaleDate(existing: activity.content.staleDate)
                 await activity.update(
                     ActivityContent<WorkoutActivityAttributes.ContentState>(
                         state: newState,
-                        staleDate: nil
+                        staleDate: staleDate
                     )
                 )
             }

@@ -115,7 +115,7 @@ struct AdvancedFilterSectionView: View {
 
                                 .background(isSelected ? themeManager.current.primaryAccent.opacity(colorScheme == .dark ? 0.15 : 1.0) : (colorScheme == .dark ? Color.white.opacity(0.05) : Color.white))
 
-                                .foregroundColor(isSelected ? (colorScheme == .dark ? themeManager.current.primaryAccent : .white) : (colorScheme == .dark ? .white.opacity(0.8) : .black))
+                                .foregroundColor(isSelected ? (colorScheme == .dark ? themeManager.current.primaryAccent : PastelTheme.textOnOat) : (colorScheme == .dark ? .white.opacity(0.8) : .black))
                                 .clipShape(Capsule())
                                 .overlay(
                                     Capsule()

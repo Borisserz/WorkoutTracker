@@ -25,7 +25,7 @@ actor PresetRepository: PresetRepositoryProtocol {
             for set in newEx.setsList { modelContext.insert(set) }
             for subEx in newEx.subExercises {
                 modelContext.insert(subEx)
-                subEx.preset = newPreset
+                // Keep subEx nested under the superset parent only — assigning `subEx.preset` promotes it to top-level.
                 for set in subEx.setsList { modelContext.insert(set) }
             }
         }
@@ -53,7 +53,6 @@ actor PresetRepository: PresetRepositoryProtocol {
             for set in newEx.setsList { modelContext.insert(set) }
             for subEx in newEx.subExercises {
                 modelContext.insert(subEx)
-                subEx.preset = existingPreset
                 for set in subEx.setsList { modelContext.insert(set) }
             }
         }

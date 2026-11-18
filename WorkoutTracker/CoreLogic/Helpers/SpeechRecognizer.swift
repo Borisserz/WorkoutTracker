@@ -40,7 +40,20 @@ final class SpeechRecognizer {
     /// when AI Hub is merely tabulated. Only create on mic use.
     private var recognizer: SFSpeechRecognizer?
 
-    init() {}
+    init() {
+        let speechOK = SFSpeechRecognizer.authorizationStatus() == .authorized
+        let micOK: Bool
+        if #available(iOS 17.0, *) {
+            micOK = AVAudioApplication.shared.recordPermission == .granted
+        } else {
+            micOK = AVAudioSession.sharedInstance().recordPermission == .granted
+        }
+        hasPermission = speechOK && micOK
+    }
+
+    nonisolated static func isValidAudioFormat(sampleRate: Double, channelCount: AVAudioChannelCount) -> Bool {
+        sampleRate > 0 && channelCount > 0
+    }
 
     private static func makeRecognizer() -> SFSpeechRecognizer? {
         // Follow the device locale instead of forcing ru-RU, so Voice Coach
@@ -58,32 +71,25 @@ final class SpeechRecognizer {
             errorMessage = ErrorReason.disabledInUITests.localizedMessage
             return
         }
-        SFSpeechRecognizer.requestAuthorization { authStatus in
-            Task { @MainActor in
-                self.hasPermission = (authStatus == .authorized)
-                if authStatus != .authorized {
-                    self.errorMessage = ErrorReason.speechNotAuthorized.localizedMessage
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            let speechStatus = await withCheckedContinuation { cont in
+                SFSpeechRecognizer.requestAuthorization { cont.resume(returning: $0) }
+            }
+            let micGranted: Bool = await withCheckedContinuation { cont in
+                if #available(iOS 17.0, *) {
+                    AVAudioApplication.requestRecordPermission { cont.resume(returning: $0) }
+                } else {
+                    AVAudioSession.sharedInstance().requestRecordPermission { cont.resume(returning: $0) }
                 }
             }
-        }
-
-        if #available(iOS 17.0, *) {
-            AVAudioApplication.requestRecordPermission { granted in
-                Task { @MainActor in
-                    if !granted {
-                        self.hasPermission = false
-                        self.errorMessage = ErrorReason.microphoneRequired.localizedMessage
-                    }
-                }
-            }
-        } else {
-            AVAudioSession.sharedInstance().requestRecordPermission { granted in
-                Task { @MainActor in
-                    if !granted {
-                        self.hasPermission = false
-                        self.errorMessage = ErrorReason.microphoneRequired.localizedMessage
-                    }
-                }
+            self.hasPermission = (speechStatus == .authorized) && micGranted
+            if speechStatus != .authorized {
+                self.errorMessage = ErrorReason.speechNotAuthorized.localizedMessage
+            } else if !micGranted {
+                self.errorMessage = ErrorReason.microphoneRequired.localizedMessage
+            } else {
+                self.errorMessage = nil
             }
         }
     }
@@ -106,42 +112,52 @@ final class SpeechRecognizer {
             return
         }
 
+        stopTranscribing()
         errorMessage = nil
         transcript = ""
         isRecording = true
 
         do {
             let audioSession = AVAudioSession.sharedInstance()
-            try audioSession.setCategory(.record, mode: .measurement, options: .duckOthers)
+            try audioSession.setCategory(
+                .playAndRecord,
+                mode: .measurement,
+                options: [.mixWithOthers, .defaultToSpeaker, .allowBluetoothHFP]
+            )
             try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
 
-            request = SFSpeechAudioBufferRecognitionRequest()
-            guard let request = request else { return }
-            request.shouldReportPartialResults = true
+            let speechRequest = SFSpeechAudioBufferRecognitionRequest()
+            speechRequest.shouldReportPartialResults = true
+            self.request = speechRequest
 
             let inputNode = audioEngine.inputNode
             let recordingFormat = inputNode.outputFormat(forBus: 0)
+            guard Self.isValidAudioFormat(sampleRate: recordingFormat.sampleRate, channelCount: recordingFormat.channelCount) else {
+                throw NSError(domain: "SpeechRecognizer", code: -1, userInfo: [NSLocalizedDescriptionKey: String(localized: "Couldn't start the microphone. Please try again.")])
+            }
 
             inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { buffer, _ in
-                self.request?.append(buffer)
+                speechRequest.append(buffer)
             }
             hasInstalledTap = true
 
             audioEngine.prepare()
             try audioEngine.start()
 
-            task = recognizer.recognitionTask(with: request) { result, error in
-                if let result = result {
-                    self.transcript = result.bestTranscription.formattedString
-                }
-
-                if error != nil || result?.isFinal == true {
-                    self.stopTranscribing()
+            task = recognizer.recognitionTask(with: speechRequest) { [weak self] result, error in
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
+                    if let result {
+                        self.transcript = result.bestTranscription.formattedString
+                    }
+                    if error != nil || result?.isFinal == true {
+                        self.stopTranscribing()
+                    }
                 }
             }
         } catch {
             AppLog.speech.error("Error starting microphone: \(error.localizedDescription, privacy: .public)")
-            errorMessage = "Couldn't start the microphone. Please try again."
+            errorMessage = String(localized: "Couldn't start the microphone. Please try again.")
             stopTranscribing()
         }
     }

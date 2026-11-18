@@ -201,7 +201,7 @@ struct AIProposalPremiumCard: View {
                 Divider().frame(height: 30)
                 VStack(alignment: .trailing, spacing: 4) {
                     Text("Weight").font(.system(size: 11, weight: .semibold)).foregroundColor(PastelTheme.textSecondary)
-                    Text("\(Int(unitsManager.convertFromKilograms(proposal.weightValue))) \(unitsManager.weightUnitString())")
+                    Text(InWorkoutAIUnitHelper.displaySuggestedWeight(modelWeightValue: proposal.weightValue, unitString: unitsManager.weightUnitString()))
                         .font(.subheadline)
                         .bold()
                         .foregroundColor(PastelTheme.pastelSage)

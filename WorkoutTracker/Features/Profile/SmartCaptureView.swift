@@ -19,9 +19,24 @@ struct SmartCaptureView: View {
             Color.black.ignoresSafeArea()
 
             if viewModel.isAuthorized {
-                cameraLayer
-                overlayLayer
-                hudLayer
+                if viewModel.cameraUnavailable {
+                    VStack(spacing: 16) {
+                        Image(systemName: "camera.fill")
+                            .font(.largeTitle)
+                            .foregroundStyle(.white.opacity(0.8))
+                        Text("Camera access is required for Smart Capture.")
+                            .font(.subheadline)
+                            .foregroundStyle(.white.opacity(0.85))
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 32)
+                        Button(LocalizedStringKey("Close")) { dismiss() }
+                            .buttonStyle(.borderedProminent)
+                    }
+                } else {
+                    cameraLayer
+                    overlayLayer
+                    hudLayer
+                }
 
                 if viewModel.showFlash {
                     Color.white.ignoresSafeArea()
@@ -89,7 +104,7 @@ struct SmartCaptureView: View {
                 .resizable()
                 .scaledToFit()
                 .padding(40)
-                .foregroundColor(viewModel.isBodyAligned ? .green : themeManager.current.background)
+                .foregroundColor(viewModel.isBodyAligned ? .green : PastelTheme.textPrimary)
                 .opacity(viewModel.isBodyAligned ? 0.6 : 0.3)
                 .allowsHitTesting(false)
                 .animation(.easeInOut(duration: 0.3), value: viewModel.isBodyAligned)
@@ -118,7 +133,7 @@ struct SmartCaptureView: View {
             if let count = viewModel.countdown {
                 Text("\(count)")
                     .font(.system(size: 150, weight: .heavy, design: .rounded))
-                    .foregroundColor(themeManager.current.background)
+                    .foregroundColor(PastelTheme.pastelOat)
                     .shadow(color: PastelTheme.pastelSlate.opacity(0.5), radius: 15, x: 0, y: 0)
                     .transition(.scale.combined(with: .opacity))
             }
@@ -138,22 +153,27 @@ struct SmartCaptureView: View {
                         .clipShape(Capsule())
                         .animation(.easeInOut, value: viewModel.isBodyAligned)
 
-                    ZStack {
-                        Circle()
-                            .fill(Color.black.opacity(0.5))
-                            .frame(width: 70, height: 70)
+                    Button {
+                        viewModel.triggerManualCapture()
+                    } label: {
+                        ZStack {
+                            Circle()
+                                .fill(Color.black.opacity(0.5))
+                                .frame(width: 70, height: 70)
 
-                        Circle()
-                            .trim(from: 0, to: CGFloat(viewModel.gestureController.gestureProgress))
+                            Circle()
+                                .trim(from: 0, to: CGFloat(viewModel.gestureController.gestureProgress))
 
-                            .stroke(viewModel.isBodyAligned ? PastelTheme.pastelSage : PastelTheme.pastelSlate, style: StrokeStyle(lineWidth: 6, lineCap: .round))
-                            .frame(width: 60, height: 60)
-                            .rotationEffect(.degrees(-90))
+                                .stroke(viewModel.isBodyAligned ? PastelTheme.pastelSage : PastelTheme.pastelSlate, style: StrokeStyle(lineWidth: 6, lineCap: .round))
+                                .frame(width: 60, height: 60)
+                                .rotationEffect(.degrees(-90))
 
-                        Image(systemName: "hand.point.up.braille.fill")
-                            .font(.title2)
-                            .foregroundColor(viewModel.gestureController.gestureProgress > 0 ? (viewModel.isBodyAligned ? PastelTheme.pastelSage : PastelTheme.pastelSlate) : .white)
+                            Image(systemName: "hand.point.up.braille.fill")
+                                .font(.title2)
+                                .foregroundColor(viewModel.gestureController.gestureProgress > 0 ? (viewModel.isBodyAligned ? PastelTheme.pastelSage : PastelTheme.pastelSlate) : .white)
+                        }
                     }
+                    .buttonStyle(.plain)
                     .padding(.bottom, 30)
 
                     .opacity(viewModel.isBodyAligned ? 1.0 : 0.5)
@@ -180,7 +200,7 @@ struct SmartCaptureView: View {
                     } label: {
                         Text(LocalizedStringKey("Retake"))
                             .font(.headline)
-                            .foregroundColor(themeManager.current.background)
+                            .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
                             .padding()
                             .background(Color.white.opacity(0.2))

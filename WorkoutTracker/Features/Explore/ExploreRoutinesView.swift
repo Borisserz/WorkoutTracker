@@ -271,30 +271,30 @@ struct PremiumAIBannerView: View {
         HStack(spacing: 16) {
             ZStack {
                 Circle()
-                    .fill(Color.white.opacity(0.2))
+                    .fill(PastelTheme.textOnOat.opacity(0.12))
                     .frame(width: 48, height: 48)
 
                 Image(systemName: "wand.and.stars")
                     .font(.title2)
-                    .foregroundColor(themeManager.current.background)
+                    .foregroundColor(PastelTheme.textOnOat)
             }
 
             VStack(alignment: .leading, spacing: 4) {
                 Text("AI Program Architect")
                     .font(.headline)
                     .fontWeight(.heavy)
-                    .foregroundColor(themeManager.current.background)
+                    .foregroundColor(PastelTheme.textOnOat)
 
                 Text("Design your perfect weekly split.")
                     .font(.subheadline)
-                    .foregroundColor(.white.opacity(0.8))
+                    .foregroundColor(PastelTheme.textOnOat.opacity(0.78))
             }
 
             Spacer()
 
             Image(systemName: "chevron.right")
                 .font(.body.bold())
-                .foregroundColor(.white.opacity(0.5))
+                .foregroundColor(PastelTheme.textOnOat.opacity(0.55))
         }
         .padding(20)
         .background(themeManager.current.premiumGradient)

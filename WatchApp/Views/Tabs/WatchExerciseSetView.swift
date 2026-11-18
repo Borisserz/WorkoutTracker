@@ -67,7 +67,11 @@ struct WatchExerciseSetView: View {
                     }
 
                     HStack(spacing: 8) {
-                        inputButton(title: "KG", value: String(format: "%.1f", weight), type: .weightMode)
+                        inputButton(
+                            title: UnitsManager.shared.weightUnitString().uppercased(),
+                            value: String(format: "%.1f", weight),
+                            type: .weightMode
+                        )
                         inputButton(title: "REPS", value: "\(Int(reps))", type: .repsMode)
                     }
                     .padding(.vertical, 4)
@@ -87,7 +91,8 @@ struct WatchExerciseSetView: View {
 
                         Button {
                             Task {
-                                await viewModel.logSpecificSet(exerciseIndex: exerciseIndex, setIndex: currentSetIndex, weight: weight, reps: Int(reps))
+                                let canonicalKg = UnitsManager.shared.convertToKilograms(weight)
+                                await viewModel.logSpecificSet(exerciseIndex: exerciseIndex, setIndex: currentSetIndex, weight: canonicalKg, reps: Int(reps))
 
                                 if currentSetIndex < displayTotalSets {
                                     changeSet(by: 1)
@@ -121,7 +126,7 @@ struct WatchExerciseSetView: View {
 
                     if currentSetIndex > 1 {
                         if let prevSet = exercise.setsList?.first(where: { $0.index == currentSetIndex - 1 }) {
-                            Text("Previous: \(String(format: "%.1f", prevSet.weight ?? 0))kg x \(prevSet.reps ?? 0)")
+                            Text("Previous: \(UnitsManager.shared.displayWeightWithUnit(forKg: prevSet.weight ?? 0)) x \(prevSet.reps ?? 0)")
                                 .font(.system(size: 11, weight: .medium))
                                 .foregroundColor(.gray)
                                 .padding(.top, 2)
@@ -136,7 +141,15 @@ struct WatchExerciseSetView: View {
         }
         .navigationBarHidden(true)
         .focusable()
-        .digitalCrownRotation(crownBinding, from: 0, through: 500, by: focus == .weightMode ? 2.5 : 1.0, sensitivity: .medium, isContinuous: false, isHapticFeedbackEnabled: true)
+        .digitalCrownRotation(
+            crownBinding,
+            from: 0,
+            through: UnitsManager.shared.weightUnit == .pounds ? 1100 : 500,
+            by: focus == .weightMode ? (UnitsManager.shared.weightUnit == .pounds ? 2.5 : 1.25) : 1.0,
+            sensitivity: .medium,
+            isContinuous: false,
+            isHapticFeedbackEnabled: true
+        )
         .onAppear { setupInitialSet() }
 
         .onChange(of: viewModel.goBackToWorkoutView) { _, shouldGoBack in
@@ -177,8 +190,10 @@ struct WatchExerciseSetView: View {
                 .padding(.horizontal, 4)
 
             Button {
-                viewModel.addSetToExercise(at: exerciseIndex)
-                changeSet(by: 1)
+                Task {
+                    await viewModel.addSetToExercise(at: exerciseIndex)
+                    changeSet(by: 1)
+                }
             } label: {
                 Text("Add Set")
                     .font(.system(size: 15, weight: .bold))
@@ -260,12 +275,12 @@ struct WatchExerciseSetView: View {
         guard viewModel.exercises.indices.contains(exerciseIndex) else { return }
         let sets = viewModel.exercises[exerciseIndex].setsList ?? []
         if let existingSet = sets.first(where: { $0.index == currentSetIndex }) {
-            weight = existingSet.weight ?? 0.0
+            weight = existingSet.weight.map { UnitsManager.shared.convertFromKilograms($0) } ?? 0.0
             reps = Double(existingSet.reps ?? 0)
             isCurrentSetCompleted = existingSet.isCompleted
         } else {
             if let prevSet = sets.first(where: { $0.index == currentSetIndex - 1 }) {
-                weight = prevSet.weight ?? 0.0
+                weight = prevSet.weight.map { UnitsManager.shared.convertFromKilograms($0) } ?? 0.0
                 reps = Double(prevSet.reps ?? 0)
             } else {
                 weight = 0.0

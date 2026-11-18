@@ -118,7 +118,8 @@ public actor AILogicService {
             type: .object,
             properties: [
                 "action": GeminiSchema(type: .string, description: "One of: swap, reduce_weight, increase_weight, add_finisher"),
-                "exerciseName": GeminiSchema(type: .string, description: "Name of the target exercise in English"),
+                "exerciseName": GeminiSchema(type: .string, description: "Current exercise name in the workout (or new finisher name for add_finisher) in English"),
+                "replacementExerciseName": GeminiSchema(type: .string, description: "Required ONLY when action == swap: distinct replacement exercise name chosen from AVAILABLE EXERCISES FOR SWAP"),
                 "setsRemaining": GeminiSchema(type: .integer, description: "Number of sets to add or modify"),
                 "weightValue": GeminiSchema(type: .number, description: "New recommended weight"),
                 "reasoning": GeminiSchema(type: .string, description: "Short, motivational reasoning explaining the change.")
@@ -348,12 +349,35 @@ public actor AILogicService {
         guard let exs = parsed.exercises, !exs.isEmpty else {
             throw AILogicError.invalidData
         }
+        let validatedExercises = await normalizeExerciseNames(in: exs)
         let workoutDTO = GeneratedWorkoutDTO(
             title: parsed.workoutTitle ?? "Protocol: \(muscleGroup)",
             aiMessage: parsed.aiMessage,
-            exercises: exs
+            exercises: validatedExercises
         )
         return AICoachResponseDTO(text: parsed.aiMessage, workout: workoutDTO)
+    }
+
+    private func normalizeExerciseNames(in exercises: [GeneratedExerciseDTO]) async -> [GeneratedExerciseDTO] {
+        var resolved: [GeneratedExerciseDTO] = []
+        resolved.reserveCapacity(exercises.count)
+        for ex in exercises {
+            let canonicalName = await ExerciseDatabaseService.shared.resolveCatalogExerciseName(for: ex.name)
+            resolved.append(
+                GeneratedExerciseDTO(
+                    name: canonicalName,
+                    muscleGroup: ex.muscleGroup,
+                    type: ex.type,
+                    sets: ex.sets,
+                    reps: ex.reps,
+                    recommendedWeightKg: ex.recommendedWeightKg,
+                    restSeconds: ex.restSeconds,
+                    durationSeconds: ex.durationSeconds,
+                    distanceMeters: ex.distanceMeters
+                )
+            )
+        }
+        return resolved
     }
 
     public func generateWorkoutPlan(userRequest: String, userProfile: UserProfileContext) async throws -> AICoachResponseDTO {
@@ -371,10 +395,11 @@ public actor AILogicService {
         let responseText = try await networkClient.generateText(from: requestBody)
         let networkResponse = try decodeJSON(ChatNetworkResponse.self, from: responseText)
         if networkResponse.hasWorkout, let exs = networkResponse.exercises, !exs.isEmpty {
+            let validatedExercises = await normalizeExerciseNames(in: exs)
             let workoutDTO = GeneratedWorkoutDTO(
                 title: networkResponse.workoutTitle ?? "Custom Workout",
                 aiMessage: networkResponse.aiMessage,
-                exercises: exs
+                exercises: validatedExercises
             )
             return AICoachResponseDTO(text: networkResponse.aiMessage, workout: workoutDTO)
         } else {
@@ -394,7 +419,8 @@ public actor AILogicService {
         You are an elite AI coach. Return ONE JSON object only (no markdown) to adjust the live workout.
         action must be EXACTLY one of: swap | reduce_weight | increase_weight | add_finisher
         If switching barbell→dumbbells: reduce weight 15-20%. If "Too Heavy": reduce ~10%. If "Too Easy": increase ~5-10%.
-        exerciseName must match an exercise from the current workout (English name).
+        exerciseName must match an exercise from the current workout (English name), or the new finisher name for add_finisher.
+        When action == swap: exerciseName MUST be the current exercise being replaced, and replacementExerciseName MUST be a different exercise picked from AVAILABLE EXERCISES FOR SWAP (exact name).
         setsRemaining and weightValue are required numbers (use 0 if unused). Return weightValue in \(weightUnit).
         reasoning: one short motivational sentence.
         \(langInstruction)
@@ -408,7 +434,24 @@ public actor AILogicService {
             generationConfig: .init(temperature: 0.3, responseMimeType: "application/json", responseSchema: smartActionSchema)
         )
         let responseText = try await networkClient.generateText(from: requestBody)
-        return try decodeJSON(SmartActionDTO.self, from: responseText)
+        let decoded = try decodeJSON(SmartActionDTO.self, from: responseText)
+        let resolvedReplacement: String?
+        if let rawReplacement = decoded.replacementExerciseName, !rawReplacement.isEmpty {
+            resolvedReplacement = await ExerciseDatabaseService.shared.resolveCatalogExerciseName(for: rawReplacement)
+        } else {
+            resolvedReplacement = nil
+        }
+        let resolvedPrimary = decoded.action == "add_finisher"
+            ? await ExerciseDatabaseService.shared.resolveCatalogExerciseName(for: decoded.exerciseName)
+            : decoded.exerciseName
+        return SmartActionDTO(
+            action: decoded.action,
+            exerciseName: resolvedPrimary,
+            setsRemaining: decoded.setsRemaining,
+            weightValue: decoded.weightValue,
+            reasoning: decoded.reasoning,
+            replacementExerciseName: resolvedReplacement
+        )
     }
 
     public func analyzeActiveWorkout(userMessage: String,
@@ -471,7 +514,21 @@ public actor AILogicService {
             generationConfig: .init(temperature: 0.4, responseMimeType: "application/json", responseSchema: multiDayProgramSchema)
         )
         let responseText = try await networkClient.generateText(from: requestBody)
-        return try decodeJSON(GeneratedProgramDTO.self, from: responseText)
+        let program = try decodeJSON(GeneratedProgramDTO.self, from: responseText)
+        var resolvedSchedule: [GeneratedRoutineDTO] = []
+        resolvedSchedule.reserveCapacity(program.schedule.count)
+        for day in program.schedule {
+            let cleanExercises = await normalizeExerciseNames(in: day.exercises)
+            resolvedSchedule.append(
+                GeneratedRoutineDTO(dayName: day.dayName, focus: day.focus, exercises: cleanExercises)
+            )
+        }
+        return GeneratedProgramDTO(
+            title: program.title,
+            description: program.description,
+            durationWeeks: program.durationWeeks,
+            schedule: resolvedSchedule
+        )
     }
 
     // MARK: - Private prompt builder

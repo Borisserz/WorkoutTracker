@@ -46,11 +46,28 @@ public enum AIActionType: String, Codable, Sendable {
     }
 }
 public struct SmartActionDTO: Codable, Sendable, Equatable {
-    let action: String 
+    let action: String
     let exerciseName: String
     let setsRemaining: Int
     let weightValue: Double
     let reasoning: String
+    let replacementExerciseName: String?
+
+    public init(
+        action: String,
+        exerciseName: String,
+        setsRemaining: Int,
+        weightValue: Double,
+        reasoning: String,
+        replacementExerciseName: String? = nil
+    ) {
+        self.action = action
+        self.exerciseName = exerciseName
+        self.setsRemaining = setsRemaining
+        self.weightValue = weightValue
+        self.reasoning = reasoning
+        self.replacementExerciseName = replacementExerciseName
+    }
 }
 public struct InWorkoutResponseDTO: Codable, Sendable {
     let explanation: String
@@ -114,6 +131,12 @@ enum InWorkoutAIUnitHelper {
         let safeValue = max(0.0, value)
         let kg = weightUnit == .kilograms ? safeValue : safeValue / 2.20462
         return min(kg, 1500.0)
+    }
+
+    /// Formats a weight value already returned in the user's display unit (without re-converting from kg).
+    static func displaySuggestedWeight(modelWeightValue value: Double, unitString: String) -> String {
+        let safeValue = max(0.0, value)
+        return "\(LocalizationHelper.shared.formatFlexible(safeValue)) \(unitString)"
     }
 }
 

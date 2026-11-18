@@ -227,7 +227,7 @@ struct AITrackerView: View {
             }) {
                 Text("Open Settings")
                     .font(.headline)
-                    .foregroundColor(.white)
+                    .foregroundColor(PastelTheme.textOnOat)
                     .padding(.vertical, 16)
                     .padding(.horizontal, 32)
                     .background(themeManager.current.primaryAccent)
@@ -275,7 +275,7 @@ struct AITrackerView: View {
                 Button(action: { cameraManager.retrySessionSetup() }) {
                     Text("Retry")
                         .font(.headline)
-                        .foregroundColor(.white)
+                        .foregroundColor(PastelTheme.textOnOat)
                         .padding(.vertical, 14)
                         .padding(.horizontal, 28)
                         .background(themeManager.current.primaryAccent)
@@ -481,7 +481,7 @@ struct AITrackerView: View {
                     .font(.title3)
                     .fontWeight(.bold)
             }
-            .foregroundColor(.white)
+            .foregroundColor(PastelTheme.textOnOat)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 20)
             .background(themeManager.current.primaryAccent)

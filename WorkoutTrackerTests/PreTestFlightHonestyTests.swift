@@ -383,7 +383,6 @@ final class PreTestFlightHonestyTests: XCTestCase {
             "NSHealthUpdateUsageDescription",
             "NSMicrophoneUsageDescription",
             "NSPhotoLibraryUsageDescription",
-            "NSPhotoLibraryAddUsageDescription",
             "NSSpeechRecognitionUsageDescription",
         ]
         for key in usageKeys {

@@ -226,7 +226,7 @@ struct GeneratedWorkoutResultView: View {
                     Image(systemName: "bolt.fill").font(.title2)
                     Text("Start Workout").font(.title3).bold().tracking(1.0)
                 }
-                .foregroundColor(.white)
+                .foregroundColor(PastelTheme.textOnOat)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 20)
                 .background(themeManager.current.primaryGradient)

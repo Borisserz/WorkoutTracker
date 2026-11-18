@@ -44,7 +44,9 @@ struct WatchActiveWorkoutView: View {
         .task {
             if !viewModel.isInitialized {
                 await viewModel.initializeWorkout()
-                if viewModel.phoneBlockedStart || viewModel.localStoreFailed { return }
+            }
+            guard !viewModel.phoneBlockedStart, !viewModel.localStoreFailed else { return }
+            if !workoutManager.isRunning {
                 do {
                     try await workoutManager.requestAuthorization()
                     await workoutManager.startWorkout()

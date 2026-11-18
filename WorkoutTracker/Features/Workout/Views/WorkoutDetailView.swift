@@ -33,6 +33,7 @@ struct WorkoutDetailContentView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.dismiss) private var dismiss
     @State private var isDeletingEmptyWorkout = false
+    @State private var appearedOnTab: Int?
     @Environment(DashboardViewModel.self) private var dashboardViewModel
     @Environment(UserStatsViewModel.self) var userStatsViewModel
     @Environment(TutorialManager.self) var tutorialManager
@@ -132,14 +133,15 @@ struct WorkoutDetailContentView: View {
             }
         }
         .onAppear {
+            appearedOnTab = di.appState.selectedTab
             handleOnAppear()
             if workout.isActive { di.appState.isInsideActiveWorkout = true }
         }
         .onDisappear {
             handleOnDisappear()
             di.appState.isInsideActiveWorkout = false
-            // Discard only true ghosts when actually backing out of Workout tab (never on tab switch).
-            guard di.appState.selectedTab == 2, workout.isActive, !isDeletingEmptyWorkout, workout.exercises.isEmpty else { return }
+            // Discard only true ghosts when popping/closing back on the same tab (never when switching tabs).
+            guard appearedOnTab == di.appState.selectedTab, workout.isActive, !isDeletingEmptyWorkout, workout.exercises.isEmpty else { return }
             let id = workout.id
             Task { await viewModel.deleteEmptyWorkout(id: id) }
         }
@@ -206,6 +208,8 @@ struct WorkoutDetailContentView: View {
                                     FunFactView(totalStrengthVolume: viewModel.workoutAnalytics.volume)
                                 }
                             }
+
+                            actionButtonSection
 
                             Spacer(minLength: 170)
                         }

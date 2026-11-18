@@ -190,6 +190,14 @@ final class SocialAuthService {
 
     // MARK: - Sign Out
 
+    /// Signs out linked social/Firebase providers without immediately minting a new guest user.
+    func signOutProvidersOnly() {
+        let previousUID = Auth.auth().currentUser?.uid
+        AuthIdentityCache.clear(uid: previousUID)
+        GIDSignIn.sharedInstance.signOut()
+        try? Auth.auth().signOut()
+    }
+
     func signOut() async throws {
         let previousUID = Auth.auth().currentUser?.uid
         AuthIdentityCache.clear(uid: previousUID)
@@ -234,29 +242,38 @@ final class SocialAuthService {
     }
     // MARK: - Account deletion support (Guideline 5.1.1(v))
 
-    /// Re-authenticates the current user immediately before deletion and,
-    /// for Sign in with Apple, revokes the Apple refresh token.
-    /// MUST be called BEFORE any destructive server-side deletion.
-    func reauthenticateForDeletion() async throws {
+    /// Re-authenticates the current user immediately before deletion and returns
+    /// any pending Apple authorizationCode to revoke AFTER server-side deletion succeeds.
+    func reauthenticateForDeletion() async throws -> String? {
         guard let user = Auth.auth().currentUser else {
             throw AuthError.notSignedIn
         }
 
         // Anonymous users never linked a provider: no recent-login requirement,
         // and nothing to revoke.
-        if user.isAnonymous { return }
+        if user.isAnonymous { return nil }
 
         let providerIDs = user.providerData.map { $0.providerID }
 
         if providerIDs.contains("apple.com") {
-            try await reauthenticateWithApple(user: user)
+            return try await reauthenticateWithApple(user: user)
         } else if providerIDs.contains("google.com") {
             try await reauthenticateWithGoogle(user: user)
         }
         // If you add email/password later, handle it here.
+        return nil
     }
 
-    private func reauthenticateWithApple(user: User) async throws {
+    /// Revokes the Sign in with Apple refresh token while the current Firebase
+    /// Auth user is still signed in and freshly reauthenticated.
+    func revokeAppleToken(authorizationCode: String) async throws {
+        guard !authorizationCode.isEmpty else {
+            throw AuthError.invalidAppleCredential
+        }
+        try await Auth.auth().revokeToken(withAuthorizationCode: authorizationCode)
+    }
+
+    private func reauthenticateWithApple(user: User) async throws -> String {
         let nonce = Self.randomNonce()
         currentNonce = nonce
         defer { currentNonce = nil }
@@ -265,7 +282,10 @@ final class SocialAuthService {
 
         guard
             let tokenData = appleIDCredential.identityToken,
-            let idToken = String(data: tokenData, encoding: .utf8)
+            let idToken = String(data: tokenData, encoding: .utf8),
+            let codeData = appleIDCredential.authorizationCode,
+            let authCode = String(data: codeData, encoding: .utf8),
+            !authCode.isEmpty
         else {
             throw AuthError.invalidAppleCredential
         }
@@ -276,14 +296,9 @@ final class SocialAuthService {
             fullName: appleIDCredential.fullName
         )
 
-        // 1) Satisfy requiresRecentLogin.
+        // Satisfy requiresRecentLogin without revoking Apple token yet.
         try await user.reauthenticate(with: firebaseCredential)
-
-        // 2) Revoke the Apple refresh token — this is the part Apple requires.
-        if let codeData = appleIDCredential.authorizationCode,
-           let authCode = String(data: codeData, encoding: .utf8) {
-            try await Auth.auth().revokeToken(withAuthorizationCode: authCode)
-        }
+        return authCode
     }
 
     private func reauthenticateWithGoogle(user: User) async throws {

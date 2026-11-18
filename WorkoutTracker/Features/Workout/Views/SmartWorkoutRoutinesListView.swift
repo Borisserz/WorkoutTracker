@@ -118,7 +118,7 @@ struct SmartWorkoutRoutinesListView: View {
             } label: {
                 Text(LocalizedStringKey("Create Custom Routine"))
                     .font(.headline)
-                    .foregroundColor(.white)
+                    .foregroundColor(PastelTheme.textOnOat)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
                     .background(themeManager.current.primaryAccent)

@@ -163,6 +163,23 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate, Sen
         Task { try? await UNUserNotificationCenter.current().add(request) }
     }
 
+    func scheduleCommitmentReminder(date: Date) {
+        let title = String(localized: "Time for your committed workout")
+        let body = String(localized: "Your future self is ready. Start your session now!")
+        requestPermission { [weak self] granted in
+            guard granted else { return }
+            Task { @MainActor in
+                self?.scheduleNotification(
+                    id: "future_self_commitment",
+                    title: title,
+                    body: body,
+                    date: date,
+                    category: self?.retentionCategoryId
+                )
+            }
+        }
+    }
+
     static func getDominantGroup(for workout: Workout) -> String {
         var counts: [String: Int] = [:]
         for exercise in workout.exercises {

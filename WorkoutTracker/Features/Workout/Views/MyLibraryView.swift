@@ -32,6 +32,7 @@ enum LibraryFilter: String, CaseIterable, Identifiable {
 struct MyLibraryView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
+    @Environment(DIContainer.self) private var di
 
     @Query private var userPresets: [WorkoutPreset]
     @Query private var favoriteWorkouts: [Workout]
@@ -238,6 +239,16 @@ struct MyLibraryView: View {
         .sheet(isPresented: $showCatalogSheet) {
             NavigationStack {
                 ProgramDiscoveryView()
+            }
+        }
+        .onChange(of: di.appState.returnToActiveWorkoutId) { _, newValue in
+            if newValue != nil && showCatalogSheet {
+                showCatalogSheet = false
+            }
+        }
+        .onChange(of: di.appState.selectedTab) { _, newTab in
+            if newTab == 2 && showCatalogSheet {
+                showCatalogSheet = false
             }
         }
     }

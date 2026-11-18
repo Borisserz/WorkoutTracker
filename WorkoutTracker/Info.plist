@@ -100,17 +100,17 @@
         </dict>
     </array>
     <key>NSCameraUsageDescription</key>
-    <string>AI Workout requires camera access to analyze your exercise form, track repetitions with AI, and capture progress photos.</string>
+    <string>AI Workout uses the camera to analyze your exercise form, count repetitions with on-device Vision AI, and take Smart Capture progress photos.</string>
     <key>NSHealthShareUsageDescription</key>
-    <string>AI Workout uses Health data to sync your daily steps, resting heart rate, and sleep data to generate personalized recovery metrics and proactive workout suggestions.</string>
+    <string>AI Workout reads your heart rate, resting heart rate, HRV, active energy, sleep, steps, dietary water, and body weight from Apple Health to calculate CNS readiness, recovery, hydration, and activity metrics.</string>
     <key>NSHealthUpdateUsageDescription</key>
-    <string>AI Workout saves your completed workouts, active calories burned, and duration directly to Apple Health.</string>
+    <string>AI Workout saves your completed workouts, active calories burned, cardio distance, water intake, and body weight updates to Apple Health.</string>
     <key>NSPhotoLibraryUsageDescription</key>
-    <string>AI Workout requires photo library access so you can attach progress photos to your weight logs and workout history.</string>
+    <string>AI Workout accesses your photo library so you can choose a profile photo and attach before/after progress photos to your weight logs.</string>
     <key>NSMicrophoneUsageDescription</key>
     <string>AI Workout uses the microphone when you dictate messages to the AI Coach.</string>
     <key>NSSpeechRecognitionUsageDescription</key>
-    <string>AI Workout uses on-device speech recognition to transcribe your voice messages in AI Coach chat.</string>
+    <string>AI Workout uses speech recognition to transcribe your voice messages into text in the AI Coach chat.</string>
     <key>LSApplicationQueriesSchemes</key>
     <array>
         <string>foodtracker</string>

@@ -115,10 +115,10 @@ final class FirestoreProgramService {
             throw SharedWorkoutError.encodingFailed
         }
 
-        // Derive moderator-visible title from the preset name.
+        // Derive moderator-visible title from the preset name and align `name == title`.
         let rawTitle = (dict["name"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         guard !rawTitle.isEmpty else { throw SharedWorkoutError.emptyTitle }
-        let title = String(rawTitle.prefix(200)) 
+        let title = String(rawTitle.prefix(200))
 
         // Validate exercises shape (rules also validate this server-side).
         let exercises = dict["exercises"] as? [Any] ?? []
@@ -126,6 +126,7 @@ final class FirestoreProgramService {
         guard exercises.count <= 200 else { throw SharedWorkoutError.tooManyExercises }
 
         // Required server-validated fields (must match firestore.rules).
+        dict["name"] = title
         dict["title"] = title
         dict["description"] = ""
         dict["creatorUid"] = user.uid
@@ -286,7 +287,8 @@ final class FirestoreProgramService {
         let trimmedDetails = String(details.prefix(500))
         log.info("Filing report workoutId=\(id, privacy: .public) reason=\(reason, privacy: .public)")
 
-        try await db.collection("reports").addDocument(data: [
+        let reportDocId = "\(id)_\(user.uid)"
+        try await db.collection("reports").document(reportDocId).setData([
             "workoutId": id,
             "reporterUid": user.uid,
             "reason": reason,

@@ -110,6 +110,7 @@ struct ChromeDismissMark: View {
             .background(PastelTheme.cardSurface, in: Circle())
             .overlay(Circle().stroke(PastelTheme.cardBorder, lineWidth: 1))
             .contentShape(Circle())
+            .accessibilityLabel(Text(LocalizedStringKey("Close")))
     }
 }
 

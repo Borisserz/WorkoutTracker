@@ -254,7 +254,7 @@ struct RoutinePreviewCard: View {
 
                             Text("\(safeSets.count) x \(repsCount) reps")
                                 .font(.subheadline)
-                                .foregroundColor(colorScheme == .dark ? .gray : .gray) 
+                                .foregroundColor(colorScheme == .dark ? .gray : .gray)
                         }
                         .padding(.horizontal, 16)
                         .padding(.vertical, 12)
@@ -276,6 +276,21 @@ struct RoutinePreviewCard: View {
                     .stroke(colorScheme == .dark ? Color.clear : Color.black.opacity(0.05), lineWidth: 1)
             )
             .shadow(color: .black.opacity(colorScheme == .dark ? 0.03 : 0.05), radius: 5, x: 0, y: 2)
+        }
+        .sheet(item: Binding(
+            get: { selectedHistoryExercise.map { IdentifiableString(id: $0) } },
+            set: { selectedHistoryExercise = $0?.id }
+        )) { item in
+            NavigationStack {
+                ExerciseHistoryView(exerciseName: item.id)
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button(LocalizedStringKey("Close")) {
+                                selectedHistoryExercise = nil
+                            }
+                        }
+                    }
+            }
         }
     }
 }

@@ -16,6 +16,15 @@ struct NextWorkoutAdvice: Sendable {
     let actionableTips: [String]
     let cautionNotes: String
     let recommendedExercises: [String]
+
+    /// Strips any localized "Next session: " style prefix before displaying just the split title.
+    static func stripSessionPrefix(from title: String) -> String {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let colonRange = trimmed.range(of: ":") else { return trimmed }
+        let suffix = trimmed[colonRange.upperBound...].trimmingCharacters(in: .whitespaces)
+        guard !suffix.isEmpty else { return trimmed }
+        return suffix.prefix(1).uppercased() + suffix.dropFirst()
+    }
 }
 
 /// Physiological analysis model representing deep readiness evaluation.

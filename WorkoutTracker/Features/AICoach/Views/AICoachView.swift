@@ -1121,6 +1121,7 @@ struct ProgressAnalysisSheet: View {
     @Environment(ThemeManager.self) private var themeManager
     @Environment(UnitsManager.self) private var unitsManager
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.dismiss) private var dismiss
     @State private var colorManager = MuscleColorManager.shared
 
     @Query private var allWorkouts: [Workout]
@@ -1354,6 +1355,12 @@ struct ProgressAnalysisSheet: View {
                     .font(.system(size: 28, weight: .bold, design: .rounded))
                     .foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black)
                 Spacer()
+                Button {
+                    dismiss()
+                } label: {
+                    ChromeDismissMark()
+                }
+                .buttonStyle(.plain)
             }
             .padding(.horizontal, 24).padding(.top, 20).padding(.bottom, 10)
         }
@@ -1528,6 +1535,7 @@ struct RestAnalysisSheet: View {
     @AppStorage("waterCups") private var waterCups: Int = 4
     /// Local estimate only — never overwrite Overview `cnsScore` AppStorage (ADR honesty).
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.dismiss) private var dismiss
 
     var cnsLoad: Double {
         RestFatigueEstimator.cnsLoad(sleepHours: sleepHours, waterCups: waterCups)
@@ -1696,6 +1704,12 @@ struct RestAnalysisSheet: View {
                             .font(.system(size: 28, weight: .bold, design: .rounded))
                             .foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black)
                         Spacer()
+                        Button {
+                            dismiss()
+                        } label: {
+                            ChromeDismissMark()
+                        }
+                        .buttonStyle(.plain)
                     }
                     .padding(.horizontal, 24)
                     .padding(.top, 20)

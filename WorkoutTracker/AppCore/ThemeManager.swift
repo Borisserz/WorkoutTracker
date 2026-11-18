@@ -39,19 +39,19 @@ struct LuxuryPastelTheme: AppTheme {
     var primaryAccent: Color { PastelTheme.pastelOat }
     var secondaryAccent: Color { PastelTheme.warmBeige }
     var secondaryMidTone: Color { PastelTheme.pastelAmber }
-    var deepPremiumAccent: Color { PastelTheme.cardSurface }
-    var lightHighlight: Color { PastelTheme.cardBorder }
+    var deepPremiumAccent: Color { PastelTheme.warmBeige }
+    var lightHighlight: Color { PastelTheme.pastelLavender }
 
     var successColor: Color { PastelTheme.pastelEmerald }
     var warningColor: Color { PastelTheme.pastelAmber }
     var errorColor: Color { PastelTheme.pastelPeach }
 
     var premiumGradient: LinearGradient {
-        LinearGradient(colors: [PastelTheme.cardSurface, PastelTheme.cardSurfaceSubtle], startPoint: .topLeading, endPoint: .bottomTrailing)
+        LinearGradient(colors: [PastelTheme.pastelOat, PastelTheme.pastelAmber], startPoint: .topLeading, endPoint: .bottomTrailing)
     }
 
     var primaryGradient: LinearGradient {
-        LinearGradient(colors: [PastelTheme.cardSurfaceSubtle, PastelTheme.canvas], startPoint: .topLeading, endPoint: .bottomTrailing)
+        LinearGradient(colors: [PastelTheme.pastelOat, PastelTheme.warmBeige], startPoint: .topLeading, endPoint: .bottomTrailing)
     }
 
     var overlayGradient: LinearGradient {

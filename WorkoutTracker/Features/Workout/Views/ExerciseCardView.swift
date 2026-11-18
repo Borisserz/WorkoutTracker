@@ -503,7 +503,7 @@ struct ExerciseCardView: View {
                                     .frame(maxWidth: .infinity)
                                     .frame(height: 36)
                                     .background(exercise.effort == val ? themeManager.current.secondaryAccent : Color.white.opacity(0.08))
-                                    .foregroundColor(exercise.effort == val ? .white : .primary)
+                                    .foregroundColor(exercise.effort == val ? PastelTheme.textOnOat : .primary)
                                     .cornerRadius(8)
                             }
                             .buttonStyle(BorderlessButtonStyle())

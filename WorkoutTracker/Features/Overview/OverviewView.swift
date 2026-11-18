@@ -236,7 +236,8 @@ struct OverviewView: View {
             .sheet(isPresented: $showPulseSheet) {
                 PulseExplanationSheet(
                     heartRate: vitals.currentBPM,
-                    timeAgoText: vitals.timeAgoText
+                    timeAgoText: vitals.timeAgoText,
+                    hasPulseData: vitals.lastUpdated != nil
                 )
                 .presentationDetents([.height(390), .medium])
                 .presentationDragIndicator(.visible)
@@ -372,6 +373,63 @@ enum CNSScoreRefresher {
 }
 
 // MARK: - Future Self Commitment Sheet
+enum CommitmentOption: String, Sendable {
+    case tonight
+    case tomorrowMorning
+    case thisWeekend
+
+    func targetDate(from reference: Date = Date(), calendar: Calendar = .current) -> Date {
+        switch self {
+        case .tonight:
+            var comps = calendar.dateComponents([.year, .month, .day], from: reference)
+            comps.hour = 20
+            comps.minute = 0
+            let candidate = calendar.date(from: comps) ?? reference.addingTimeInterval(3600)
+            if candidate > reference.addingTimeInterval(15 * 60) {
+                return candidate
+            }
+            return reference.addingTimeInterval(2 * 3600)
+        case .tomorrowMorning:
+            let tomorrow = calendar.date(byAdding: .day, value: 1, to: reference) ?? reference.addingTimeInterval(86400)
+            var comps = calendar.dateComponents([.year, .month, .day], from: tomorrow)
+            comps.hour = 9
+            comps.minute = 0
+            return calendar.date(from: comps) ?? tomorrow
+        case .thisWeekend:
+            let nextSat = calendar.nextDate(
+                after: reference,
+                matching: DateComponents(hour: 10, minute: 0, weekday: 7),
+                matchingPolicy: .nextTime
+            )
+            return nextSat ?? reference.addingTimeInterval(3 * 86400)
+        }
+    }
+}
+
+enum FutureSelfCommitmentScheduler {
+    static let optionKey = "futureSelfCommitmentOption"
+    static let dateKey = "futureSelfCommitmentTimestamp"
+
+    @MainActor
+    static func schedule(
+        option: CommitmentOption,
+        referenceDate: Date = Date(),
+        calendar: Calendar = .current,
+        userDefaults: UserDefaults = .standard,
+        scheduleNotification: ((Date) -> Void)? = nil
+    ) -> Date {
+        let target = option.targetDate(from: referenceDate, calendar: calendar)
+        userDefaults.set(option.rawValue, forKey: optionKey)
+        userDefaults.set(target.timeIntervalSince1970, forKey: dateKey)
+        if let scheduleNotification {
+            scheduleNotification(target)
+        } else {
+            NotificationManager.shared.scheduleCommitmentReminder(date: target)
+        }
+        return target
+    }
+}
+
 struct FutureSelfCommitmentSheet: View {
     let onCommit: () -> Void
     @State private var appear = false
@@ -396,9 +454,18 @@ struct FutureSelfCommitmentSheet: View {
             }
 
             VStack(spacing: 10) {
-                CommitmentButton(title: "Tonight", icon: "moon.stars.fill") { onCommit() }
-                CommitmentButton(title: "Tomorrow Morning", icon: "sun.max.fill") { onCommit() }
-                CommitmentButton(title: "This Weekend", icon: "calendar.badge.clock") { onCommit() }
+                CommitmentButton(title: "Tonight", icon: "moon.stars.fill") {
+                    _ = FutureSelfCommitmentScheduler.schedule(option: .tonight)
+                    onCommit()
+                }
+                CommitmentButton(title: "Tomorrow Morning", icon: "sun.max.fill") {
+                    _ = FutureSelfCommitmentScheduler.schedule(option: .tomorrowMorning)
+                    onCommit()
+                }
+                CommitmentButton(title: "This Weekend", icon: "calendar.badge.clock") {
+                    _ = FutureSelfCommitmentScheduler.schedule(option: .thisWeekend)
+                    onCommit()
+                }
             }
             .padding(.horizontal, 20)
             .padding(.top, 8)

@@ -75,12 +75,16 @@ nonisolated private struct GoogleCloudErrorResponse: Codable, Sendable {
 actor GeminiNetworkClient {
     private let urlSession: URLSession
 
-    init() {
+    nonisolated static func makeSessionConfiguration() -> URLSessionConfiguration {
         let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = 60.0
-        config.timeoutIntervalForResource = 120.0
-        config.waitsForConnectivity = true
-        self.urlSession = URLSession(configuration: config)
+        config.timeoutIntervalForRequest = 30.0
+        config.timeoutIntervalForResource = 45.0
+        config.waitsForConnectivity = false
+        return config
+    }
+
+    init() {
+        self.urlSession = URLSession(configuration: Self.makeSessionConfiguration())
     }
 
     private func makeRequest(stream: Bool, body: GeminiRequest) async throws -> URLRequest {
@@ -185,6 +189,12 @@ actor GeminiNetworkClient {
                         let json = String(line.dropFirst(6))
                         if json == "[DONE]" { continue }
                         guard let jsonData = json.data(using: .utf8) else { continue }
+                        if let errorResp = try? JSONDecoder().decode(GoogleCloudErrorResponse.self, from: jsonData),
+                           let err = errorResp.error {
+                            let code = err.code ?? 502
+                            let msg = err.message ?? "Upstream AI error"
+                            throw AILogicError.apiError(statusCode: code, message: msg)
+                        }
                         if let chunk = try? JSONDecoder().decode(GeminiResponse.self, from: jsonData),
                            let textChunk = chunk.candidates.first?.content.parts.first?.text {
                             continuation.yield(textChunk)

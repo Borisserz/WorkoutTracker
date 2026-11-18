@@ -51,6 +51,7 @@ struct TemplatePreviewSheetView: View {
     @Environment(ThemeManager.self) private var themeManager
     @State private var isSharing = false
         @State private var shareItem: SharedFileWrapper?
+    @State private var shareErrorMessage: String?
     @State private var selectedHistoryExercise: String? = nil
     @AppStorage(UGCConsent.storageKey) private var hasAcceptedUGCTerms = false
     @State private var showTermsGate = false
@@ -155,6 +156,19 @@ struct TemplatePreviewSheetView: View {
                 CommunityGuidelinesSheet {
                     shareWorkout()
                 }
+            }
+            .alert(
+                LocalizedStringKey("Error"),
+                isPresented: Binding(
+                    get: { shareErrorMessage != nil },
+                    set: { if !$0 { shareErrorMessage = nil } }
+                )
+            ) {
+                Button(LocalizedStringKey("OK"), role: .cancel) {
+                    shareErrorMessage = nil
+                }
+            } message: {
+                Text(shareErrorMessage ?? "")
             }
             .safeAreaInset(edge: .bottom) {
                 startWorkoutButton
@@ -434,10 +448,18 @@ struct TemplatePreviewSheetView: View {
                             self.shareItem = SharedFileWrapper(url: shareURL)
                             self.isSharing = false
                         }
+                    } else {
+                        await MainActor.run {
+                            self.shareErrorMessage = SharedWorkoutError.encodingFailed.localizedDescription
+                            self.isSharing = false
+                        }
                     }
                 } catch {
                     AppLog.ui.error("❌ The sharing error: \(error.localizedDescription, privacy: .public)")
-                    await MainActor.run { self.isSharing = false }
+                    await MainActor.run {
+                        self.shareErrorMessage = error.localizedDescription
+                        self.isSharing = false
+                    }
                 }
             }
         }

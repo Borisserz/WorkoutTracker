@@ -25,7 +25,7 @@ final class DIContainer: @unchecked Sendable {
     let workoutService: WorkoutService
     let presetService: PresetService
 
-    init(modelContainer: ModelContainer) {
+    init(modelContainer: ModelContainer, watchNotificationCenter: NotificationCenter = .default) {
         self.modelContainer = modelContainer
 
         self.appState = AppStateManager()
@@ -56,7 +56,8 @@ final class DIContainer: @unchecked Sendable {
             notificationManager: self.notificationManager,
             progressManager: self.progressManager,
             appState: self.appState,
-            liveActivityManager: self.liveActivityManager
+            liveActivityManager: self.liveActivityManager,
+            watchNotificationCenter: watchNotificationCenter
         )
 
         self.presetService = PresetService(

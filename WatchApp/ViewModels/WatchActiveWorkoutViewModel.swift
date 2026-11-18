@@ -99,6 +99,7 @@ final class WatchActiveWorkoutViewModel: Hashable {
             isCompleted: false, setsList: initialSets, subExercises: [], sets: 3, reps: 10, recommendedWeightKg: 0.0
         )
         exercises.append(newEx)
+        try? await store.addExercise(workoutID: workoutID.uuidString, exerciseName: name)
         let payload = LiveSyncPayload(action: .addExercise, workoutID: workoutID.uuidString, exerciseName: name)
         WatchSyncManager.shared.sendLiveAction(payload)
     }
@@ -117,10 +118,33 @@ final class WatchActiveWorkoutViewModel: Hashable {
             switch payload.action {
             case .syncFullState:
                             if let newExercises = payload.exercises {
-                                self.exercises = newExercises
+                                // Merge locally completed sets so remote full-state snapshots cannot clobber unsynced local Watch logs.
+                                let localCompletedByKey: [String: [Int: WorkoutSetDTO]] = Dictionary(
+                                    uniqueKeysWithValues: self.exercises.map { ex in
+                                        let completed = Dictionary(
+                                            uniqueKeysWithValues: (ex.setsList ?? [])
+                                                .filter(\.isCompleted)
+                                                .map { ($0.index, $0) }
+                                        )
+                                        return (ex.name, completed)
+                                    }
+                                )
+                                var merged = newExercises
+                                for i in merged.indices {
+                                    guard let localCompleted = localCompletedByKey[merged[i].name],
+                                          !localCompleted.isEmpty else { continue }
+                                    var sets = merged[i].setsList ?? []
+                                    for j in sets.indices {
+                                        if !sets[j].isCompleted, let localSet = localCompleted[sets[j].index] {
+                                            sets[j] = localSet
+                                        }
+                                    }
+                                    merged[i].setsList = sets
+                                }
+                                self.exercises = merged
                                 self.recalculateTotals()
 
-                                if let activeEx = self.activeExercise, activeEx.index >= newExercises.count {
+                                if let activeEx = self.activeExercise, activeEx.index >= merged.count {
                                     self.goBackToWorkoutView = true
                                 }
                             }
@@ -287,7 +311,7 @@ final class WatchActiveWorkoutViewModel: Hashable {
         }
     }
 
-    func addSetToExercise(at index: Int) {
+    func addSetToExercise(at index: Int) async {
         guard exercises.indices.contains(index) else { return }
         var currentEx = exercises[index]
         let currentCount = currentEx.setsList?.count ?? 0
@@ -306,6 +330,7 @@ final class WatchActiveWorkoutViewModel: Hashable {
         }
 
         exercises[index] = currentEx
+        try? await store.addSet(workoutID: workoutID.uuidString, exerciseName: currentEx.name, setIndex: newSetIndex)
     }
 
     func removeSet(exerciseIndex: Int, setIndex: Int) async {
@@ -324,11 +349,14 @@ final class WatchActiveWorkoutViewModel: Hashable {
         let targetSets = currentEx.sets ?? 3
         if targetSets > 1 { currentEx.sets = targetSets - 1 }
         exercises[exerciseIndex] = currentEx
+        try? await store.removeSet(workoutID: workoutID.uuidString, exerciseName: currentEx.name, setIndex: setIndex)
     }
 
     func removeExercise(at index: Int) async {
         guard exercises.indices.contains(index) else { return }
+        let removedName = exercises[index].name
         exercises.remove(at: index)
+        try? await store.removeExercise(workoutID: workoutID.uuidString, exerciseName: removedName)
     }
 
     func finishWorkout(activeEnergy: Double, healthKitSavedOnWatch: Bool = false) async {

@@ -26,10 +26,13 @@ final class SmartCaptureViewModel: NSObject {
     private let videoOutput = AVCaptureVideoDataOutput()
 
     let gestureController = GestureController()
-    @ObservationIgnored private let visionProcessor = VisionProcessor()
-    @ObservationIgnored private var frameCounter = 0
+    @ObservationIgnored private nonisolated let visionProcessor = VisionProcessor()
+    @ObservationIgnored private nonisolated let captureFrameCounter = FrameCounter()
+    @ObservationIgnored private nonisolated let capturePausedLock = NSLock()
+    @ObservationIgnored private nonisolated(unsafe) var isCapturePaused = false
     @ObservationIgnored nonisolated(unsafe) private var countdownTask: Task<Void, Never>?
     @ObservationIgnored private var cancellables = Set<AnyCancellable>()
+    var cameraUnavailable: Bool = false
 
     override init() {
         super.init()
@@ -50,8 +53,13 @@ final class SmartCaptureViewModel: NSObject {
     }
 
     deinit {
-        session.stopRunning()
         countdownTask?.cancel()
+        let captureSession = session
+        Task.detached {
+            if captureSession.isRunning {
+                captureSession.stopRunning()
+            }
+        }
     }
 
     func checkPermission() {
@@ -84,6 +92,7 @@ final class SmartCaptureViewModel: NSObject {
               let videoInput = try? AVCaptureDeviceInput(device: videoDevice),
               session.canAddInput(videoInput) else {
             session.commitConfiguration()
+            cameraUnavailable = true
             return
         }
 
@@ -110,26 +119,44 @@ final class SmartCaptureViewModel: NSObject {
         }
 
         session.commitConfiguration()
+        cameraUnavailable = false
         let captureSession = session
         Task.detached {
             captureSession.startRunning()
         }
     }
 
-    func startCountdown() {
-        guard countdownTask == nil else { return } 
+    func triggerManualCapture() {
+        guard countdown == nil, capturedImage == nil else { return }
+        startCountdown()
+    }
 
+    private func setCapturePaused(_ paused: Bool) {
+        capturePausedLock.lock()
+        isCapturePaused = paused
+        capturePausedLock.unlock()
+    }
+
+    func startCountdown() {
+        guard countdownTask == nil else { return }
+        setCapturePaused(true)
         HapticManager.shared.notification(.success)
 
         countdownTask = Task {
             for i in (1...3).reversed() {
-                guard !Task.isCancelled else { return }
+                guard !Task.isCancelled else {
+                    self.setCapturePaused(false)
+                    return
+                }
                 self.countdown = i
-                AudioServicesPlaySystemSound(1104) 
+                AudioServicesPlaySystemSound(1104)
                 try? await Task.sleep(for: .seconds(1))
             }
 
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled else {
+                self.setCapturePaused(false)
+                return
+            }
             self.countdown = nil
             self.takePhoto()
         }
@@ -154,12 +181,14 @@ final class SmartCaptureViewModel: NSObject {
         countdown = nil
         countdownTask?.cancel()
         countdownTask = nil
+        setCapturePaused(false)
     }
-    
+
     func retake() {
         capturedImage = nil
         countdownTask?.cancel()
         countdownTask = nil
+        setCapturePaused(false)
     }
 
     private func checkBodyAlignment(joints: [VNHumanBodyPoseObservation.JointName: CGPoint]) {
@@ -198,23 +227,27 @@ final class SmartCaptureViewModel: NSObject {
 extension SmartCaptureViewModel: AVCaptureVideoDataOutputSampleBufferDelegate, AVCapturePhotoCaptureDelegate {
 
     nonisolated func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
-        Task { @MainActor in
-            guard countdown == nil, capturedImage == nil else { return } 
+        capturePausedLock.lock()
+        let paused = isCapturePaused
+        capturePausedLock.unlock()
+        guard !paused else { return }
 
-            frameCounter += 1
-            guard frameCounter % 5 == 0 else { return } 
+        guard captureFrameCounter.incrementAndCheck(stride: 5) else { return }
 
-            do {
-                let result = try visionProcessor.process(sampleBuffer: sampleBuffer)
+        do {
+            let result = try visionProcessor.process(sampleBuffer: sampleBuffer)
+            let joints = result.joints
+            let handPose = result.handPose
 
-                self.checkBodyAlignment(joints: result.joints)
-
-                if let hand = result.handPose {
-                    gestureController.processHandPose(observation: hand)
+            Task { @MainActor [weak self] in
+                guard let self, self.countdown == nil, self.capturedImage == nil else { return }
+                self.checkBodyAlignment(joints: joints)
+                if let hand = handPose {
+                    self.gestureController.processHandPose(observation: hand)
                 }
-            } catch {
-                AppLog.ml.error("Vision error: \(error.localizedDescription, privacy: .public)")
             }
+        } catch {
+            AppLog.ml.error("Vision error: \(error.localizedDescription, privacy: .public)")
         }
     }
 
@@ -231,30 +264,32 @@ extension SmartCaptureViewModel: AVCaptureVideoDataOutputSampleBufferDelegate, A
             return
         }
 
-        // Front-camera selfie: keep the existing .leftMirrored transform, but never
-        // force-unwrap cgImage (nil for some formats, e.g. HEIC/CIImage-backed) → crash.
-        guard let cgImage = image.normalizedCGImage() else {
+        // Normalize into upright pixels (and mirror horizontally for front camera)
+        // instead of hardcoding .leftMirrored which rotates portrait buffers 90 degrees.
+        guard let cgImage = image.normalizedUpMirroredCGImage() else {
             Task { @MainActor in self.handleCaptureFailure() }
             return
         }
 
-        let flippedImage = UIImage(cgImage: cgImage, scale: image.scale, orientation: .leftMirrored)
+        let finalImage = UIImage(cgImage: cgImage, scale: image.scale, orientation: .up)
 
         Task { @MainActor in
-            self.capturedImage = flippedImage
+            self.capturedImage = finalImage
         }
     }
 }
 
 private extension UIImage {
-    /// Returns a CGImage, rendering a concrete bitmap if the backing cgImage is nil.
-    /// Guarantees a non-nil result for formats where `.cgImage` is unavailable.
-    nonisolated func normalizedCGImage() -> CGImage? {
-        if let cgImage { return cgImage }
-        let renderer = UIGraphicsImageRenderer(size: size)
-        let bitmap = renderer.image { _ in
+    /// Renders an upright, horizontally mirrored CGImage regardless of sensor orientation metadata.
+    nonisolated func normalizedUpMirroredCGImage() -> CGImage? {
+        let format = UIGraphicsImageRendererFormat.default()
+        format.scale = scale
+        let renderer = UIGraphicsImageRenderer(size: size, format: format)
+        let rendered = renderer.image { ctx in
+            ctx.cgContext.translateBy(x: size.width, y: 0)
+            ctx.cgContext.scaleBy(x: -1, y: 1)
             draw(in: CGRect(origin: .zero, size: size))
         }
-        return bitmap.cgImage
+        return rendered.cgImage
     }
 }

@@ -227,6 +227,22 @@ final class AICoachViewModel {
                    self.isGenerating = false
                    trace?.stop()
 
+                   if Task.isCancelled || Self.isCancellationError(error) {
+                       // Preserve partial streamed text when the user stopped generation intentionally.
+                       if let idx = self.chatHistory.firstIndex(where: { $0.id == aiMessageId }) {
+                           let trimmed = self.chatHistory[idx].text.trimmingCharacters(in: .whitespacesAndNewlines)
+                           if trimmed.isEmpty {
+                               self.chatHistory.remove(at: idx)
+                           } else if let session = self.currentSession {
+                               var updatedMessages = session.messages
+                               updatedMessages.append(self.chatHistory[idx])
+                               session.messages = updatedMessages
+                               saveContext()
+                           }
+                       }
+                       return
+                   }
+
                    self.chatHistory.removeAll { $0.id == aiMessageId }
                    handleError(error)
                }
@@ -279,9 +295,16 @@ final class AICoachViewModel {
             } catch {
                 self.isGenerating = false
                 trace?.stop()
+                if Task.isCancelled || Self.isCancellationError(error) { return }
                 handleError(error)
             }
         }
+    }
+
+    nonisolated static func isCancellationError(_ error: Error) -> Bool {
+        if error is CancellationError { return true }
+        let nsError = error as NSError
+        return nsError.domain == NSURLErrorDomain && nsError.code == NSURLErrorCancelled
     }
 
     private func handleError(_ error: Error) {

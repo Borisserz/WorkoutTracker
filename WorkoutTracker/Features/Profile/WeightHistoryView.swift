@@ -39,8 +39,7 @@ struct WeightHistoryView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            ZStack {
+        ZStack {
 
                 (colorScheme == .dark ? Color(UIColor.systemGroupedBackground) : Color(UIColor.secondarySystemBackground))
                     .ignoresSafeArea()
@@ -106,7 +105,6 @@ struct WeightHistoryView: View {
             .onChange(of: selectedPeriod) { _, newValue in
                 TrackingManager.shared.track(.progressChartViewed(chartType: "weight", timeRange: newValue.rawValue))
             }
-        }
     }
 
     @ViewBuilder
@@ -296,14 +294,21 @@ struct WeightPhotoGalleryView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var images: [UIImage] = []
+    @State private var isLoading = true
 
     var body: some View {
         NavigationStack {
             ZStack {
                 Color.black.ignoresSafeArea()
 
-                if images.isEmpty {
+                if isLoading {
                     ProgressView().tint(.white)
+                } else if images.isEmpty {
+                    ContentUnavailableView(
+                        LocalizedStringKey("Photos unavailable"),
+                        systemImage: "photo.on.rectangle.angled",
+                        description: Text(LocalizedStringKey("Saved progress photos could not be loaded."))
+                    )
                 } else {
                     TabView {
                         ForEach(images, id: \.self) { image in
@@ -331,7 +336,10 @@ struct WeightPhotoGalleryView: View {
                         loaded.append(img)
                     }
                 }
-                await MainActor.run { self.images = loaded }
+                await MainActor.run {
+                    self.images = loaded
+                    self.isLoading = false
+                }
             }
         }
         .preferredColorScheme(.dark) 

@@ -36,6 +36,8 @@ final class WorkoutDetailViewModel {
     @ObservationIgnored private var finishWorkoutTask: Task<Void, Never>? = nil
     /// Bumped on undo so a late commit after cancel cannot apply XP/stats twice.
     @ObservationIgnored private var finishEpoch: Int = 0
+    @ObservationIgnored private var lastFinishedPRWorkoutID: UUID? = nil
+    @ObservationIgnored private var lastFinishedPRCount: Int = 0
 
     private let workoutService: WorkoutService
     private let analyticsService: AnalyticsService
@@ -340,7 +342,12 @@ final class WorkoutDetailViewModel {
     }
 
     func generateAndShare(workout: Workout) {
-            let shareView = WorkoutShareCard(workout: workout)
+            let hasPR = WorkoutShareCard.shouldShowPersonalRecordBadge(
+                workout: workout,
+                recordsCache: self.personalRecordsCache,
+                recordedPRCount: (lastFinishedPRWorkoutID == workout.id ? lastFinishedPRCount : 0)
+            )
+            let shareView = WorkoutShareCard(workout: workout, hasPersonalRecord: hasPR)
                 .environment(ThemeManager.shared)
                 .environment(UnitsManager.shared)
             
@@ -399,7 +406,7 @@ final class WorkoutDetailViewModel {
 
         workoutService.stopLiveActivity()
         PhoneWatchManager.shared.sendFinishWorkoutToWatch(workoutID: workout.id.uuidString)
-        
+
         var prCount = 0
         for exercise in workout.exercises {
             let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
@@ -407,12 +414,8 @@ final class WorkoutDetailViewModel {
                 prCount += 1
             }
         }
-        
-        let oldLevel = progressManager.level
-        let xpBreakdown = progressManager.addXP(for: workout, prCount: prCount)
-        let newLevel = progressManager.level
-        let isLevelUp = newLevel > oldLevel
-        let newTitle = progressManager.currentTitle
+        self.lastFinishedPRWorkoutID = workout.id
+        self.lastFinishedPRCount = prCount
 
         try? workout.modelContext?.save()
 
@@ -420,7 +423,6 @@ final class WorkoutDetailViewModel {
         let wTitle = workout.title
         let wStart = workout.date
         let wEnd = workout.endTime ?? Date()
-        let wDuration = workout.durationSeconds > 0 ? workout.durationSeconds : Int(wEnd.timeIntervalSince(wStart))
 
         let flatExercises: [Exercise] = workout.exercises.flatMap { ex -> [Exercise] in
             ex.isSuperset ? ex.subExercises : [ex]
@@ -428,6 +430,23 @@ final class WorkoutDetailViewModel {
         let completedSetsCount: Int = flatExercises.reduce(0) { sum, ex in
             sum + ex.setsList.filter(\.isCompleted).count
         }
+
+        let userWeight = BodyMetricStore.weightKilograms() ?? 0
+        let burnedCalories = CalorieCalculator.calculate(for: workout, userWeight: userWeight)
+        let wDistance = workout.computedCardioDistanceMeters
+        let container = analyticsService.modelContainer
+        let dominantMuscle = NotificationManager.getDominantGroup(for: workout)
+
+        let finalized = try? await Self.finalizeWorkoutStatsAndAwardXP(
+            workout: workout,
+            workoutID: workoutID,
+            prCount: prCount,
+            analyticsService: analyticsService,
+            progressManager: progressManager
+        )
+
+        let wDuration = workout.durationSeconds > 0 ? workout.durationSeconds : max(1, Int(wEnd.timeIntervalSince(wStart)))
+
         TrackingManager.shared.track(.workoutCompleted(
             durationMinutes: wDuration / 60,
             totalVolume: workout.totalStrengthVolume,
@@ -436,10 +455,6 @@ final class WorkoutDetailViewModel {
             avgEffort: workout.effortPercentage,
             source: workout.source ?? "manual"
         ))
-
-        let userWeight = BodyMetricStore.weightKilograms() ?? 0
-        let burnedCalories = CalorieCalculator.calculate(for: workout, userWeight: userWeight)
-        let wDistance = workout.computedCardioDistanceMeters
 
         Task {
             do {
@@ -457,15 +472,12 @@ final class WorkoutDetailViewModel {
             }
         }
 
-        let container = analyticsService.modelContainer
-        // Compute dominantMuscle here while still on @MainActor
-        let dominantMuscle = NotificationManager.getDominantGroup(for: workout)
+        let capturedPrCount = prCount
         Task.detached {
             do {
-                let result = try await self.analyticsService.finishWorkoutAndCalculateAchievements(workoutID: workoutID)
                 var goalAchievementToShow: Achievement? = nil
                 let bgContext = ModelContext(container)
-                
+
                 let goalDesc = FetchDescriptor<UserGoal>(predicate: #Predicate { $0.isCompleted == false })
                 let activeGoals = (try? bgContext.fetch(goalDesc)) ?? []
 
@@ -511,7 +523,6 @@ final class WorkoutDetailViewModel {
                     self.appState.isInsideActiveWorkout = false
                     self.appState.returnToActiveWorkoutId = nil
 
-                    // Show Guest Sign-Up Prompt once after the first workout
                     if !UITestLaunchConfiguration.isUITestMode,
                        Auth.auth().currentUser?.isAnonymous == true {
                         let hasSeen = UserDefaults.standard.bool(forKey: "hasSeenGuestSignUpPrompt")
@@ -543,34 +554,87 @@ final class WorkoutDetailViewModel {
                 if let goalAchieved = goalAchievementToShow {
                     allUnlocksList.append(goalAchieved)
                 }
-                allUnlocksList.append(contentsOf: result.newUnlocks)
+                if let result = finalized?.achievementsResult {
+                    allUnlocksList.append(contentsOf: result.newUnlocks)
+                }
                 let finalUnlocks = allUnlocksList
 
+                let xpTuple = await MainActor.run { () -> (XPBreakdown, Bool, Int, String) in
+                    if let finalized {
+                        return (
+                            finalized.xpBreakdown,
+                            finalized.newLevel > finalized.oldLevel,
+                            finalized.newLevel,
+                            finalized.newTitle
+                        )
+                    }
+                    let oldLvl = progressManager.level
+                    let breakdown = progressManager.addXP(for: workout, prCount: capturedPrCount)
+                    let newLvl = progressManager.level
+                    return (breakdown, newLvl > oldLvl, newLvl, progressManager.currentTitle)
+                }
+
                 await MainActor.run {
-                    // Queue App Store Review on happy moments
                     AppReviewManager.checkAndQueueReview(completedWorkouts: completedCount)
-                    
                     NotificationCenter.default.post(name: .workoutCompletedEvent, object: workoutID, userInfo: ["modelContainer": container])
                     self.updateWorkoutAnalytics(for: workout)
                     self.activeEvent = .workoutSuccessfullyFinished
                 }
 
                 try? await Task.sleep(for: .seconds(0.5))
-                await MainActor.run { 
-                    self.activeEvent = .showXPBreakdownPopup(xpBreakdown, isLevelUp, newLevel, newTitle, finalUnlocks) 
-                }
-
-            } catch {
                 await MainActor.run {
-                    self.updateWorkoutAnalytics(for: workout)
-                    self.activeEvent = .workoutSuccessfullyFinished
-                }
-                try? await Task.sleep(for: .seconds(0.5))
-                await MainActor.run { 
-                    self.activeEvent = .showXPBreakdownPopup(xpBreakdown, isLevelUp, newLevel, newTitle, []) 
+                    self.activeEvent = .showXPBreakdownPopup(xpTuple.0, xpTuple.1, xpTuple.2, xpTuple.3, finalUnlocks)
                 }
             }
         }
+    }
+
+    @MainActor
+    static func finalizeWorkoutStatsAndAwardXP(
+        workout: Workout,
+        workoutID: PersistentIdentifier,
+        prCount: Int,
+        analyticsService: AnalyticsService,
+        progressManager: ProgressManager
+    ) async throws -> (
+        xpBreakdown: XPBreakdown,
+        oldLevel: Int,
+        newLevel: Int,
+        newTitle: String,
+        achievementsResult: (newUnlocks: [Achievement], totalCount: Int)?
+    ) {
+        let achievementsResult = try await analyticsService.finishWorkoutAndCalculateAchievements(workoutID: workoutID)
+
+        // Sync back computed workout stats from background persistence onto the main-context object before awarding XP.
+        let verifyCtx = ModelContext(analyticsService.modelContainer)
+        if let persisted = verifyCtx.model(for: workoutID) as? Workout {
+            workout.endTime = persisted.endTime ?? workout.endTime
+            workout.durationSeconds = persisted.durationSeconds
+            workout.effortPercentage = persisted.effortPercentage
+            workout.totalStrengthVolume = persisted.totalStrengthVolume
+            workout.totalCardioDistance = persisted.totalCardioDistance
+            workout.totalReps = persisted.totalReps
+        }
+
+        let oldLevel = progressManager.level
+        let xpBreakdown = progressManager.addXP(for: workout, prCount: prCount)
+        let newLevel = progressManager.level
+        let newTitle = progressManager.currentTitle
+
+        return (xpBreakdown, oldLevel, newLevel, newTitle, achievementsResult)
+    }
+
+    static func wipeSupplementaryDefaultsAndFiles(
+        defaults: UserDefaults = .standard,
+        sharedDefaults: UserDefaults? = UserDefaults(suiteName: "group.com.borisdev.WorkoutTracker")
+    ) {
+        for key in defaults.dictionaryRepresentation().keys where key.hasPrefix("water_liters_") {
+            defaults.removeObject(forKey: key)
+        }
+        let pendingWidgetKey = Constants.UserDefaultsKeys.pendingWidgetAction.rawValue
+        defaults.removeObject(forKey: pendingWidgetKey)
+        sharedDefaults?.removeObject(forKey: pendingWidgetKey)
+        MuscleMapping.clearCustomMappings(defaults: defaults)
     }
 
     private func calculatePRLevel(for exercise: Exercise, prCache: [String: Double]) -> PRLevel? {

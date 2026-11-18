@@ -27,6 +27,17 @@ actor RemoteConfigManager: Sendable {
         settings.minimumFetchInterval = 3600
         #endif
         remoteConfig.configSettings = settings
+        remoteConfig.setDefaults(Self.defaultValues)
+    }
+
+    nonisolated static var defaultValues: [String: NSObject] {
+        [
+            AIProxyEndpoint.remoteConfigKey: AIProxyEndpoint.fallbackURLString as NSString,
+            "minimum_ios_version": "1.0.6" as NSString,
+            "recommended_ios_version": "1.0.8" as NSString,
+            "show_foodtracker_promo": false as NSNumber,
+            "show_sister_apps_promo": false as NSNumber,
+        ]
     }
 
     func fetchCloudValues() async {

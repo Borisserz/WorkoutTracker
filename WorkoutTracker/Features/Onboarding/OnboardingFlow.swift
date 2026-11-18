@@ -255,13 +255,13 @@ struct AICameraIllustration: View {
                         .frame(width: 14, height: 14)
                         .position(x: midX, y: 15)
                     
-                    ForEach([
+                    ForEach(Array([
                         CGPoint(x: midX, y: 25),
                         CGPoint(x: midX, y: 45),
                         CGPoint(x: midX - 25, y: 65),
                         CGPoint(x: midX + 25, y: 65),
                         CGPoint(x: midX, y: 80)
-                    ], id: \.x) { pt in
+                    ].enumerated()), id: \.offset) { _, pt in
                         Circle()
                             .fill(colors[1])
                             .frame(width: 6, height: 6)
@@ -657,6 +657,7 @@ struct OnboardingIntroView: View {
     @State private var slideProgress: CGFloat = 0.0
     @State private var backgroundPulse: CGFloat = 1.0
     @State private var savedTargetTab: Int? = nil
+    @State private var savedSlideIndex: Int? = nil
     
     let timer = Timer.publish(every: 0.05, on: .main, in: .common).autoconnect()
     private let slideDuration: CGFloat = 4.0
@@ -760,9 +761,10 @@ struct OnboardingIntroView: View {
                             PremiumFeatureCard(
                                 item: item, 
                                 isSelected: (slideIndex ?? 0) == index,
-                                isSaved: savedTargetTab == item.targetTab
+                                isSaved: savedSlideIndex == index
                             ) {
                                 HapticManager.shared.impact(.heavy)
+                                savedSlideIndex = index
                                 savedTargetTab = item.targetTab
                             }
                             .id(index)
@@ -1063,7 +1065,7 @@ struct OnboardingPrimaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: 17, weight: .semibold, design: .rounded))
-            .foregroundStyle(.white)
+            .foregroundStyle(PastelTheme.textOnOat)
             .frame(maxWidth: .infinity)
             .frame(height: 56)
             .background(fill ?? themeManager.current.primaryAccent,

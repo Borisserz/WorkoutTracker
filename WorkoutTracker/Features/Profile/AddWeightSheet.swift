@@ -225,7 +225,7 @@ struct AddWeightSheet: View {
                 Image(systemName: "checkmark.circle.fill").font(.title3)
                 Text(LocalizedStringKey("Save")).font(.title3).fontWeight(.bold)
             }
-            .foregroundColor(.white) 
+            .foregroundColor(weightString.isEmpty || isProcessingImage ? .white.opacity(0.85) : PastelTheme.textOnOat)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 18)
             .background(weightString.isEmpty || isProcessingImage ? Color.gray : themeManager.current.primaryAccent)

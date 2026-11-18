@@ -5,7 +5,7 @@ internal import SwiftUI
 final class AppReviewManager {
     static let shared = AppReviewManager()
     
-    // Apple ID for the App Store (replace with actual when published)
+    // Live App Store ID for AI Workout
     static let appStoreID = "6774895106"
     
     private init() {}

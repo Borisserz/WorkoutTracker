@@ -96,8 +96,10 @@ struct ProfileView: View {
                             )
                         ) { showEditMetrics = true }
 
-                        moreFromUsSection
-                            .padding(.horizontal, 20)
+                        if RemoteConfigManager.shared.showSisterAppsPromo {
+                            moreFromUsSection
+                                .padding(.horizontal, 20)
+                        }
 
                         Spacer().frame(height: 40)
                     }
