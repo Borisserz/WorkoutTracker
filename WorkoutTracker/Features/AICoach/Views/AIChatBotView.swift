@@ -69,6 +69,19 @@ struct AIChatBotView: View {
                         .padding(.horizontal, 16)
                         .padding(.top, 8)
 
+                    if let speechError = speechRecognizer.errorMessage, !speechError.isEmpty {
+                        HStack(spacing: 6) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .font(.caption2)
+                            Text(speechError)
+                                .font(.caption2.weight(.medium))
+                                .lineLimit(2)
+                        }
+                        .foregroundStyle(PastelTheme.pastelPeach)
+                        .padding(.horizontal, 16)
+                        .padding(.top, 4)
+                    }
+
                     HStack(spacing: 12) {
 
                         Button {

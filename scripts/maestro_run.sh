@@ -25,11 +25,13 @@ SCHEME="WorkoutTracker"
 PBXPROJ="${ROOT}/WorkoutTracker.xcodeproj/project.pbxproj"
 DERIVED="${ROOT}/.derivedData/maestro"
 WATCH_DETACHED=0
+PBXPROJ_BACKUP=""
 
 restore_watch_embed() {
-  if [[ "${WATCH_DETACHED}" -eq 1 ]]; then
+  if [[ "${WATCH_DETACHED}" -eq 1 && -n "${PBXPROJ_BACKUP}" && -f "${PBXPROJ_BACKUP}" ]]; then
     echo "→ Restoring Watch embed in project.pbxproj"
-    git -C "${ROOT}" checkout -- "${PBXPROJ}" 2>/dev/null || true
+    cp "${PBXPROJ_BACKUP}" "${PBXPROJ}"
+    rm -f "${PBXPROJ_BACKUP}"
     WATCH_DETACHED=0
   fi
 }
@@ -40,14 +42,14 @@ if ! command -v maestro >/dev/null 2>&1; then
   exit 1
 fi
 
-# Prefer booted sim; else iPhone 17 / 17 Pro
-SIM_ID="$(xcrun simctl list devices booted | sed -n 's/.*(\([A-F0-9-]*\)).*/\1/p' | head -1 || true)"
+# Prefer explicit MAESTRO_SIM_ID, else booted sim, else iPhone 17 / 17 Pro
+SIM_ID="${MAESTRO_SIM_ID:-$(xcrun simctl list devices booted | sed -n 's/.*(\([A-F0-9-]*\)).*/\1/p' | head -1 || true)}"
 if [[ -z "${SIM_ID}" ]]; then
   SIM_ID="$(xcrun simctl list devices available | grep -E 'iPhone 17( Pro)? \(' | head -1 | sed -n 's/.*(\([A-F0-9-]*\)).*/\1/p')"
-  if [[ -n "${SIM_ID}" ]]; then
-    xcrun simctl boot "${SIM_ID}" || true
-    xcrun simctl bootstatus "${SIM_ID}" -b
-  fi
+fi
+if [[ -n "${SIM_ID}" ]]; then
+  xcrun simctl boot "${SIM_ID}" 2>/dev/null || true
+  xcrun simctl bootstatus "${SIM_ID}" -b
 fi
 if [[ -z "${SIM_ID}" ]]; then
   echo "No iOS Simulator available."
@@ -59,6 +61,8 @@ if ! xcrun simctl list runtimes 2>/dev/null | grep -qiE 'watchOS|watchos'; then
   if grep -q 'ACF4FCAD2F01698F00850F6E /\* Embed Watch Content \*/' "${PBXPROJ}" \
     && grep -q 'AC3CB9922F8176AB008A6777 /\* PBXTargetDependency \*/' "${PBXPROJ}"; then
     echo "→ No watchsimulator runtime; detaching Watch embed for iOS Maestro build"
+    PBXPROJ_BACKUP="$(mktemp)"
+    cp "${PBXPROJ}" "${PBXPROJ_BACKUP}"
     python3 - <<'PY'
 from pathlib import Path
 path = Path("WorkoutTracker.xcodeproj/project.pbxproj")
@@ -97,12 +101,16 @@ xcrun simctl install "${SIM_ID}" "${APP}"
 
 mkdir -p .maestro/output
 echo "→ maestro test (tag=${TAG})"
+CAFFEINATE=()
+if command -v caffeinate >/dev/null 2>&1; then
+  CAFFEINATE=(caffeinate -dims)
+fi
 set +e
 if [[ "${TAG}" == "all" ]]; then
   # Run every flow under .maestro/flows (smoke + workout + …)
-  maestro test .maestro/flows --output .maestro/output
+  "${CAFFEINATE[@]}" maestro test --udid="${SIM_ID}" .maestro/flows --output .maestro/output
 else
-  maestro test .maestro/flows --include-tags="${TAG}" --output .maestro/output
+  "${CAFFEINATE[@]}" maestro test --udid="${SIM_ID}" .maestro/flows --include-tags="${TAG}" --output .maestro/output
 fi
 STATUS=$?
 set -e

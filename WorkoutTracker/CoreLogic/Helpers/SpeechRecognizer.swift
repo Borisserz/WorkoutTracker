@@ -7,6 +7,26 @@ import Combine
 @MainActor
 @Observable
 final class SpeechRecognizer {
+    enum ErrorReason: Equatable {
+        case disabledInUITests
+        case speechNotAuthorized
+        case microphoneRequired
+        case unavailableForLocale
+
+        var localizedMessage: String {
+            switch self {
+            case .disabledInUITests:
+                return String(localized: "Speech recognition is disabled in UI tests.")
+            case .speechNotAuthorized:
+                return String(localized: "Speech recognition isn't authorized. Enable it in Settings.")
+            case .microphoneRequired:
+                return String(localized: "Microphone access is required for Voice Coach.")
+            case .unavailableForLocale:
+                return String(localized: "Speech recognition isn't available on this device for your language.")
+            }
+        }
+    }
+
     var transcript: String = ""
     var isRecording: Bool = false
     var hasPermission: Bool = false
@@ -35,14 +55,14 @@ final class SpeechRecognizer {
         // Maestro / UITestMode: never present Speech or Microphone sheets.
         if UITestLaunchConfiguration.isUITestMode {
             hasPermission = false
-            errorMessage = "Speech recognition is disabled in UI tests."
+            errorMessage = ErrorReason.disabledInUITests.localizedMessage
             return
         }
         SFSpeechRecognizer.requestAuthorization { authStatus in
             Task { @MainActor in
                 self.hasPermission = (authStatus == .authorized)
                 if authStatus != .authorized {
-                    self.errorMessage = "Speech recognition isn't authorized. Enable it in Settings."
+                    self.errorMessage = ErrorReason.speechNotAuthorized.localizedMessage
                 }
             }
         }
@@ -52,7 +72,7 @@ final class SpeechRecognizer {
                 Task { @MainActor in
                     if !granted {
                         self.hasPermission = false
-                        self.errorMessage = "Microphone access is required for Voice Coach."
+                        self.errorMessage = ErrorReason.microphoneRequired.localizedMessage
                     }
                 }
             }
@@ -61,7 +81,7 @@ final class SpeechRecognizer {
                 Task { @MainActor in
                     if !granted {
                         self.hasPermission = false
-                        self.errorMessage = "Microphone access is required for Voice Coach."
+                        self.errorMessage = ErrorReason.microphoneRequired.localizedMessage
                     }
                 }
             }
@@ -70,7 +90,7 @@ final class SpeechRecognizer {
 
     func startTranscribing() {
         if UITestLaunchConfiguration.isUITestMode {
-            errorMessage = "Speech recognition is disabled in UI tests."
+            errorMessage = ErrorReason.disabledInUITests.localizedMessage
             return
         }
         if recognizer == nil {
@@ -78,7 +98,7 @@ final class SpeechRecognizer {
         }
         // No recognizer for any supported locale → tell the user, don't fail silently.
         guard let recognizer, recognizer.isAvailable else {
-            errorMessage = "Speech recognition isn't available on this device for your language."
+            errorMessage = ErrorReason.unavailableForLocale.localizedMessage
             return
         }
         guard hasPermission else {

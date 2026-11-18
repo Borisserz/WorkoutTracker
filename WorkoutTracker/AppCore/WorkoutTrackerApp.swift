@@ -381,13 +381,25 @@ struct WorkoutTrackerApp: App {
             ])
 
             let dbURL: URL
-            if let groupURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.com.borisdev.WorkoutTracker") {
+            if let groupURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: WorkoutStore.sharedAppGroupIdentifier) {
                 dbURL = groupURL.appendingPathComponent("WorkoutDatabase.sqlite")
             } else {
                 AppLog.app.error("⚠️ CRITICAL: App Group container not found. Falling back to local Documents directory. Widgets and Apple Watch may not be able to access the database.")
                 let paths = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
                 dbURL = paths[0].appendingPathComponent("WorkoutDatabase.sqlite")
             }
+
+            #if DEBUG
+            // Maestro clearState wipes UserDefaults.standard but leaves App Group SQLite behind.
+            if UITestLaunchConfiguration.isUITestMode,
+               !UserDefaults.standard.bool(forKey: "uitest.dbResetDone") {
+                UserDefaults.standard.set(true, forKey: "uitest.dbResetDone")
+                for suffix in ["", "-wal", "-shm"] {
+                    try? FileManager.default.removeItem(at: URL(fileURLWithPath: dbURL.path + suffix))
+                }
+                WorkoutStore.clearSharedAppGroupState()
+            }
+            #endif
 
             let container: ModelContainer
             #if targetEnvironment(simulator)

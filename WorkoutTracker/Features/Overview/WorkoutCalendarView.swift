@@ -192,6 +192,7 @@ struct WorkoutCalendarView: View {
                         ChromeDismissMark()
                     }
                     .buttonStyle(.plain)
+                    .accessibilityIdentifier("wt.calendar.close")
                 }
             }
         }
@@ -446,26 +447,29 @@ struct WorkoutCalendarView: View {
     }
 
     private func legendItem(badge: AnyView, title: String, subtitle: String) -> some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 6) {
             ZStack {
                 Circle()
                     .fill(PastelTheme.cardSurfaceSubtle)
-                    .frame(width: 28, height: 28)
+                    .frame(width: 24, height: 24)
                     .overlay(Circle().stroke(PastelTheme.cardBorder, lineWidth: 0.8))
 
                 badge
             }
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                Text(LocalizedStringKey(title))
+                    .font(.system(size: 10.5, weight: .bold, design: .rounded))
                     .foregroundStyle(PastelTheme.textPrimary)
-                    .lineLimit(1)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.8)
+                    .fixedSize(horizontal: false, vertical: true)
 
-                Text(subtitle)
+                Text(LocalizedStringKey(subtitle))
                     .font(.system(size: 9.5, weight: .medium))
                     .foregroundStyle(PastelTheme.textTertiary)
                     .lineLimit(1)
+                    .minimumScaleFactor(0.8)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

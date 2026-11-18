@@ -424,9 +424,10 @@ final class PreTestFlightHonestyTests: XCTestCase {
         }
     }
 
-    func testBuild8AndWatchPlusWidgetEmbeddingAreConfigured() throws {
+    func testBuild9Version2AndWatchPlusWidgetEmbeddingAreConfigured() throws {
         let mainInfo = try XCTUnwrap(Bundle.main.infoDictionary)
-        XCTAssertEqual(mainInfo["CFBundleVersion"] as? String, "8", "Main app build number must be 8")
+        XCTAssertEqual(mainInfo["CFBundleShortVersionString"] as? String, "2.0.0", "Main app marketing version must be 2.0.0")
+        XCTAssertEqual(mainInfo["CFBundleVersion"] as? String, "9", "Main app build number must be 9")
 
         let appURL = Bundle.main.bundleURL
         let requiredPlugins = [
@@ -447,9 +448,13 @@ final class PreTestFlightHonestyTests: XCTestCase {
             .appendingPathComponent("WorkoutTracker.xcodeproj/project.pbxproj")
         if FileManager.default.fileExists(atPath: pbxprojURL.path) {
             let pbx = try String(contentsOf: pbxprojURL, encoding: .utf8)
+            let versionMatches = pbx.matches(of: /MARKETING_VERSION = ([^;]+);/).map { String($0.1) }
+            XCTAssertEqual(versionMatches.count, 8)
+            XCTAssertTrue(versionMatches.allSatisfy { $0 == "2.0.0" }, "All 8 target configs must use 2.0.0, got \(versionMatches)")
+
             let buildMatches = pbx.matches(of: /CURRENT_PROJECT_VERSION = ([^;]+);/).map { String($0.1) }
             XCTAssertEqual(buildMatches.count, 8)
-            XCTAssertTrue(buildMatches.allSatisfy { $0 == "8" }, "All 8 target configs must use build 8, got \(buildMatches)")
+            XCTAssertTrue(buildMatches.allSatisfy { $0 == "9" }, "All 8 target configs must use build 9, got \(buildMatches)")
 
             XCTAssertTrue(
                 pbx.contains("StatsWidgetExtension.appex in Embed Foundation Extensions"),

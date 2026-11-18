@@ -199,3 +199,22 @@ struct ProgramTag: View {
         .clipShape(Capsule())
     }
 }
+
+struct DebouncedSearchBar: View {
+    @Bindable var debouncer: SearchDebouncer
+    @Environment(ThemeManager.self) private var themeManager
+    var body: some View {
+        HStack {
+            Image(systemName: "magnifyingglass").foregroundColor(themeManager.current.secondaryText)
+
+            TextField(LocalizedStringKey("Search workouts..."), text: $debouncer.inputText)
+                .textFieldStyle(.plain)
+
+            if !debouncer.inputText.isEmpty {
+                Button(action: { debouncer.inputText = "" }) {
+                    ChromeDismissMark()
+                }
+            }
+        }
+    }
+}

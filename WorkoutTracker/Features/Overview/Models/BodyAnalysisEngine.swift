@@ -116,9 +116,15 @@ enum BodyAnalysisEngine {
                 recommendedExercises: ["Barbell Squat", "Bench Press", "Pull-ups", "Overhead Press"]
             )
         } else if (avgReadiness >= 0 && avgReadiness < 60) || (cnsScore >= 0 && cnsScore < 70) {
-            let readinessNote = avgReadiness >= 0
-                ? String(format: String(localized: "average readiness %lld%%"), avgReadiness)
-                : String(format: String(localized: "CNS %lld%%"), Int(cnsScore))
+            let readinessNote: String = {
+                if avgReadiness >= 0 && avgReadiness < 60 {
+                    return String(format: String(localized: "average readiness %lld%%"), avgReadiness)
+                } else if cnsScore >= 0 && cnsScore < 70 {
+                    return String(format: String(localized: "CNS %lld%%"), Int(cnsScore))
+                } else {
+                    return String(format: String(localized: "average readiness %lld%%"), max(0, avgReadiness))
+                }
+            }()
             advice = NextWorkoutAdvice(
                 recentStrainSummary: String(format: String(localized: "Significant systemic muscle and CNS fatigue detected (%@)."), readinessNote),
                 recommendedSplitTitle: String(localized: "Next session: Active recovery or deload"),

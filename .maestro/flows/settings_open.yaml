@@ -24,6 +24,7 @@ tags:
 - scrollUntilVisible:
     element: "Export All Data"
     direction: DOWN
+    speed: 20
     timeout: 15000
 
 - assertVisible: "Export All Data"

@@ -30,7 +30,9 @@ tags:
     element:
       id: "wt.hub.explore"
     direction: DOWN
-    timeout: 15000
+    visibilityPercentage: 50
+    waitToSettleTimeoutMs: 500
+    timeout: 25000
 
 - tapOn:
     id: "wt.hub.explore"

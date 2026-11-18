@@ -92,8 +92,8 @@ final class LocalizationHelper: @unchecked Sendable {
         }
     }
 
-    nonisolated func getAILanguageName() -> String {
-        let code = Locale.current.language.languageCode?.identifier ?? "en"
+    nonisolated func getAILanguageName(for languageCode: String? = nil) -> String {
+        let code = languageCode ?? Locale.current.language.languageCode?.identifier ?? "en"
         return Locale(identifier: "en").localizedString(forIdentifier: code) ?? "English"
     }
 }

@@ -207,7 +207,7 @@ struct WorkoutDetailContentView: View {
                                 }
                             }
 
-                            Spacer(minLength: 120)
+                            Spacer(minLength: 170)
                         }
                         .padding()
                     }
@@ -250,27 +250,8 @@ struct WorkoutDetailContentView: View {
     }
 
     // MARK: - Active Workout 1-Tap Thumb HUD Cockpit (Exact Mockup Match)
-    private enum ThumbAction {
-        case completeSet(Exercise, Int, WorkoutSet)
-        case finishExercise(Exercise)
-        case finishWorkout
-    }
-
-    private func setsToLog(in exercise: Exercise) -> [Exercise] {
-        exercise.isSuperset ? exercise.subExercises : [exercise]
-    }
-
-    private var thumbAction: ThumbAction {
-        guard let current = workout.exercises.first(where: { !$0.isCompleted }) else {
-            return .finishWorkout
-        }
-        for target in setsToLog(in: current) {
-            let sorted = target.sortedSets
-            if let index = sorted.firstIndex(where: { !$0.isCompleted }) {
-                return .completeSet(target, index + 1, sorted[index])
-            }
-        }
-        return .finishExercise(current)
+    private var thumbAction: WorkoutDetailThumbAction {
+        WorkoutDetailThumbPolicy.action(for: workout.exercises)
     }
 
     private var pendingSetForRest: (exercise: Exercise, setIndex: Int, set: WorkoutSet)? {
@@ -357,7 +338,29 @@ struct WorkoutDetailContentView: View {
             Spacer()
 
             // 1. Primary Action Button: 1-Tap Set Completion (Hero 48pt Warm Oat)
-            if case .completeSet(let exercise, let setIndex, let set) = thumbAction {
+            if case .addExercise = thumbAction {
+                Button {
+                    HapticManager.shared.impact(.medium)
+                    activeSheet = .exerciseSelection
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 16, weight: .bold))
+                        Text("Add Exercise")
+                            .font(.system(size: 14, weight: .bold, design: .rounded))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.85)
+                    }
+                    .foregroundStyle(PastelTheme.textOnOat)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: PastelTheme.ButtonMetrics.heroHeight)
+                    .background(PastelTheme.pastelOat)
+                    .clipShape(RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.heroRadius, style: .continuous))
+                    .shadow(color: Color.black.opacity(0.4), radius: 10, y: 5)
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("wt.session.cockpitAddExercise")
+            } else if case .completeSet(let exercise, let setIndex, let set) = thumbAction {
                 Button {
                     completeNextPendingSet(exercise, setIndex: setIndex, set: set)
                 } label: {
@@ -792,5 +795,43 @@ Text(String(translatedName.prefix(3)).capitalized)
             .presentationBackground(.clear)
         default: EmptyView()
         }
+    }
+}
+
+enum WorkoutDetailThumbAction: Equatable {
+    case addExercise
+    case completeSet(exercise: Exercise, setIndex: Int, set: WorkoutSet)
+    case finishExercise(Exercise)
+    case finishWorkout
+
+    static func == (lhs: WorkoutDetailThumbAction, rhs: WorkoutDetailThumbAction) -> Bool {
+        switch (lhs, rhs) {
+        case (.addExercise, .addExercise), (.finishWorkout, .finishWorkout):
+            return true
+        case (.completeSet(let le, let li, let ls), .completeSet(let re, let ri, let rs)):
+            return le.id == re.id && li == ri && ls.id == rs.id
+        case (.finishExercise(let le), .finishExercise(let re)):
+            return le.id == re.id
+        default:
+            return false
+        }
+    }
+}
+
+@MainActor
+enum WorkoutDetailThumbPolicy {
+    static func action(for exercises: [Exercise]) -> WorkoutDetailThumbAction {
+        guard !exercises.isEmpty else { return .addExercise }
+        guard let current = exercises.first(where: { !$0.isCompleted }) else {
+            return .finishWorkout
+        }
+        let targets = current.isSuperset ? current.subExercises : [current]
+        for target in targets {
+            let sorted = target.sortedSets
+            if let index = sorted.firstIndex(where: { !$0.isCompleted }) {
+                return .completeSet(exercise: target, setIndex: index + 1, set: sorted[index])
+            }
+        }
+        return .finishExercise(current)
     }
 }

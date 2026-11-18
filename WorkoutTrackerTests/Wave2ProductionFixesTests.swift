@@ -119,9 +119,13 @@ struct Wave2ProductionFixesTests {
         let wid = UUID()
         let startPayload = LiveSyncPayload(action: .startWorkout, workoutID: wid.uuidString, workoutTitle: "Watch Push", exercises: [])
         NotificationCenter.default.post(name: NSNotification.Name("LiveWorkoutSyncEvent"), object: nil, userInfo: ["payload": startPayload])
-        try await Task.sleep(for: .milliseconds(250))
+        for _ in 0..<40 {
+            let ctx = ModelContext(container)
+            if ((try? ctx.fetch(FetchDescriptor<Workout>(predicate: #Predicate { $0.id == wid })).first) != nil) { break }
+            try await Task.sleep(for: .milliseconds(50))
+        }
         NotificationCenter.default.post(name: NSNotification.Name("LiveWorkoutSyncEvent"), object: nil, userInfo: ["payload": startPayload])
-        try await Task.sleep(for: .milliseconds(250))
+        try await Task.sleep(for: .milliseconds(300))
 
         // Duplicate start with same UUID must never surface a false "Workout in progress" error alert.
         #expect(appState.currentError == nil)
@@ -151,13 +155,20 @@ struct Wave2ProductionFixesTests {
             healthKitSavedOnWatch: true
         )
         NotificationCenter.default.post(name: NSNotification.Name("LiveWorkoutSyncEvent"), object: nil, userInfo: ["payload": savePayload])
-        try await Task.sleep(for: .milliseconds(350))
+        var saved: Workout?
+        for _ in 0..<60 {
+            let checkContext = ModelContext(container)
+            if let found = try checkContext.fetch(FetchDescriptor<Workout>(predicate: #Predicate { $0.id == orphanID })).first,
+               found.endTime != nil {
+                saved = found
+                break
+            }
+            try await Task.sleep(for: .milliseconds(50))
+        }
 
-        let checkContext = ModelContext(container)
-        let fetched = try checkContext.fetch(FetchDescriptor<Workout>(predicate: #Predicate { $0.id == orphanID })).first
-        let saved = try #require(fetched)
-        #expect(saved.endTime != nil)
-        #expect(saved.durationSeconds == 1450)
-        #expect(saved.exercises.count == 1)
+        let unwrappedSaved = try #require(saved)
+        #expect(unwrappedSaved.endTime != nil)
+        #expect(unwrappedSaved.durationSeconds == 1450)
+        #expect(unwrappedSaved.exercises.count == 1)
     }
 }

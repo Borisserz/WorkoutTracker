@@ -137,7 +137,65 @@ actor WorkoutStore: WorkoutStoreProtocol {
         try modelContext.save()
     }
 
+    nonisolated static let sharedAppGroupIdentifier = "group.com.borisdev.WorkoutTracker"
+
+    /// Clears shared App Group widget snapshot and daily Food Tracker calorie entries.
+    static func clearSharedAppGroupState(
+        sharedDefaults: UserDefaults? = UserDefaults(suiteName: sharedAppGroupIdentifier)
+    ) {
+        guard let sharedDefaults else { return }
+        sharedDefaults.removeObject(forKey: WidgetDataManager.key)
+        for key in sharedDefaults.dictionaryRepresentation().keys where key.hasPrefix("workout_calories_") {
+            sharedDefaults.removeObject(forKey: key)
+        }
+    }
+
+    nonisolated static func sharedCalorieDateKey(for date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd"
+        return "workout_calories_\(formatter.string(from: date))"
+    }
+
+    /// Recomputes and writes daily burned calories for Food Tracker App Group integration.
+    func syncSharedDailyCalories(
+        for date: Date,
+        userWeightKg: Double? = nil,
+        sharedDefaults: UserDefaults? = UserDefaults(suiteName: WorkoutStore.sharedAppGroupIdentifier)
+    ) {
+        guard let sharedDefaults else { return }
+        let cal = Calendar.current
+        let dayStart = cal.startOfDay(for: date)
+        guard let dayEnd = cal.date(byAdding: .day, value: 1, to: dayStart) else { return }
+
+        let descriptor = FetchDescriptor<Workout>(
+            predicate: #Predicate<Workout> {
+                $0.endTime != nil && $0.durationSeconds > 0 && $0.date >= dayStart && $0.date < dayEnd
+            }
+        )
+        let dayWorkouts = (try? modelContext.fetch(descriptor)) ?? []
+        let weight = userWeightKg ?? BodyMetricStore.weightKilograms() ?? 0
+        let totalCalories = dayWorkouts.reduce(0) { sum, workout in
+            sum + CalorieCalculator.calculate(for: workout, userWeight: weight)
+        }
+        let dateKey = Self.sharedCalorieDateKey(for: date)
+        if totalCalories > 0 {
+            sharedDefaults.set(totalCalories, forKey: dateKey)
+        } else {
+            sharedDefaults.removeObject(forKey: dateKey)
+        }
+    }
+
     func deleteWorkout(id: UUID) async throws {
+        try await deleteWorkout(
+            id: id,
+            userWeightKg: nil,
+            sharedDefaults: UserDefaults(suiteName: "group.com.borisdev.WorkoutTracker")
+        )
+    }
+
+    func deleteWorkout(id: UUID, userWeightKg: Double?, sharedDefaults: UserDefaults?) async throws {
         let descriptor = FetchDescriptor<Workout>(predicate: #Predicate { $0.id == id })
         guard let workout = (try? modelContext.fetch(descriptor))?.first, !workout.isDeleted else {
             throw WorkoutRepositoryError.modelNotFound
@@ -146,6 +204,7 @@ actor WorkoutStore: WorkoutStoreProtocol {
         // Only reverse aggregates when processCompletedWorkout already ran (sets durationSeconds).
         // Unfinished / snackbar-pending cancels must not under-count lifetime stats.
         let wasProcessed = workout.endTime != nil && workout.durationSeconds > 0
+        let affectedDate = workout.date
 
         if wasProcessed {
             if let uStats = (try? modelContext.fetch(FetchDescriptor<UserStats>()))?.first {
@@ -174,6 +233,10 @@ actor WorkoutStore: WorkoutStoreProtocol {
 
         modelContext.delete(workout)
         try modelContext.save()
+
+        if wasProcessed {
+            syncSharedDailyCalories(for: affectedDate, userWeightKg: userWeightKg, sharedDefaults: sharedDefaults)
+        }
     }
 
     func updateWorkoutFavoriteStatus(workoutID: PersistentIdentifier, isFavorite: Bool) async throws {
@@ -359,20 +422,9 @@ actor WorkoutStore: WorkoutStoreProtocol {
                 }
             }
 
-        let userWeight = UserDefaults.standard.double(forKey: Constants.UserDefaultsKeys.userBodyWeight.rawValue)
-           let burnedCalories = CalorieCalculator.calculate(for: workout, userWeight: userWeight)
-
-           if let sharedDefaults = UserDefaults(suiteName: "group.com.borisdev.WorkoutTracker") {
-               let formatter = DateFormatter()
-               formatter.dateFormat = "yyyy-MM-dd"
-               let dateKey = "workout_calories_\(formatter.string(from: workout.date))"
-
-               let currentCals = sharedDefaults.integer(forKey: dateKey)
-               sharedDefaults.set(currentCals + burnedCalories, forKey: dateKey)
-           }
-
-           try modelContext.save()
-           }
+        try modelContext.save()
+        syncSharedDailyCalories(for: workout.date)
+        }
 
        func findActiveWorkoutsAndCleanup() async throws -> [PersistentIdentifier] {
         let desc = FetchDescriptor<Workout>(predicate: #Predicate<Workout> { $0.endTime == nil })

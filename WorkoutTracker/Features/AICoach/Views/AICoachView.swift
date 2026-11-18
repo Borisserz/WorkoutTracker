@@ -148,6 +148,7 @@ struct AICoachView: View {
                             isListening: Binding(get: { speechRecognizer.isRecording }, set: { _ in }),
                             textTranscript: $speechRecognizer.transcript,
                             userQuery: $userQuery,
+                            micErrorMessage: speechRecognizer.errorMessage,
                             onSelectPrompt: { prompt in
                                 requireAIConsent {
                                     viewModel.inputText = prompt
@@ -490,6 +491,7 @@ struct InteractiveCoachDialogCard: View {
     @Binding var isListening: Bool
     @Binding var textTranscript: String
     @Binding var userQuery: String
+    var micErrorMessage: String? = nil
     let onSelectPrompt: (String) -> Void
     let onMicTap: () -> Void
     let onSubmitQuery: () -> Void
@@ -656,6 +658,17 @@ struct InteractiveCoachDialogCard: View {
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
                         .stroke(PastelTheme.cardBorder, lineWidth: 1)
                 )
+            }
+
+            if let micErrorMessage, !micErrorMessage.isEmpty {
+                HStack(spacing: 6) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 11))
+                    Text(micErrorMessage)
+                        .font(.system(size: 11, weight: .medium))
+                }
+                .foregroundStyle(PastelTheme.pastelPeach)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .padding(16)
@@ -1465,7 +1478,7 @@ struct ProgressAnalysisSheet: View {
         )
         let savedTone = UserDefaults.standard.string(forKey: Constants.UserDefaultsKeys.aiCoachTone.rawValue) ?? "motivational"
         let savedName = UserDefaults.standard.string(forKey: Constants.UserDefaultsKeys.userName.rawValue) ?? ""
-        let language = Locale.autoupdatingCurrent.language.languageCode?.identifier == "ru" ? "Russian" : "English"
+        let language = LocalizationHelper.shared.getAILanguageName()
         let userContext = WeeklyReviewPromptBuilder.profile(
             userName: savedName,
             weightKg: BodyMetricStore.weightKilograms() ?? 0,

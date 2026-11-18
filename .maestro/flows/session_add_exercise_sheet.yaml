@@ -16,11 +16,6 @@ tags:
     id: "wt.discovery.startEmpty"
 
 - extendedWaitUntil:
-    visible: "Start"
-    timeout: 5000
-- tapOn: "Start"
-
-- extendedWaitUntil:
     visible:
       id: "wt.session.root"
     timeout: 15000

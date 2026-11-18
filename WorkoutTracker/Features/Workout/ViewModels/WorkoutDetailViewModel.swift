@@ -437,12 +437,21 @@ final class WorkoutDetailViewModel {
             source: workout.source ?? "manual"
         ))
 
-        let userWeight = UserDefaults.standard.double(forKey: Constants.UserDefaultsKeys.userBodyWeight.rawValue)
+        let userWeight = BodyMetricStore.weightKilograms() ?? 0
         let burnedCalories = CalorieCalculator.calculate(for: workout, userWeight: userWeight)
+        let wDistance = workout.computedCardioDistanceMeters
 
         Task {
             do {
-                try await HealthKitManager.shared.saveWorkout(title: wTitle, startDate: wStart, endDate: wEnd, durationSeconds: wDuration, calories: burnedCalories)
+                try await HealthKitManager.shared.requestAuthorization()
+                try await HealthKitManager.shared.saveWorkout(
+                    title: wTitle,
+                    startDate: wStart,
+                    endDate: wEnd,
+                    durationSeconds: wDuration,
+                    calories: burnedCalories,
+                    distanceMeters: wDistance
+                )
             } catch {
                 AppLog.health.error("❌ ViewModel: HealthKit call error- \(error.localizedDescription, privacy: .public)")
             }

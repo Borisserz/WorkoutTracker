@@ -22,12 +22,6 @@ tags:
 - tapOn:
     id: "wt.discovery.startEmpty"
 
-# Confirmation alert
-- extendedWaitUntil:
-    visible: "Start"
-    timeout: 5000
-- tapOn: "Start"
-
 - extendedWaitUntil:
     visible:
       id: "wt.session.root"

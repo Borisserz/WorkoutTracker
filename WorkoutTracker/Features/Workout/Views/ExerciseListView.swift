@@ -21,7 +21,7 @@ struct ExerciseListView: View {
 
     var body: some View {
         if workout.exercises.isEmpty {
-            VStack(spacing: 24) {
+            VStack(spacing: 18) {
                 ZStack {
                     Circle()
                         .fill(PastelTheme.cardSurfaceSubtle)
@@ -135,9 +135,10 @@ struct ExerciseListView: View {
                     .buttonStyle(.plain)
                 }
                 .padding(.horizontal, 8)
-                .padding(.top, 6)
+                .padding(.top, 4)
             }
-            .padding(.vertical, 28)
+            .padding(.top, 12)
+            .padding(.bottom, 16)
             .padding(.horizontal, 16)
             .background(PastelTheme.cardSurface)
             .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))

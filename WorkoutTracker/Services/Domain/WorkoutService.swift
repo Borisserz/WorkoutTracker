@@ -25,6 +25,8 @@ final class WorkoutService {
     private let liveActivityManager: LiveActivityManager
     /// Serializes create/start so two awaits cannot both pass `hasActiveWorkout` (TOCTOU).
     private var startInFlight = false
+    /// Tracks the Watch workout UUID currently being created so simultaneous deliveries dedup cleanly.
+    private var inFlightWatchStartID: UUID?
     /// Blocks new starts during finish snackbar undo window (endTime set but session not committed).
     private var finishTransitionDepth = 0
     /// After Watch `canStartWorkout` allowed=true — block phone Hub starts until Watch `.startWorkout` or TTL.
@@ -115,7 +117,17 @@ final class WorkoutService {
                     }
                     // Share phone start mutex so Watch cannot race createWorkout / startGeneratedWorkout.
                     let claimed = await MainActor.run { () -> Bool in
-                        if self.startInFlight || self.finishTransitionDepth > 0 {
+                        if self.startInFlight {
+                            if self.inFlightWatchStartID == uuid {
+                                return false
+                            }
+                            self.appState.showError(
+                                title: String(localized: "Workout in progress"),
+                                message: String(localized: "Finish or delete the current workout before starting another.")
+                            )
+                            return false
+                        }
+                        if self.finishTransitionDepth > 0 {
                             self.appState.showError(
                                 title: String(localized: "Workout in progress"),
                                 message: String(localized: "Finish or delete the current workout before starting another.")
@@ -123,12 +135,18 @@ final class WorkoutService {
                             return false
                         }
                         self.startInFlight = true
+                        self.inFlightWatchStartID = uuid
                         self.clearWatchStartReservation()
                         return true
                     }
                     guard claimed else { return }
                     defer {
-                        Task { @MainActor in self.startInFlight = false }
+                        Task { @MainActor in
+                            self.startInFlight = false
+                            if self.inFlightWatchStartID == uuid {
+                                self.inFlightWatchStartID = nil
+                            }
+                        }
                     }
                     // Heal stale (>12h) / multi-active before accepting Watch start — same path as Hub.
                     if await self.hasActiveWorkout() {
@@ -552,6 +570,7 @@ final class WorkoutService {
 
                 let userWeight = BodyMetricStore.weightKilograms() ?? 0
                 let burnedCalories = CalorieCalculator.calculate(for: workout, userWeight: userWeight)
+                let wDistance = max(workout.computedCardioDistanceMeters, workout.totalCardioDistance)
 
                 Task.detached {
                     do {
@@ -561,7 +580,8 @@ final class WorkoutService {
                             startDate: wStart,
                             endDate: wEnd,
                             durationSeconds: wDuration,
-                            calories: burnedCalories 
+                            calories: burnedCalories,
+                            distanceMeters: wDistance
                         )
                     } catch {
                         AppLog.session.error("⚠️ Failed to sync workout to HealthKit: \(error.localizedDescription, privacy: .public)")

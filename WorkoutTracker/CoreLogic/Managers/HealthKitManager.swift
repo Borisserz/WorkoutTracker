@@ -45,7 +45,10 @@ actor HealthKitManager: Sendable {
          let steps = HKObjectType.quantityType(forIdentifier: .stepCount)!
          let water = HKObjectType.quantityType(forIdentifier: .dietaryWater)!
 
-         let typesToShare: Set = [bodyMass, workout, activeEnergy, water]
+         var typesToShare: Set<HKSampleType> = [bodyMass, workout, activeEnergy, water]
+         if let distanceWalkingRunning = HKObjectType.quantityType(forIdentifier: .distanceWalkingRunning) {
+             typesToShare.insert(distanceWalkingRunning)
+         }
          let typesToRead: Set = [bodyMass, heartRate, activeEnergy, steps, water, hrv, rhr, sleep]
 
          do {
@@ -174,7 +177,30 @@ actor HealthKitManager: Sendable {
         }
     }
 
-    func saveWorkout(title: String, startDate: Date, endDate: Date, durationSeconds: Int, calories: Int) async throws {
+    nonisolated static func buildWorkoutPayload(
+        title: String,
+        calories: Int,
+        distanceMeters: Double
+    ) -> (activityType: HKWorkoutActivityType, energyQuantity: HKQuantity, distanceQuantity: HKQuantity?) {
+        let lowerTitle = title.lowercased()
+        let activityType: HKWorkoutActivityType = (lowerTitle.contains("cardio") || lowerTitle.contains("run"))
+            ? .running
+            : .traditionalStrengthTraining
+        let energyQuantity = HKQuantity(unit: .kilocalorie(), doubleValue: Double(calories))
+        let distanceQuantity: HKQuantity? = distanceMeters > 0
+            ? HKQuantity(unit: .meter(), doubleValue: distanceMeters)
+            : nil
+        return (activityType, energyQuantity, distanceQuantity)
+    }
+
+    func saveWorkout(
+        title: String,
+        startDate: Date,
+        endDate: Date,
+        durationSeconds: Int,
+        calories: Int,
+        distanceMeters: Double = 0
+    ) async throws {
         AppLog.health.debug("🔄 HealthKitManager: Initiating save...")
         guard isAvailable else {
             AppLog.health.error("❌ HealthKit: Not available on this device")
@@ -182,23 +208,22 @@ actor HealthKitManager: Sendable {
         }
 
         let actualDuration = max(Double(durationSeconds), endDate.timeIntervalSince(startDate))
-        AppLog.health.debug("📊 Data: Duration = \(actualDuration) sec, Calories = \(calories) kcal")
+        AppLog.health.debug("📊 Data: Duration = \(actualDuration) sec, Calories = \(calories) kcal, Distance = \(distanceMeters) m")
 
         guard actualDuration >= 60 else {
             AppLog.health.warning("⚠️ Cancelled: Workout is under 60 seconds. Apple Health will ignore it.")
             return
         }
 
-        let activityType: HKWorkoutActivityType = title.lowercased().contains("cardio") ? .running : .traditionalStrengthTraining
-        let energyQuantity = HKQuantity(unit: .kilocalorie(), doubleValue: Double(calories))
+        let payload = Self.buildWorkoutPayload(title: title, calories: calories, distanceMeters: distanceMeters)
 
         let workout = HKWorkout(
-            activityType: activityType,
+            activityType: payload.activityType,
             start: startDate,
             end: endDate,
             workoutEvents: nil,
-            totalEnergyBurned: energyQuantity,
-            totalDistance: nil,
+            totalEnergyBurned: payload.energyQuantity,
+            totalDistance: payload.distanceQuantity,
             metadata: [
                 HKMetadataKeyWorkoutBrandName: "AI Workout",
                 "CustomTitle": title
@@ -209,10 +234,17 @@ actor HealthKitManager: Sendable {
             try await healthStore.save(workout)
             AppLog.health.debug("✅ SUCCESS: HKWorkout written to DB!")
 
-            if let energyType = HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned) {
-                let energySample = HKQuantitySample(type: energyType, quantity: energyQuantity, start: startDate, end: endDate)
+            if calories > 0, let energyType = HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned) {
+                let energySample = HKQuantitySample(type: energyType, quantity: payload.energyQuantity, start: startDate, end: endDate)
                 try await healthStore.save(energySample)
                 AppLog.health.debug("✅ SUCCESS: Calories added to Move Ring!")
+            }
+
+            if let distanceQuantity = payload.distanceQuantity,
+               let distanceType = HKQuantityType.quantityType(forIdentifier: .distanceWalkingRunning) {
+                let distanceSample = HKQuantitySample(type: distanceType, quantity: distanceQuantity, start: startDate, end: endDate)
+                try await healthStore.save(distanceSample)
+                AppLog.health.debug("✅ SUCCESS: Cardio distance written to Apple Health!")
             }
         } catch {
             AppLog.health.error("❌ HealthKit save ERROR: \(error.localizedDescription)")

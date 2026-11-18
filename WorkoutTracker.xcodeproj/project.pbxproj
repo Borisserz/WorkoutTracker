@@ -43,6 +43,8 @@
 		C33D44E5F60718293A0B41 /* BestSessionRankingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C33D44E5F60718293A0B42 /* BestSessionRankingTests.swift */; };
 		C33D44E5F60718293A0B51 /* Wave1ProductionFixesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C33D44E5F60718293A0B52 /* Wave1ProductionFixesTests.swift */; };
 		C33D44E5F60718293A0B71 /* Wave2ProductionFixesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C33D44E5F60718293A0B72 /* Wave2ProductionFixesTests.swift */; };
+		C33D44E5F60718293A0B81 /* Wave3HealthAndFoodSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C33D44E5F60718293A0B82 /* Wave3HealthAndFoodSyncTests.swift */; };
+		C33D44E5F60718293A0B91 /* Wave4ProductionPolishTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C33D44E5F60718293A0B92 /* Wave4ProductionPolishTests.swift */; };
 		B2C3D4E5F60718293A4B5C6D /* AIResponseParsingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5C /* AIResponseParsingTests.swift */; };
 		C0FFEE11A7B80910293A0C01 /* LocalizationCatalogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0FFEE11A7B80910293A0C02 /* LocalizationCatalogTests.swift */; };
 		C3F81C26EAC348EB8FC229FA /* ImprovePassSmokeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BD6A05972714141ACF5DE83 /* ImprovePassSmokeTests.swift */; };
@@ -150,6 +152,8 @@
 		C33D44E5F60718293A0B42 /* BestSessionRankingTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BestSessionRankingTests.swift; sourceTree = "<group>"; };
 		C33D44E5F60718293A0B52 /* Wave1ProductionFixesTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Wave1ProductionFixesTests.swift; sourceTree = "<group>"; };
 		C33D44E5F60718293A0B72 /* Wave2ProductionFixesTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Wave2ProductionFixesTests.swift; sourceTree = "<group>"; };
+		C33D44E5F60718293A0B82 /* Wave3HealthAndFoodSyncTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Wave3HealthAndFoodSyncTests.swift; sourceTree = "<group>"; };
+		C33D44E5F60718293A0B92 /* Wave4ProductionPolishTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Wave4ProductionPolishTests.swift; sourceTree = "<group>"; };
 		C0FFEE11A7B80910293A0C02 /* LocalizationCatalogTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LocalizationCatalogTests.swift; sourceTree = "<group>"; };
 		DCC4E71E0628C8F616ACDE3C /* UnitsManagerTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = UnitsManagerTests.swift; sourceTree = "<group>"; };
 		E7A1B2C3D4E5F60718293A02 /* WatchConnectivityTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchConnectivityTests.swift; sourceTree = "<group>"; };
@@ -398,6 +402,8 @@
 				C33D44E5F60718293A0B42 /* BestSessionRankingTests.swift */,
 				C33D44E5F60718293A0B52 /* Wave1ProductionFixesTests.swift */,
 				C33D44E5F60718293A0B72 /* Wave2ProductionFixesTests.swift */,
+				C33D44E5F60718293A0B82 /* Wave3HealthAndFoodSyncTests.swift */,
+				C33D44E5F60718293A0B92 /* Wave4ProductionPolishTests.swift */,
 			);
 			path = WorkoutTrackerTests;
 			sourceTree = "<group>";
@@ -702,6 +708,8 @@
 				C33D44E5F60718293A0B41 /* BestSessionRankingTests.swift in Sources */,
 				C33D44E5F60718293A0B51 /* Wave1ProductionFixesTests.swift in Sources */,
 				C33D44E5F60718293A0B71 /* Wave2ProductionFixesTests.swift in Sources */,
+				C33D44E5F60718293A0B81 /* Wave3HealthAndFoodSyncTests.swift in Sources */,
+				C33D44E5F60718293A0B91 /* Wave4ProductionPolishTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -770,7 +778,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = "WorkoutTrackerWatch Watch App.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 8;
+				CURRENT_PROJECT_VERSION = 9;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "WorkoutTrackerWatch-Watch-App-Info.plist";
@@ -784,7 +792,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.8;
+				MARKETING_VERSION = 2.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.borisdev.WorkoutTracker.watchapp2026;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
@@ -807,7 +815,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = "WorkoutTrackerWatch Watch App.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 8;
+				CURRENT_PROJECT_VERSION = 9;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "WorkoutTrackerWatch-Watch-App-Info.plist";
@@ -821,7 +829,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.8;
+				MARKETING_VERSION = 2.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.borisdev.WorkoutTracker.watchapp2026;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
@@ -844,7 +852,7 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = StatsWidgetExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 8;
+				CURRENT_PROJECT_VERSION = 9;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = StatsWidget/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = StatsWidget;
@@ -855,7 +863,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.0.8;
+				MARKETING_VERSION = 2.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.borisdev.WorkoutTracker.statswidget2026;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -875,7 +883,7 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = StatsWidgetExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 8;
+				CURRENT_PROJECT_VERSION = 9;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = StatsWidget/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = StatsWidget;
@@ -886,7 +894,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.0.8;
+				MARKETING_VERSION = 2.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.borisdev.WorkoutTracker.statswidget2026;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -1035,7 +1043,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = WorkoutTracker/WorkoutTracker.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 8;
+				CURRENT_PROJECT_VERSION = 9;
 				DEVELOPMENT_TEAM = LSCCP92LMG;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
@@ -1062,7 +1070,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.8;
+				MARKETING_VERSION = 2.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.borisdev.WorkoutTracker;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -1082,7 +1090,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = WorkoutTracker/WorkoutTracker.Release.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 8;
+				CURRENT_PROJECT_VERSION = 9;
 				DEVELOPMENT_TEAM = LSCCP92LMG;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
@@ -1110,7 +1118,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.8;
+				MARKETING_VERSION = 2.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.borisdev.WorkoutTracker;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -1129,7 +1137,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 8;
+				CURRENT_PROJECT_VERSION = 9;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = WorkoutTimerWidget/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = WorkoutTimerWidget;
@@ -1141,7 +1149,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.0.8;
+				MARKETING_VERSION = 2.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.borisdev.WorkoutTracker.WorkoutTimerWidget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -1160,7 +1168,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 8;
+				CURRENT_PROJECT_VERSION = 9;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = WorkoutTimerWidget/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = WorkoutTimerWidget;
@@ -1172,7 +1180,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.0.8;
+				MARKETING_VERSION = 2.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.borisdev.WorkoutTracker.WorkoutTimerWidget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;

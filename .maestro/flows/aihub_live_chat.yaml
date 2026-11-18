@@ -15,11 +15,11 @@ tags:
     timeout: 10000
 
 - scrollUntilVisible:
-    element: "Ask your coach about training..."
+    element: "Ask the coach about your workout.*"
     direction: UP
     timeout: 15000
 
-- tapOn: "Ask your coach about training..."
+- tapOn: "Ask the coach about your workout.*"
 - inputText: "Give one short squat tip"
 - pressKey: Enter
 

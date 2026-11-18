@@ -192,6 +192,7 @@ struct StatsView: View {
         .onChange(of: viewModel?.selectedPeriod) { _, _ in refreshData() }
         .onChange(of: viewModel?.selectedMetric) { _, _ in refreshData() }
         .onChange(of: dashboardViewModel.dashboardTotalExercises) { _, _ in refreshData() }
+        .onChange(of: dashboardViewModel.personalRecordsCache) { _, _ in refreshData() }
     }
 
     private var loadingView: some View {

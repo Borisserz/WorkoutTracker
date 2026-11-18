@@ -13,10 +13,6 @@ tags:
     timeout: 8000
 - tapOn:
     id: "wt.discovery.startEmpty"
-- extendedWaitUntil:
-    visible: "Start"
-    timeout: 5000
-- tapOn: "Start"
 
 - extendedWaitUntil:
     visible:
@@ -67,9 +63,15 @@ tags:
       - tapOn: ".*Rest — Skip.*"
 - runFlow:
     when:
-      visible: "01:30 Rest"
+      visible: ".*\\bRest$"
     commands:
-      - tapOn: "01:30 Rest"
+      - tapOn: ".*\\bRest$"
+
+- runFlow:
+    when:
+      visible: "Finish Ab Roller"
+    commands:
+      - tapOn: "Finish Ab Roller"
 
 - extendedWaitUntil:
     visible: "All sets done: Finish"

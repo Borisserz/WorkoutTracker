@@ -776,8 +776,7 @@ struct SettingsView: View {
         UserDefaults.standard.set(0, forKey: "userTotalXP")
         UserDefaults.standard.set(1, forKey: "userLevel")
 
-        let suite = UserDefaults(suiteName: "group.com.borisdev.WorkoutTracker")
-        suite?.removeObject(forKey: WidgetDataManager.key)
+        WorkoutStore.clearSharedAppGroupState()
         UserDefaults.standard.removeObject(forKey: WidgetDataManager.key)
         WidgetCenter.shared.reloadAllTimelines()
         LiveActivityManager().stopAllActivities()

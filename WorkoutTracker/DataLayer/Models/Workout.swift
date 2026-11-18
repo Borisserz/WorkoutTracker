@@ -224,6 +224,22 @@ class Workout: Identifiable {
     }
 
     var isActive: Bool { endTime == nil }
+
+    /// Completed cardio distance in meters across exercises and supersets.
+    var computedCardioDistanceMeters: Double {
+        exercises.reduce(0.0) { total, exercise in
+            let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
+            let exDist = targets
+                .filter { $0.type == .cardio }
+                .reduce(0.0) { subTotal, sub in
+                    subTotal + sub.setsList
+                        .filter { $0.isCompleted }
+                        .compactMap(\.distance)
+                        .reduce(0.0, +)
+                }
+            return total + exDist
+        }
+    }
 }
 
 @Model
