@@ -80,6 +80,7 @@ struct FBExerciseDTO: Codable {
     let sets: Int?
     let reps: Int?
     let recommendedWeightKg: Double?
+    let restSeconds: Int?
     
     func toDTO() -> ExerciseDTO {
         ExerciseDTO(
@@ -93,7 +94,8 @@ struct FBExerciseDTO: Codable {
             subExercises: subExercises?.map { $0.toDTO() },
             sets: sets,
             reps: reps,
-            recommendedWeightKg: recommendedWeightKg
+            recommendedWeightKg: recommendedWeightKg,
+            restSeconds: restSeconds
         )
     }
 }

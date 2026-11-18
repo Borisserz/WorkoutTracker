@@ -56,7 +56,16 @@ struct WatchActiveWorkoutView: View {
             }
         }
         .alert(WatchSyncManager.shared.isReachable ? "Workout in progress" : "iPhone unreachable", isPresented: $viewModel.phoneBlockedStart) {
-            Button("OK", role: .cancel) { dismiss() }
+            Button("OK", role: .cancel) {
+                if viewModel.isInitialized {
+                    Task {
+                        await viewModel.cancelWorkout()
+                        dismiss()
+                    }
+                } else {
+                    dismiss()
+                }
+            }
         } message: {
             Text(
                 WatchSyncManager.shared.isReachable
@@ -71,7 +80,16 @@ struct WatchActiveWorkoutView: View {
                 set: { if !$0 { viewModel.localStoreFailed = false; workoutManager.startFailureMessage = nil } }
             )
         ) {
-            Button("OK", role: .cancel) { dismiss() }
+            Button("OK", role: .cancel) {
+                if viewModel.isInitialized {
+                    Task {
+                        await viewModel.cancelWorkout()
+                        dismiss()
+                    }
+                } else {
+                    dismiss()
+                }
+            }
         } message: {
             Text(viewModel.localStoreFailureMessage ?? workoutManager.startFailureMessage ?? String(localized: "Try again."))
         }
@@ -98,6 +116,14 @@ struct WatchActiveWorkoutView: View {
         .onChange(of: viewModel.showSummary) { _, isShowing in
             if isShowing {
                 Task { await workoutManager.endWorkout(saveToHealthKit: false) }
+            }
+        }
+        .onChange(of: viewModel.shouldDismissWorkout) { _, shouldDismiss in
+            if shouldDismiss {
+                Task {
+                    await workoutManager.endWorkout(saveToHealthKit: false)
+                    dismiss()
+                }
             }
         }
         .alert("Cancel Workout?", isPresented: $showCancelAlert) {

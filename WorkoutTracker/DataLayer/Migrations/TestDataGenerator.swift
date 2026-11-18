@@ -39,6 +39,8 @@ actor TestDataGenerator {
 
     func clearAllDataAsync() async {
         do {
+            let weightImageNames = ((try? modelContext.fetch(FetchDescriptor<WeightEntry>())) ?? [])
+                .flatMap(\.imageFileNames)
             if let items = try? modelContext.fetch(FetchDescriptor<Workout>()) { items.forEach { modelContext.delete($0) } }
             if let items = try? modelContext.fetch(FetchDescriptor<Exercise>()) { items.forEach { modelContext.delete($0) } }
             if let items = try? modelContext.fetch(FetchDescriptor<WorkoutSet>()) { items.forEach { modelContext.delete($0) } }
@@ -51,15 +53,31 @@ actor TestDataGenerator {
             if let items = try? modelContext.fetch(FetchDescriptor<BodyMeasurement>()) { items.forEach { modelContext.delete($0) } }
             if let items = try? modelContext.fetch(FetchDescriptor<MuscleColorPreference>()) { items.forEach { modelContext.delete($0) } }
             if let items = try? modelContext.fetch(FetchDescriptor<AIChatSession>()) { items.forEach { modelContext.delete($0) } }
+            try modelContext.delete(model: WorkoutPreset.self)
+            if let customs = try? modelContext.fetch(FetchDescriptor<ExerciseDictionaryItem>(predicate: #Predicate { $0.isCustom == true })) {
+                customs.forEach { modelContext.delete($0) }
+            }
+            if let hidden = try? modelContext.fetch(FetchDescriptor<ExerciseDictionaryItem>(predicate: #Predicate { $0.isHidden == true })) {
+                hidden.forEach { $0.isHidden = false }
+            }
             try modelContext.save()
 
-            // Wipe XP + widget payload (I05).
+            // Wipe XP, App Group, widget payload, files, and Watch state (full parity with deleteLocalData).
             UserDefaults.standard.set(0, forKey: "userTotalXP")
             UserDefaults.standard.set(1, forKey: "userLevel")
-            let suite = UserDefaults(suiteName: "group.com.borisdev.WorkoutTracker")
-            suite?.removeObject(forKey: WidgetDataManager.key)
+            UserDefaults.standard.set(-1.0, forKey: "cnsScore")
+            WorkoutStore.clearSharedAppGroupState()
             UserDefaults.standard.removeObject(forKey: WidgetDataManager.key)
             UserDefaults.standard.removeObject(forKey: Constants.UserDefaultsKeys.muscleColors.rawValue)
+            await MainActor.run {
+                WorkoutDetailViewModel.wipeSupplementaryDefaultsAndFiles()
+                MuscleColorManager.shared.reset()
+                PhoneWatchManager.shared.sendClearStateToWatch()
+            }
+            ProfileImageManager.shared.deleteImage()
+            if !weightImageNames.isEmpty {
+                await LocalImageStore.shared.deleteImages(named: weightImageNames)
+            }
         } catch {
             AppLog.migration.debug("Fallback deletion error: \(error.localizedDescription, privacy: .public)")
         }

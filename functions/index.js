@@ -566,8 +566,13 @@ async function callOpenRouterText({
         }
 
         if (!ok) {
-          lastError = new Error(`OpenRouter ${status} ${model}: ${text.slice(0, 400)}`);
+          const snippet = text.slice(0, 400);
+          lastError = new Error(`OpenRouter ${status} ${model}: ${snippet}`);
+          lastError.httpStatus = status;
           console.warn(lastError.message);
+          if (status === 429 && snippet.includes("free-models-per-day")) {
+            break;
+          }
           continue;
         }
         const data = JSON.parse(text);
@@ -751,10 +756,15 @@ exports.vertexProxy = onRequest(
               Math.min(UPSTREAM_TIMEOUT_MS, remainingMs)
             );
             if (!resp.ok || !resp.body) {
+              const snippet = (await resp.text()).slice(0, 300);
               lastError = new Error(
-                `stream ${resp.status} ${model}: ${(await resp.text()).slice(0, 300)}`
+                `stream ${resp.status} ${model}: ${snippet}`
               );
+              lastError.httpStatus = resp.status;
               console.warn(lastError.message);
+              if (resp.status === 429 && snippet.includes("free-models-per-day")) {
+                break;
+              }
               continue;
             }
             upstream = resp;
@@ -824,6 +834,14 @@ exports.vertexProxy = onRequest(
       console.error("vertexProxy OpenRouter error:", e);
       await refundQuotaIfUnused();
       if (!res.headersSent) {
+        if (e?.httpStatus === 429) {
+          res.set("Retry-After", "60");
+          return res.status(429).json({
+            error: "upstream_rate_limited",
+            retryAfter: 60,
+            message: "Upstream AI rate limit exceeded. Please try again later.",
+          });
+        }
         res.status(502).json({
           error: "upstream_failed",
           message: "Upstream AI service temporarily unavailable. Please try again.",
@@ -937,7 +955,10 @@ Respond ONLY with JSON: {"decision":"approved"|"blocked","reason":"short reason"
     } catch (e) {
       console.error("Moderation error:", e);
       decision = "blocked";
-      reason = "Moderation service error";
+      reason =
+        e?.httpStatus === 429
+          ? "Moderation service is temporarily busy. Please try again in a minute."
+          : "Moderation service error";
     }
 
     await ref.update({

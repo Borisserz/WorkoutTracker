@@ -173,7 +173,15 @@ final class PhoneWatchManager: NSObject, WCSessionDelegate {
     }
 
     func sendFinishWorkoutToWatch(workoutID: String) {
-        let payload = LiveSyncPayload(action: .finishWorkout, workoutID: workoutID)
+        sendLifecycleEventToWatch(action: .finishWorkout, workoutID: workoutID)
+    }
+
+    func sendDiscardWorkoutToWatch(workoutID: String) {
+        sendLifecycleEventToWatch(action: .discardWorkout, workoutID: workoutID)
+    }
+
+    private func sendLifecycleEventToWatch(action: SyncActionType, workoutID: String) {
+        let payload = LiveSyncPayload(action: action, workoutID: workoutID)
         guard let data = try? JSONEncoder().encode(payload) else { return }
         let envelope = WatchSyncEnvelope.userInfo(carrying: data)
         let session = WCSession.default

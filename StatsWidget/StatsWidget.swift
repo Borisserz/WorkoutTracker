@@ -41,7 +41,12 @@ struct StatsWidgetProvider: TimelineProvider {
     }
 
     func getSnapshot(in context: Context, completion: @escaping (StatsEntry) -> ()) {
-        completion(placeholder(in: context))
+        let data = WidgetDataManager.load()
+        if !context.isPreview || data.streak > 0 || WidgetData.currentWeekCount(from: data.weeklyStats) > 0 || data.totalVolumeTons > 0 {
+            completion(StatsEntry(date: Date(), data: data))
+        } else {
+            completion(placeholder(in: context))
+        }
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<StatsEntry>) -> ()) {

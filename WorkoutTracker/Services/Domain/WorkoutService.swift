@@ -242,6 +242,44 @@ final class WorkoutService {
                         }
                     }
 
+                case .removeExercise:
+                    guard let uuid = workoutUUID, let exName = payload.exerciseName else { return }
+                    let desc = FetchDescriptor<Workout>(predicate: #Predicate { $0.id == uuid })
+                    if let workout = try? bgContext.fetch(desc).first,
+                       let idx = workout.exercises.firstIndex(where: { $0.name == exName }) {
+                        let removed = workout.exercises.remove(at: idx)
+                        bgContext.delete(removed)
+                        try? bgContext.save()
+                    }
+
+                case .addSet:
+                    guard let uuid = workoutUUID, let exName = payload.exerciseName, let setIndex = payload.setIndex else { return }
+                    let desc = FetchDescriptor<Workout>(predicate: #Predicate { $0.id == uuid })
+                    if let workout = try? bgContext.fetch(desc).first,
+                       let exercise = workout.exercises.first(where: { $0.name == exName }),
+                       !exercise.setsList.contains(where: { $0.index == setIndex }) {
+                        let newSet = WorkoutSet(index: setIndex, weight: nil, reps: nil, isCompleted: false, type: .normal)
+                        bgContext.insert(newSet)
+                        newSet.exercise = exercise
+                        exercise.setsList.append(newSet)
+                        try? bgContext.save()
+                    }
+
+                case .removeSet:
+                    guard let uuid = workoutUUID, let exName = payload.exerciseName, let setIndex = payload.setIndex else { return }
+                    let desc = FetchDescriptor<Workout>(predicate: #Predicate { $0.id == uuid })
+                    if let workout = try? bgContext.fetch(desc).first,
+                       let exercise = workout.exercises.first(where: { $0.name == exName }) {
+                        let toDelete = exercise.setsList.filter { $0.index == setIndex }
+                        for s in toDelete {
+                            exercise.setsList.removeAll { $0.persistentModelID == s.persistentModelID }
+                            bgContext.delete(s)
+                        }
+                        let sorted = exercise.setsList.sorted { $0.index < $1.index }
+                        for (offset, s) in sorted.enumerated() { s.index = offset + 1 }
+                        try? bgContext.save()
+                    }
+
                 case .logSet:
                     guard let uuid = workoutUUID, let exName = payload.exerciseName, let setIndex = payload.setIndex else { return }
                     let desc = FetchDescriptor<Workout>(predicate: #Predicate { $0.id == uuid })
@@ -617,9 +655,11 @@ final class WorkoutService {
 
     func deleteWorkout(_ workout: Workout) async {
         let wasActiveSession = workout.endTime == nil
+        let workoutUUIDString = workout.id.uuidString
         do {
             try await workoutStore.deleteWorkout(id: workout.id)
             if wasActiveSession {
+                PhoneWatchManager.shared.sendDiscardWorkoutToWatch(workoutID: workoutUUIDString)
                 await stopLiveActivityIfNoActiveSession()
             }
             await updateWidgetData()
@@ -629,8 +669,14 @@ final class WorkoutService {
     }
 
     func deleteWorkout(id: UUID) async {
+        let mainCtx = analyticsService.modelContainer.mainContext
+        let checkDesc = FetchDescriptor<Workout>(predicate: #Predicate { $0.id == id })
+        let wasActiveSession = ((try? mainCtx.fetch(checkDesc))?.first?.endTime) == nil
         do {
             try await workoutStore.deleteWorkout(id: id)
+            if wasActiveSession {
+                PhoneWatchManager.shared.sendDiscardWorkoutToWatch(workoutID: id.uuidString)
+            }
             // Never blanket-stop LA: History may delete a finished row while another session is live.
             await stopLiveActivityIfNoActiveSession()
             await updateWidgetData()

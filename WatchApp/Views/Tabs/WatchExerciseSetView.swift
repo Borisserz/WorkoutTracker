@@ -68,11 +68,11 @@ struct WatchExerciseSetView: View {
 
                     HStack(spacing: 8) {
                         inputButton(
-                            title: UnitsManager.shared.weightUnitString().uppercased(),
+                            title: UnitsManager.shared.weightUnitString(),
                             value: String(format: "%.1f", weight),
                             type: .weightMode
                         )
-                        inputButton(title: "REPS", value: "\(Int(reps))", type: .repsMode)
+                        inputButton(title: String(localized: "Reps"), value: "\(Int(reps))", type: .repsMode)
                     }
                     .padding(.vertical, 4)
 

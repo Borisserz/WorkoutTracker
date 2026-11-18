@@ -185,6 +185,11 @@
 				DataLayer/DTOs/AchievementModels.swift,
 				DataLayer/DTOs/SharedModels.swift,
 				DataLayer/DTOs/WorkoutModels.swift,
+				DataLayer/LocalDB/exercises_de.json,
+				DataLayer/LocalDB/exercises_es.json,
+				DataLayer/LocalDB/exercises_fr.json,
+				DataLayer/LocalDB/exercises_it.json,
+				DataLayer/LocalDB/exercises_pt-PT.json,
 				DataLayer/LocalDB/exercises_ru.json,
 				DataLayer/LocalDB/exercises.json,
 				DataLayer/Models/AIChatModels.swift,
@@ -194,6 +199,7 @@
 				DataLayer/Models/UserGoal.swift,
 				DataLayer/Models/WeightEntry.swift,
 				DataLayer/Models/Workout.swift,
+				Localizable.xcstrings,
 				Services/Domain/ExerciseDatabaseService.swift,
 			);
 			target = AC3CB9882F8176AA008A6777 /* WorkoutTrackerWatch Watch App */;
@@ -224,6 +230,7 @@
 			membershipExceptions = (
 				AppCore/OpenWorkoutAppIntent.swift,
 				DataLayer/DTOs/WidgetDataShared.swift,
+				Localizable.xcstrings,
 			);
 			target = ACDA5B9D2F06CF77007FF65F /* StatsWidgetExtension */;
 		};
@@ -237,6 +244,7 @@
 		ACE68D2C2EFC43AF00FD186D /* Exceptions for "WorkoutTracker" folder in "WorkoutTimerWidgetExtension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				Localizable.xcstrings,
 				Models/WorkoutActivityAttributes.swift,
 			);
 			target = ACE68D0A2EFC421700FD186D /* WorkoutTimerWidgetExtension */;

@@ -345,7 +345,7 @@ struct WorkoutCalendarView: View {
                         selectedTimeRange = range
                     }
                 } label: {
-                    Text(range.rawValue)
+                    Text(LocalizedStringKey(range.rawValue))
                         .font(.system(size: 12, weight: isSelected ? .bold : .medium, design: .rounded))
                         .foregroundStyle(isSelected ? PastelTheme.textOnOat : PastelTheme.textSecondary)
                         .padding(.horizontal, 14)

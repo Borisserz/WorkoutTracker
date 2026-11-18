@@ -301,7 +301,7 @@ struct GodModeUserMetrics {
     var avatarImage: UIImage? = nil
     var age: Int = 25
     var height: Int = 175
-    var weight: Int = 75
+    var weight: Double = 75.0
     var activityLevel: GodModeActivityType = .none
 }
 
@@ -376,7 +376,7 @@ struct OnboardingGodMode: View {
         let defaults = UserDefaults.standard
         defaults.set(metrics.age, forKey: "userAge")
         defaults.set(metrics.height, forKey: "userHeight")
-        defaults.set(Double(metrics.weight), forKey: "userBodyWeight")
+        defaults.set(metrics.weight, forKey: Constants.UserDefaultsKeys.userBodyWeight.rawValue)
         defaults.set(metrics.name, forKey: Constants.UserDefaultsKeys.userName.rawValue)
         if metrics.activityLevel != .none {
             defaults.set(metrics.activityLevel.rawValue, forKey: "userActivityLevel")
@@ -476,17 +476,46 @@ struct GodModeProfileScreen: View {
 struct GodModeMetricsScreen: View {
     @Binding var metrics: GodModeUserMetrics
     let onNext: () -> Void
+    @State private var useImperial: Bool = UnitsManager.shared.weightUnit == .pounds
+    @State private var draftHeight: Int = 175
+    @State private var draftWeight: Int = 75
+
+    private var heightRange: ClosedRange<Int> {
+        useImperial ? 55...90 : 140...230
+    }
+
+    private var weightRange: ClosedRange<Int> {
+        useImperial ? 90...440 : 40...200
+    }
+
+    private var heightSuffix: String {
+        useImperial ? SizeUnit.inches.shortName : SizeUnit.centimeters.shortName
+    }
+
+    private var weightSuffix: String {
+        useImperial ? WeightUnit.pounds.shortName : WeightUnit.kilograms.shortName
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             VStack(spacing: 8) {
                 Text("Digitize yourself").font(.system(size: 32, weight: .bold, design: .rounded)).foregroundStyle(.white)
                 Text("Basic starting parameters").font(.system(size: 15)).foregroundStyle(.white.opacity(0.6))
             }.padding(.top, 60)
+
+            Picker(LocalizedStringKey("Units of Measure"), selection: $useImperial) {
+                Text(LocalizedStringKey("kg / cm")).tag(false)
+                Text(LocalizedStringKey("lbs / in")).tag(true)
+            }
+            .pickerStyle(.segmented)
+            .padding(.horizontal, 56)
+            .padding(.top, 20)
+
             Spacer()
             HStack(spacing: 0) {
-                GodModeWheelColumn(title: "Age", range: 14...100, suffix: "years", selection: $metrics.age)
-                GodModeWheelColumn(title: "Height", range: 140...230, suffix: "cm", selection: $metrics.height)
-                GodModeWheelColumn(title: "Weight", range: 40...200, suffix: "kg", selection: $metrics.weight)
+                GodModeWheelColumn(title: "Age", range: 14...100, suffix: String(localized: "years"), selection: $metrics.age)
+                GodModeWheelColumn(title: "Height", range: heightRange, suffix: heightSuffix, selection: $draftHeight)
+                GodModeWheelColumn(title: "Weight", range: weightRange, suffix: weightSuffix, selection: $draftWeight)
             }
             .frame(height: 220).background(RoundedRectangle(cornerRadius: 24).fill(Color.white.opacity(0.05)).overlay(RoundedRectangle(cornerRadius: 24).stroke(.white.opacity(0.1), lineWidth: 1))).padding(.horizontal, 20)
             HStack(alignment: .top, spacing: 12) {
@@ -495,7 +524,37 @@ struct GodModeMetricsScreen: View {
             }
             .padding(16).background(.ultraThinMaterial).clipShape(RoundedRectangle(cornerRadius: 16)).padding(.horizontal, 20).padding(.top, 30)
             Spacer()
-            GodModeButton(title: "Continue", action: onNext).padding(.horizontal, 30).padding(.bottom, 30)
+            GodModeButton(title: "Continue", action: {
+                commitDraftMetrics()
+                onNext()
+            }).padding(.horizontal, 30).padding(.bottom, 30)
+        }
+        .onAppear {
+            syncDraftsFromCanonical()
+        }
+        .onChange(of: useImperial) { _, newValue in
+            commitDraftMetrics()
+            UnitsManager.shared.setWeightUnit(newValue ? .pounds : .kilograms)
+            UnitsManager.shared.setSizeUnit(newValue ? .inches : .centimeters)
+            UnitsManager.shared.setDistanceUnit(newValue ? .miles : .meters)
+            syncDraftsFromCanonical()
+        }
+    }
+
+    private func syncDraftsFromCanonical() {
+        let convertedHeight = useImperial ? Int((Double(metrics.height) / 2.54).rounded()) : metrics.height
+        let convertedWeight = useImperial ? Int((metrics.weight * 2.20462).rounded()) : Int(metrics.weight.rounded())
+        draftHeight = min(max(convertedHeight, heightRange.lowerBound), heightRange.upperBound)
+        draftWeight = min(max(convertedWeight, weightRange.lowerBound), weightRange.upperBound)
+    }
+
+    private func commitDraftMetrics() {
+        if useImperial {
+            metrics.height = Int((Double(draftHeight) * 2.54).rounded())
+            metrics.weight = Double(draftWeight) / 2.20462
+        } else {
+            metrics.height = draftHeight
+            metrics.weight = Double(draftWeight)
         }
     }
 }
@@ -507,8 +566,8 @@ struct GodModeWheelColumn: View {
     @Binding var selection: Int
     var body: some View {
         VStack(spacing: -10) {
-            Text(title).font(.system(size: 14, weight: .bold)).foregroundStyle(.white.opacity(0.5)).padding(.bottom, 10)
-            Picker(title, selection: $selection) {
+            Text(LocalizedStringKey(title)).font(.system(size: 14, weight: .bold)).foregroundStyle(.white.opacity(0.5)).padding(.bottom, 10)
+            Picker(LocalizedStringKey(title), selection: $selection) {
                 ForEach(range, id: \.self) { value in
                     Text("\(value) \(suffix)").font(.system(size: 20, weight: .semibold, design: .rounded)).foregroundStyle(.white).tag(value)
                 }
@@ -533,8 +592,8 @@ struct GodModeActivityScreen: View {
                             HStack(spacing: 16) {
                                 Text(type.emoji).font(.system(size: 28)).frame(width: 46, height: 46).background(metrics.activityLevel == type ? Color.white.opacity(0.2) : Color.white.opacity(0.05)).clipShape(Circle())
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(type.rawValue).font(.system(size: 16, weight: .bold)).foregroundStyle(.white)
-                                    Text(type.description).font(.system(size: 12, weight: .medium)).foregroundStyle(.white.opacity(0.6))
+                                    Text(LocalizedStringKey(type.rawValue)).font(.system(size: 16, weight: .bold)).foregroundStyle(.white)
+                                    Text(LocalizedStringKey(type.description)).font(.system(size: 12, weight: .medium)).foregroundStyle(.white.opacity(0.6))
                                 }
                                 Spacer()
                                 if metrics.activityLevel == type { Image(systemName: "checkmark.circle.fill").font(.system(size: 20)).foregroundStyle(PastelTheme.pastelSage).transition(.scale) }

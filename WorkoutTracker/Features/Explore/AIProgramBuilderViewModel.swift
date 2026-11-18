@@ -72,7 +72,6 @@ final class AIProgramBuilderViewModel {
                     catalogContext: safeCatalogContext 
                 )
 
-                try await Task.sleep(for: .seconds(1.5))
                 HapticManager.shared.notification(.success)
                 TrackingManager.shared.track(.aiProgramGenerated(programLengthWeeks: dto.durationWeeks, difficulty: level.rawValue))
                 self.state = .success(dto)

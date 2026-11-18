@@ -27,6 +27,7 @@ final class WatchActiveWorkoutViewModel: Hashable {
     var showRestTimer = false
     var showRPE = false
     var showSummary = false
+    var shouldDismissWorkout = false
 
     var activeExercise: ActiveExerciseWrapper? = nil
     var pendingNextExerciseIndex: Int? = nil
@@ -150,9 +151,36 @@ final class WatchActiveWorkoutViewModel: Hashable {
                             }
             case .addExercise:
                 if let name = payload.exerciseName, !self.exercises.contains(where: { $0.name == name }) {
-                    let newEx = ExerciseDTO(name: name, muscleGroup: "Mixed", type: .strength, category: .other, effort: 5, isCompleted: false, setsList: [], subExercises: [], sets: 3, reps: 10, recommendedWeightKg: 0.0)
+                    let initialSets = (1...3).map { idx in
+                        WorkoutSetDTO(index: idx, weight: nil, reps: nil, distance: nil, time: nil, isCompleted: false, type: .normal)
+                    }
+                    let newEx = ExerciseDTO(name: name, muscleGroup: "Mixed", type: .strength, category: .other, effort: 5, isCompleted: false, setsList: initialSets, subExercises: [], sets: 3, reps: 10, recommendedWeightKg: 0.0)
                     self.exercises.append(newEx)
                 }
+            case .removeExercise:
+                if let name = payload.exerciseName {
+                    self.exercises.removeAll { $0.name == name }
+                    recalculateTotals()
+                }
+            case .addSet:
+                guard let exName = payload.exerciseName, let setIndex = payload.setIndex,
+                      let exIdx = exercises.firstIndex(where: { $0.name == exName }) else { return }
+                var sets = exercises[exIdx].setsList ?? []
+                if !sets.contains(where: { $0.index == setIndex }) {
+                    sets.append(WorkoutSetDTO(index: setIndex, weight: nil, reps: nil, distance: nil, time: nil, isCompleted: false, type: .normal))
+                    exercises[exIdx].setsList = sets
+                }
+            case .removeSet:
+                guard let exName = payload.exerciseName, let setIndex = payload.setIndex,
+                      let exIdx = exercises.firstIndex(where: { $0.name == exName }) else { return }
+                var sets = exercises[exIdx].setsList ?? []
+                sets.removeAll { $0.index == setIndex }
+                for i in sets.indices {
+                    let old = sets[i]
+                    sets[i] = WorkoutSetDTO(index: i + 1, weight: old.weight, reps: old.reps, distance: old.distance, time: old.time, isCompleted: old.isCompleted, type: old.type)
+                }
+                exercises[exIdx].setsList = sets
+                recalculateTotals()
             case .logSet:
                 guard let exName = payload.exerciseName, let setIndex = payload.setIndex,
                       let exIdx = exercises.firstIndex(where: { $0.name == exName }) else { return }
@@ -172,7 +200,11 @@ final class WatchActiveWorkoutViewModel: Hashable {
             case .finishWorkout:
                 self.showSummary = true
             case .discardWorkout:
-                self.goBackToWorkoutView = true
+                let wid = self.workoutID.uuidString
+                Task { [weak self] in
+                    _ = try? await self?.store.discardWorkout(workoutID: wid)
+                }
+                self.shouldDismissWorkout = true
             default: break
             }
         }
@@ -206,21 +238,20 @@ final class WatchActiveWorkoutViewModel: Hashable {
         let payload = LiveSyncPayload(action: .logSet, workoutID: workoutID.uuidString, exerciseName: currentEx.name, setIndex: setIndex, weight: weight, reps: reps, isCompleted: true)
         WatchSyncManager.shared.sendLiveAction(payload)
 
-        _ = try? await store.logSet(workoutID: workoutID.uuidString, exerciseName: currentEx.name, weight: weight, reps: reps)
+        _ = try? await store.logSet(workoutID: workoutID.uuidString, exerciseName: currentEx.name, setIndex: setIndex, weight: weight, reps: reps)
 
-        totalSets += 1
-        totalVolume += (weight * Double(reps))
+        recalculateTotals()
 
         let completedCount = currentSets.filter { $0.isCompleted }.count
         let isLastSet = completedCount >= (currentEx.setsList?.count ?? 0)
 
         if isLastSet {
-            nextSetInfo = "\(currentEx.name)\nSet \(completedCount)/\(currentEx.sets ?? 3)"
+            nextSetInfo = String(localized: "\(currentEx.name)\nSet \(completedCount)/\(currentEx.sets ?? 3)")
             currentExerciseIndexForRPE = exerciseIndex
             showRPE = true
         } else {
             let weightStr = UnitsManager.shared.displayWeightWithUnit(forKg: weight)
-            nextSetInfo = "Next set\n\(currentEx.name)\nSet \(completedCount + 1)/\(currentEx.sets ?? 3): \(weightStr) × \(reps)"
+            nextSetInfo = String(localized: "Next set\n\(currentEx.name)\nSet \(completedCount + 1)/\(currentEx.sets ?? 3): \(weightStr) × \(reps)")
 
             let defaultRest = UserDefaults.standard.integer(forKey: "defaultRestTime")
             startTimer(duration: defaultRest > 0 ? defaultRest : 60)
@@ -236,10 +267,10 @@ final class WatchActiveWorkoutViewModel: Hashable {
 
         if let nextIndex = exercises.firstIndex(where: { !$0.isCompleted }) {
             pendingNextExerciseIndex = nextIndex
-            nextSetInfo = "Next exercise\n\(exercises[nextIndex].name)\nSet 1"
+            nextSetInfo = String(localized: "Next exercise\n\(exercises[nextIndex].name)\nSet 1")
         } else {
             pendingNextExerciseIndex = nil
-            nextSetInfo = "Workout Complete!\nRest up."
+            nextSetInfo = String(localized: "Workout Complete!\nRest up.")
         }
         goBackToWorkoutView = true
     }
@@ -259,10 +290,10 @@ final class WatchActiveWorkoutViewModel: Hashable {
         if let nextIndex = exercises.firstIndex(where: { !$0.isCompleted }) {
             pendingNextExerciseIndex = nextIndex
             let nextExName = exercises[nextIndex].name
-            nextSetInfo = "Next exercise\n\(nextExName)\nSet 1"
+            nextSetInfo = String(localized: "Next exercise\n\(nextExName)\nSet 1")
         } else {
             pendingNextExerciseIndex = nil
-            nextSetInfo = "Workout Complete!\nRest up."
+            nextSetInfo = String(localized: "Workout Complete!\nRest up.")
         }
 
         try? await Task.sleep(for: .milliseconds(400))
@@ -331,6 +362,9 @@ final class WatchActiveWorkoutViewModel: Hashable {
 
         exercises[index] = currentEx
         try? await store.addSet(workoutID: workoutID.uuidString, exerciseName: currentEx.name, setIndex: newSetIndex)
+        WatchSyncManager.shared.sendLiveAction(
+            LiveSyncPayload(action: .addSet, workoutID: workoutID.uuidString, exerciseName: currentEx.name, setIndex: newSetIndex)
+        )
     }
 
     func removeSet(exerciseIndex: Int, setIndex: Int) async {
@@ -349,14 +383,22 @@ final class WatchActiveWorkoutViewModel: Hashable {
         let targetSets = currentEx.sets ?? 3
         if targetSets > 1 { currentEx.sets = targetSets - 1 }
         exercises[exerciseIndex] = currentEx
+        recalculateTotals()
         try? await store.removeSet(workoutID: workoutID.uuidString, exerciseName: currentEx.name, setIndex: setIndex)
+        WatchSyncManager.shared.sendLiveAction(
+            LiveSyncPayload(action: .removeSet, workoutID: workoutID.uuidString, exerciseName: currentEx.name, setIndex: setIndex)
+        )
     }
 
     func removeExercise(at index: Int) async {
         guard exercises.indices.contains(index) else { return }
         let removedName = exercises[index].name
         exercises.remove(at: index)
+        recalculateTotals()
         try? await store.removeExercise(workoutID: workoutID.uuidString, exerciseName: removedName)
+        WatchSyncManager.shared.sendLiveAction(
+            LiveSyncPayload(action: .removeExercise, workoutID: workoutID.uuidString, exerciseName: removedName)
+        )
     }
 
     func finishWorkout(activeEnergy: Double, healthKitSavedOnWatch: Bool = false) async {

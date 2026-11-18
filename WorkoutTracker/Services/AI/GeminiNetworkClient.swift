@@ -77,8 +77,8 @@ actor GeminiNetworkClient {
 
     nonisolated static func makeSessionConfiguration() -> URLSessionConfiguration {
         let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = 30.0
-        config.timeoutIntervalForResource = 45.0
+        config.timeoutIntervalForRequest = 48.0
+        config.timeoutIntervalForResource = 60.0
         config.waitsForConnectivity = false
         return config
     }
@@ -146,11 +146,8 @@ actor GeminiNetworkClient {
         }
 
         guard (200...299).contains(http.statusCode) else {
-            if http.statusCode == 400 {
-                if let errorResp = try? JSONDecoder().decode(GoogleCloudErrorResponse.self, from: data),
-                   let msg = errorResp.error?.message {
-                    throw AILogicError.badRequest(reason: msg)
-                }
+            if http.statusCode == 400, let msg = Self.extractBadRequestMessage(from: data) {
+                throw AILogicError.badRequest(reason: msg)
             }
             let msg = String(data: data, encoding: .utf8) ?? "Unknown Error"
             throw AILogicError.apiError(statusCode: http.statusCode, message: msg)
@@ -158,6 +155,18 @@ actor GeminiNetworkClient {
         let decoded = try JSONDecoder().decode(GeminiResponse.self, from: data)
         guard let text = decoded.candidates.first?.content.parts.first?.text else { throw AILogicError.noDataReturned }
         return text
+    }
+
+    nonisolated private static func extractBadRequestMessage(from data: Data) -> String? {
+        if let errorResp = try? JSONDecoder().decode(GoogleCloudErrorResponse.self, from: data),
+           let msg = errorResp.error?.message, !msg.isEmpty {
+            return msg
+        }
+        if let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let msg = obj["message"] as? String, !msg.isEmpty {
+            return msg
+        }
+        return nil
     }
 
     func streamText(from requestBody: GeminiRequest) async throws -> AsyncThrowingStream<String, Error> {
@@ -172,12 +181,10 @@ actor GeminiNetworkClient {
         guard (200...299).contains(http.statusCode) else {
             var errorBody = ""
             for try await line in bytes.lines { errorBody += line }
-            if http.statusCode == 400 {
-                if let data = errorBody.data(using: .utf8),
-                   let errorResp = try? JSONDecoder().decode(GoogleCloudErrorResponse.self, from: data),
-                   let msg = errorResp.error?.message {
-                    throw AILogicError.badRequest(reason: msg)
-                }
+            if http.statusCode == 400,
+               let data = errorBody.data(using: .utf8),
+               let msg = Self.extractBadRequestMessage(from: data) {
+                throw AILogicError.badRequest(reason: msg)
             }
             throw AILogicError.apiError(statusCode: http.statusCode, message: errorBody)
         }

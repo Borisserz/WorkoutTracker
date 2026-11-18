@@ -91,6 +91,17 @@ struct AddWorkoutView: View {
         }
     }
 
+    private var displayPresets: [WorkoutPreset] {
+        var seenSystemNames = Set<String>()
+        return presets.filter { preset in
+            guard !preset.exercises.isEmpty else { return false }
+            if preset.isSystem {
+                return seenSystemNames.insert(preset.name).inserted
+            }
+            return true
+        }
+    }
+
     private var templateSelectionSection: some View {
         Section(
             header: Text(LocalizedStringKey("Choose Template")),
@@ -119,7 +130,7 @@ struct AddWorkoutView: View {
                 yOffset: -10
             )
 
-            ForEach(presets) { preset in
+            ForEach(displayPresets) { preset in
                 VStack(alignment: .leading, spacing: 0) {
                     Button {
                         withAnimation {

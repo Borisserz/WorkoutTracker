@@ -828,7 +828,7 @@ struct AchievementsFolderSheet: View {
                         selectedFilter = filter
                     }
                 } label: {
-                    Text(filter.rawValue)
+                    Text(LocalizedStringKey(filter.rawValue))
                         .font(.system(size: 12, weight: .bold, design: .rounded))
                         .foregroundStyle(isSelected ? PastelTheme.textOnOat : PastelTheme.textSecondary)
                         .padding(.horizontal, 14)

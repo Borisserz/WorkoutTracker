@@ -171,6 +171,11 @@ struct AIChatBotView: View {
                     sendMessage()
                 }
             }
+            .onDisappear {
+                if speechRecognizer.isRecording {
+                    speechRecognizer.stopTranscribing()
+                }
+            }
 
             .onChange(of: speechRecognizer.transcript) { _, newText in
                 if speechRecognizer.isRecording {

@@ -859,7 +859,7 @@ struct PremiumFeatureCard: View {
                     .padding(.bottom, 24)
                     
                     // Category Tag
-                    Text(item.category)
+                    Text(LocalizedStringKey(item.category))
                         .font(.system(size: 11, weight: .bold, design: .rounded))
                         .foregroundStyle(
                             LinearGradient(colors: item.colors, startPoint: .leading, endPoint: .trailing)
@@ -867,14 +867,14 @@ struct PremiumFeatureCard: View {
                         .padding(.bottom, 8)
                     
                     // Feature Title
-                    Text(item.title)
+                    Text(LocalizedStringKey(item.title))
                         .font(.system(size: 32, weight: .black, design: .rounded))
                         .foregroundStyle(themeManager.current.primaryText)
                         .padding(.bottom, 12)
                         .fixedSize(horizontal: false, vertical: true)
                     
                     // Feature Description
-                    Text(item.description)
+                    Text(LocalizedStringKey(item.description))
                         .font(.system(size: 15, weight: .medium, design: .rounded))
                         .foregroundStyle(themeManager.current.secondaryText)
                         .lineSpacing(5)
@@ -895,7 +895,7 @@ struct PremiumFeatureCard: View {
                         // Chips list
                         HStack(spacing: 6) {
                             ForEach(item.chips, id: \.self) { chip in
-                                Text(chip.uppercased())
+                                Text(LocalizedStringKey(chip))
                                     .font(.system(size: 9, weight: .bold, design: .rounded))
                                     .foregroundColor(themeManager.current.secondaryText)
                                     .padding(.horizontal, 10)

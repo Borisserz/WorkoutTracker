@@ -50,7 +50,8 @@ struct TemplatePreviewSheetView: View {
     @Environment(\.colorScheme) private var colorScheme 
     @Environment(ThemeManager.self) private var themeManager
     @State private var isSharing = false
-        @State private var shareItem: SharedFileWrapper?
+    @State private var shareItem: SharedFileWrapper?
+    @State private var pendingShareURL: URL?
     @State private var shareErrorMessage: String?
     @State private var selectedHistoryExercise: String? = nil
     @AppStorage(UGCConsent.storageKey) private var hasAcceptedUGCTerms = false
@@ -170,6 +171,25 @@ struct TemplatePreviewSheetView: View {
             } message: {
                 Text(shareErrorMessage ?? "")
             }
+            .alert(
+                LocalizedStringKey("Moderation in Progress"),
+                isPresented: Binding(
+                    get: { pendingShareURL != nil },
+                    set: { if !$0 { pendingShareURL = nil } }
+                )
+            ) {
+                Button(LocalizedStringKey("Share Link")) {
+                    if let url = pendingShareURL {
+                        pendingShareURL = nil
+                        shareItem = SharedFileWrapper(url: url)
+                    }
+                }
+                Button(LocalizedStringKey("Cancel"), role: .cancel) {
+                    pendingShareURL = nil
+                }
+            } message: {
+                Text(LocalizedStringKey("This workout is still being reviewed by automated moderation. Recipients will be able to open the link once approval finishes."))
+            }
             .safeAreaInset(edge: .bottom) {
                 startWorkoutButton
             }
@@ -249,7 +269,11 @@ struct TemplatePreviewSheetView: View {
             
             HStack(spacing: 6) {
                 Image(systemName: "list.number")
-                Text(LocalizedStringKey("\(item.exercises.count) exercises"))
+                if item.exercises.count == 1 {
+                    Text(LocalizedStringKey("1 exercise"))
+                } else {
+                    Text(LocalizedStringKey("\(item.exercises.count) exercises"))
+                }
             }
             .font(.system(size: 13, weight: .bold, design: .rounded))
             .foregroundColor(.white)
@@ -435,17 +459,23 @@ struct TemplatePreviewSheetView: View {
                     let uploadResult = try await FirestoreProgramService.shared.uploadSharedPreset(dto)
 
                     let workoutId: String
+                    let isPendingModeration: Bool
                     switch uploadResult {
                     case .approved(let id):
                         workoutId = id
+                        isPendingModeration = false
                     case .pending(let id):
- 
                         workoutId = id
+                        isPendingModeration = true
                     }
 
                     if let shareURL = URL(string: "workouttracker://shared?id=\(workoutId)") {
                         await MainActor.run {
-                            self.shareItem = SharedFileWrapper(url: shareURL)
+                            if isPendingModeration {
+                                self.pendingShareURL = shareURL
+                            } else {
+                                self.shareItem = SharedFileWrapper(url: shareURL)
+                            }
                             self.isSharing = false
                         }
                     } else {

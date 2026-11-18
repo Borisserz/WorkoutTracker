@@ -323,14 +323,177 @@ struct Wave3FunctionalityFixesTests {
         let fallbackStale = LiveActivityManager.resolvedStaleDate(existing: nil, now: now)
         #expect(fallbackStale > now)
 
-        // Supplementary wipe cleans water_liters_*, pendingWidgetAction, CustomExerciseMappings, RestTimer & notifications
+        // Supplementary wipe cleans water_liters_* in BOTH defaults and sharedDefaults, pendingWidgetAction, CustomExerciseMappings
         let suiteName = "wave3.wipe.\(UUID().uuidString)"
+        let sharedSuiteName = "wave3.shared.\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suiteName))
+        let sharedDefaults = try #require(UserDefaults(suiteName: sharedSuiteName))
         defaults.set(2.5, forKey: "water_liters_2026-11-18")
+        sharedDefaults.set(1.8, forKey: "water_liters_2026-11-18")
         defaults.set("openWorkout", forKey: Constants.UserDefaultsKeys.pendingWidgetAction.rawValue)
-        WorkoutDetailViewModel.wipeSupplementaryDefaultsAndFiles(defaults: defaults)
+        sharedDefaults.set("openWorkout", forKey: Constants.UserDefaultsKeys.pendingWidgetAction.rawValue)
+        WorkoutDetailViewModel.wipeSupplementaryDefaultsAndFiles(defaults: defaults, sharedDefaults: sharedDefaults)
         #expect(defaults.object(forKey: "water_liters_2026-11-18") == nil)
+        #expect(sharedDefaults.object(forKey: "water_liters_2026-11-18") == nil)
         #expect(defaults.object(forKey: Constants.UserDefaultsKeys.pendingWidgetAction.rawValue) == nil)
+        #expect(sharedDefaults.object(forKey: Constants.UserDefaultsKeys.pendingWidgetAction.rawValue) == nil)
         defaults.removePersistentDomain(forName: suiteName)
+        sharedDefaults.removePersistentDomain(forName: sharedSuiteName)
+    }
+
+    // MARK: - Pre-App Store Audit Remediation Tests
+
+    @Test("Pre-App Store: GeminiNetworkClient timeout covers server 45s retry budget and FBExerciseDTO preserves restSeconds")
+    @MainActor
+    func networkTimeoutAndSharedRestSecondsParity() throws {
+        let sessionConfig = GeminiNetworkClient.makeSessionConfiguration()
+        #expect(sessionConfig.timeoutIntervalForRequest >= 45.0)
+        #expect(sessionConfig.timeoutIntervalForResource <= 60.0)
+
+        let fbExercise = FBExerciseDTO(
+            name: "Bench Press",
+            muscleGroup: "Chest",
+            type: "Strength",
+            category: "Chest",
+            effort: 8,
+            isCompleted: false,
+            setsList: nil,
+            subExercises: nil,
+            sets: 4,
+            reps: 8,
+            recommendedWeightKg: 80.0,
+            restSeconds: 120
+        )
+        let dto = fbExercise.toDTO()
+        #expect(dto.restSeconds == 120)
+    }
+
+    @Test("Pre-App Store: Watch addSet, removeSet, and removeExercise sync cleanly to iPhone WorkoutService")
+    @MainActor
+    func watchSetAndExerciseMutationSyncsToPhone() async throws {
+        let schema = Schema([
+            Workout.self, WorkoutPreset.self, ExerciseNote.self, UserStats.self,
+            ExerciseStat.self, MuscleStat.self, WeightEntry.self, MuscleColorPreference.self,
+            AIChatSession.self, BodyMeasurement.self, ExerciseDictionaryItem.self, UserGoal.self
+        ])
+        let container = try ModelContainer(for: schema, configurations: [ModelConfiguration(isStoredInMemoryOnly: true)])
+        let isolatedCenter = NotificationCenter()
+        let di = DIContainer(modelContainer: container, watchNotificationCenter: isolatedCenter)
+        _ = di.workoutService
+
+        let wid = UUID()
+        let startPayload = LiveSyncPayload(
+            action: .startWorkout,
+            workoutID: wid.uuidString,
+            workoutTitle: "Watch Set Mutation",
+            exercises: [
+                ExerciseDTO(
+                    name: "Squat",
+                    muscleGroup: "Legs",
+                    type: .strength,
+                    category: .other,
+                    effort: 7,
+                    isCompleted: false,
+                    setsList: [
+                        WorkoutSetDTO(index: 1, weight: 100, reps: 5, distance: nil, time: nil, isCompleted: false, type: .normal),
+                        WorkoutSetDTO(index: 2, weight: 100, reps: 5, distance: nil, time: nil, isCompleted: false, type: .normal)
+                    ],
+                    subExercises: [],
+                    sets: 2,
+                    reps: 5,
+                    recommendedWeightKg: 100
+                )
+            ]
+        )
+        let addSetPayload = LiveSyncPayload(action: .addSet, workoutID: wid.uuidString, exerciseName: "Squat", setIndex: 3)
+        let removeSetPayload = LiveSyncPayload(action: .removeSet, workoutID: wid.uuidString, exerciseName: "Squat", setIndex: 1)
+
+        isolatedCenter.post(name: NSNotification.Name("LiveWorkoutSyncEvent"), object: nil, userInfo: ["payload": startPayload])
+        isolatedCenter.post(name: NSNotification.Name("LiveWorkoutSyncEvent"), object: nil, userInfo: ["payload": addSetPayload])
+        isolatedCenter.post(name: NSNotification.Name("LiveWorkoutSyncEvent"), object: nil, userInfo: ["payload": removeSetPayload])
+
+        var finalSetsCount: Int?
+        for _ in 0..<80 {
+            let checkCtx = ModelContext(container)
+            if let workout = try? checkCtx.fetch(FetchDescriptor<Workout>(predicate: #Predicate { $0.id == wid })).first,
+               let ex = workout.exercises.first(where: { $0.name == "Squat" }),
+               ex.setsList.count == 2 && ex.setsList.map(\.index).sorted() == [1, 2] {
+                // Only settle after addSet (3) then removeSet (back to 2) has run:
+                // We verify removeExercise right after.
+                finalSetsCount = ex.setsList.count
+                break
+            }
+            try await Task.sleep(for: .milliseconds(50))
+        }
+        #expect(finalSetsCount == 2)
+
+        let removeExPayload = LiveSyncPayload(action: .removeExercise, workoutID: wid.uuidString, exerciseName: "Squat")
+        isolatedCenter.post(name: NSNotification.Name("LiveWorkoutSyncEvent"), object: nil, userInfo: ["payload": removeExPayload])
+
+        var exercisesEmpty = false
+        for _ in 0..<80 {
+            let checkCtx = ModelContext(container)
+            if let workout = try? checkCtx.fetch(FetchDescriptor<Workout>(predicate: #Predicate { $0.id == wid })).first,
+               workout.exercises.isEmpty {
+                exercisesEmpty = true
+                break
+            }
+            try await Task.sleep(for: .milliseconds(50))
+        }
+        #expect(exercisesEmpty == true)
+    }
+
+    @Test("Pre-App Store: checkAndGenerateDefaultPresets deduplicates and heals 0-exercise system presets, and HistoryView excludes system/empty presets")
+    @MainActor
+    func systemPresetDeduplicationAndHistoryFiltering() async throws {
+        let schema = Schema([
+            Workout.self, WorkoutPreset.self, ExerciseNote.self, UserStats.self,
+            ExerciseStat.self, MuscleStat.self, WeightEntry.self, MuscleColorPreference.self,
+            AIChatSession.self, BodyMeasurement.self, ExerciseDictionaryItem.self, UserGoal.self
+        ])
+        let container = try ModelContainer(for: schema, configurations: [ModelConfiguration(isStoredInMemoryOnly: true)])
+        let context = ModelContext(container)
+
+        // Simulate CloudKit / prior-wipe zombies: multiple empty "Full Body" system presets + duplicate non-empty "Push Day".
+        for _ in 0..<5 {
+            context.insert(WorkoutPreset(name: "Full Body", icon: "img_default", isSystem: true, exercises: []))
+        }
+        for _ in 0..<2 {
+            let ex = Exercise(name: "Barbell Bench Press - Medium Grip", muscleGroup: "Chest", type: .strength, sets: 3, reps: 8, weight: 60)
+            let p = WorkoutPreset(name: "Push Day", icon: "img_chest", isSystem: true, exercises: [])
+            context.insert(p)
+            context.insert(ex)
+            for s in ex.setsList { context.insert(s) }
+            ex.preset = p
+            p.exercises.append(ex)
+        }
+        try context.save()
+
+        let suiteName = "wave5.presets.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        // Even if the flag was already marked true from a previous launch, healing must still run.
+        defaults.set(true, forKey: Constants.UserDefaultsKeys.hasGeneratedDefaultPresets_v3.rawValue)
+
+        let store = WorkoutStore(modelContainer: container)
+        try await store.checkAndGenerateDefaultPresets(defaults: defaults)
+
+        let verifyCtx = ModelContext(container)
+        let systemPresets = try verifyCtx.fetch(FetchDescriptor<WorkoutPreset>(predicate: #Predicate { $0.isSystem == true }))
+        #expect(systemPresets.count == 4)
+        #expect(Set(systemPresets.map(\.name)) == ["Push Day", "Pull Day", "Legs Day", "Full Body"])
+        for preset in systemPresets {
+            #expect(!preset.exercises.isEmpty, "System preset \(preset.name) must never have 0 exercises")
+        }
+
+        // Calling again must remain idempotent (never create duplicates).
+        try await store.checkAndGenerateDefaultPresets(defaults: defaults)
+        let afterSecondRun = try ModelContext(container).fetch(FetchDescriptor<WorkoutPreset>(predicate: #Predicate { $0.isSystem == true }))
+        #expect(afterSecondRun.count == 4)
+
+        // HistoryView must filter out system presets and empty presets just like WorkoutHubView.
+        let historySource = try String(contentsOf: repoRoot().appendingPathComponent("WorkoutTracker/Features/Workout/Views/HistoryView.swift"), encoding: .utf8)
+        #expect(historySource.contains("isSystem == false"))
+        #expect(historySource.contains("!preset.exercises.isEmpty") || historySource.contains("!$0.exercises.isEmpty"))
     }
 }

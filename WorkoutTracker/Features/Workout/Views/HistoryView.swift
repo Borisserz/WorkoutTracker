@@ -45,7 +45,10 @@ struct HistoryView: View {
         favorites.fetchLimit = 200
         _favoriteWorkouts = Query(favorites)
 
-        var presets = FetchDescriptor<WorkoutPreset>(sortBy: [SortDescriptor(\.name)])
+        var presets = FetchDescriptor<WorkoutPreset>(
+            predicate: #Predicate<WorkoutPreset> { $0.isSystem == false },
+            sortBy: [SortDescriptor(\.name)]
+        )
         presets.fetchLimit = 400
         _allPresets = Query(presets)
     }
@@ -82,11 +85,8 @@ struct HistoryView: View {
     }()
 
     private var displayTemplates: [WorkoutPreset] {
-        // Only persisted presets — never invent unsaved mock templates.
-        if !allPresets.isEmpty {
-            return allPresets
-        }
-        return []
+        // Only persisted non-empty user routines — never invent unsaved mock templates or 0-exercise ghosts.
+        allPresets.filter { !$0.exercises.isEmpty }
     }
 
     // MARK: - Computed Filtered Workouts

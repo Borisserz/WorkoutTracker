@@ -14,11 +14,12 @@ actor WatchWorkoutStore {
         return workout.persistentModelID
     }
 
-    func logSet(workoutID: String, exerciseName: String, weight: Double, reps: Int) throws {
+    func logSet(workoutID: String, exerciseName: String, setIndex: Int, weight: Double, reps: Int) throws {
         guard let workout = try workout(forID: workoutID) else { return }
 
         let exercise: Exercise
-        if let existing = workout.exercises.first(where: { $0.name == exerciseName && !$0.isCompleted }) {
+        if let existing = workout.exercises.first(where: { $0.name == exerciseName && !$0.isCompleted })
+            ?? workout.exercises.first(where: { $0.name == exerciseName }) {
             exercise = existing
         } else {
             exercise = Exercise(name: exerciseName, muscleGroup: "Mixed", type: .strength, sets: 0, reps: 0, weight: 0)
@@ -27,12 +28,16 @@ actor WatchWorkoutStore {
             exercise.workout = workout
         }
 
-        let nextIndex = (exercise.setsList.max(by: { $0.index < $1.index })?.index ?? 0) + 1
-        let newSet = WorkoutSet(index: nextIndex, weight: weight, reps: reps, isCompleted: true, type: .normal)
-
-        modelContext.insert(newSet)
-        exercise.setsList.append(newSet)
-        newSet.exercise = exercise
+        if let existingSet = exercise.setsList.first(where: { $0.index == setIndex }) {
+            existingSet.weight = weight
+            existingSet.reps = reps
+            existingSet.isCompleted = true
+        } else {
+            let newSet = WorkoutSet(index: setIndex, weight: weight, reps: reps, isCompleted: true, type: .normal)
+            modelContext.insert(newSet)
+            exercise.setsList.append(newSet)
+            newSet.exercise = exercise
+        }
 
         try modelContext.save()
     }

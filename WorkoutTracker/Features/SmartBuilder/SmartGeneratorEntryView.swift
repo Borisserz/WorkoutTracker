@@ -321,11 +321,11 @@ struct SmartGeneratorEntryView: View {
                     }
 
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(title)
+                        Text(LocalizedStringKey(title))
                             .font(.system(size: 15, weight: .bold, design: .rounded))
                             .foregroundStyle(PastelTheme.textPrimary)
 
-                        Text(desc)
+                        Text(LocalizedStringKey(desc))
                             .font(.system(size: 11, weight: .medium))
                             .foregroundStyle(isRecommended ? PastelTheme.pastelSage : PastelTheme.textSecondary)
                             .lineLimit(2)
@@ -388,7 +388,7 @@ struct SmartGeneratorEntryView: View {
                             .foregroundStyle(PastelTheme.pastelLavender)
                     }
 
-                    Text(item.title)
+                    Text(LocalizedStringKey(item.title))
                         .font(.system(size: 17, weight: .bold, design: .rounded))
                         .foregroundStyle(PastelTheme.textPrimary)
 
@@ -402,7 +402,7 @@ struct SmartGeneratorEntryView: View {
                     .buttonStyle(.plain)
                 }
 
-                Text(item.reason)
+                Text(LocalizedStringKey(item.reason))
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(PastelTheme.textSecondary)
                     .lineSpacing(3)

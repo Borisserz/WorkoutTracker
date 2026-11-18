@@ -631,6 +631,11 @@ final class WorkoutDetailViewModel {
         for key in defaults.dictionaryRepresentation().keys where key.hasPrefix("water_liters_") {
             defaults.removeObject(forKey: key)
         }
+        if let sharedDefaults {
+            for key in sharedDefaults.dictionaryRepresentation().keys where key.hasPrefix("water_liters_") {
+                sharedDefaults.removeObject(forKey: key)
+            }
+        }
         let pendingWidgetKey = Constants.UserDefaultsKeys.pendingWidgetAction.rawValue
         defaults.removeObject(forKey: pendingWidgetKey)
         sharedDefaults?.removeObject(forKey: pendingWidgetKey)

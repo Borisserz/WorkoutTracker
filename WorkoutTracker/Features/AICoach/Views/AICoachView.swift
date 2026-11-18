@@ -322,6 +322,11 @@ struct AICoachView: View {
             .onAppear {
                 TrackingManager.shared.track(.aiCoachOpened(source: "tab"))
             }
+            .onDisappear {
+                if speechRecognizer.isRecording {
+                    speechRecognizer.stopTranscribing()
+                }
+            }
             .sheet(isPresented: $showRestSheet, onDismiss: {
                 recoveryCheckDay = RecoveryDailyCheck.todayKey()
             }) { RestAnalysisSheet().presentationDetents([.large]).presentationCornerRadius(35).presentationDragIndicator(.visible) }
@@ -438,12 +443,12 @@ struct PastelBentoCard: View {
             }
 
             VStack(alignment: .leading, spacing: 3) {
-                Text(title)
+                Text(LocalizedStringKey(title))
                     .font(.system(size: 15, weight: .bold, design: .rounded))
                     .foregroundStyle(PastelTheme.textPrimary)
 
                 if let sub = subtitle {
-                    Text(sub)
+                    Text(LocalizedStringKey(sub))
                         .font(.system(size: 11, weight: .medium, design: .rounded))
                         .foregroundStyle(PastelTheme.textSecondary)
                         .lineLimit(2)
@@ -473,7 +478,7 @@ struct SectionHeaderView: View {
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(accentColor)
 
-            Text(title)
+            Text(LocalizedStringKey(title))
                 .font(.system(size: 14, weight: .bold, design: .rounded))
                 .foregroundStyle(PastelTheme.textPrimary)
 
@@ -592,7 +597,7 @@ struct InteractiveCoachDialogCard: View {
                                         .font(.system(size: 11, weight: .semibold))
                                         .foregroundStyle(PastelTheme.pastelLavender)
 
-                                    Text(item.text)
+                                    Text(LocalizedStringKey(item.text))
                                         .font(.system(size: 12, weight: .semibold, design: .rounded))
                                         .foregroundStyle(PastelTheme.textSecondary)
                                 }
@@ -1146,8 +1151,8 @@ struct ProgressAnalysisSheet: View {
 
     @State private var isAnalyzing = true
     @State private var impulseValue: Int = 0
-    @State private var impulseMuscle: String = "Chest"
-    @State private var aiConclusion: String = "Analyzing muscle load distribution…"
+    @State private var impulseMuscle: String = String(localized: "Chest")
+    @State private var aiConclusion: String = String(localized: "Analyzing muscle load distribution…")
 
     @State private var appearAnimate = false
 
@@ -1517,13 +1522,13 @@ struct ProgressAnalysisSheet: View {
 
     private func localizeMuscle(_ englishName: String) -> String {
         switch englishName {
-        case "Chest": return "Chest"
-        case "Back": return "Back"
-        case "Legs": return "Legs"
-        case "Shoulders": return "Shoulders"
-        case "Arms": return "Arms"
-        case "Core": return "Core"
-        case "Cardio": return "Cardio"
+        case "Chest": return String(localized: "Chest")
+        case "Back": return String(localized: "Back")
+        case "Legs": return String(localized: "Legs")
+        case "Shoulders": return String(localized: "Shoulders")
+        case "Arms": return String(localized: "Arms")
+        case "Core": return String(localized: "Core")
+        case "Cardio": return String(localized: "Cardio")
         default: return LocalizationHelper.shared.translateName(englishName)
         }
     }

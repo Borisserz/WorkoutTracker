@@ -27,6 +27,16 @@ struct WatchWorkoutHubView: View {
                     List {
                         Button {
                             WKInterfaceDevice.current().play(.click)
+                            startEmptyWorkout()
+                        } label: {
+                            Label("Start Empty Workout", systemImage: "plus.circle.fill")
+                                .font(.system(size: 15, weight: .bold))
+                        }
+                        .listRowBackground(WatchTheme.green.opacity(0.24))
+                        .listItemTint(WatchTheme.green)
+
+                        Button {
+                            WKInterfaceDevice.current().play(.click)
                             WatchSyncManager.shared.requestPresetsFromPhone()
                         } label: {
                             Label("Sync with iPhone", systemImage: "arrow.triangle.2.circlepath")
@@ -76,22 +86,42 @@ struct WatchWorkoutHubView: View {
     }
 
     private var emptyState: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "iphone.and.arrow.forward")
-                .font(.largeTitle)
-                .foregroundColor(WatchTheme.cyan)
-            Text("No routines found.\nCreate them on your iPhone and tap Sync.")
-                .font(.footnote)
-                .multilineTextAlignment(.center)
-                .foregroundColor(.gray)
+        ScrollView {
+            VStack(spacing: 10) {
+                Button {
+                    WKInterfaceDevice.current().play(.click)
+                    startEmptyWorkout()
+                } label: {
+                    Label("Start Empty Workout", systemImage: "plus.circle.fill")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(WatchTheme.green)
 
-            Button("Sync Now") {
-                WatchSyncManager.shared.requestPresetsFromPhone()
+                Text("Or create routines on your iPhone and tap Sync.")
+                    .font(.footnote)
+                    .multilineTextAlignment(.center)
+                    .foregroundColor(.gray)
+
+                Button("Sync Now") {
+                    WatchSyncManager.shared.requestPresetsFromPhone()
+                }
+                .buttonStyle(.bordered)
+                .tint(WatchTheme.blue)
             }
-            .buttonStyle(.borderedProminent)
-            .tint(WatchTheme.blue)
+            .padding()
         }
-        .padding()
+    }
+
+    private func startEmptyWorkout() {
+        let vm = WatchActiveWorkoutViewModel(
+            workoutID: UUID(),
+            workoutTitle: String(localized: "Quick Workout"),
+            presetDTO: nil,
+            store: WatchWorkoutStore(modelContainer: context.container)
+        )
+        vm.listenForRemoteUpdates()
+        activeWorkoutVM = vm
     }
 
     private func startPresetWorkout(_ preset: WorkoutPreset) {

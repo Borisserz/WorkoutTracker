@@ -16,12 +16,12 @@ struct WatchTheme {
 struct WatchRPEHelper {
     static func getDescription(for rpe: Int) -> String {
         switch rpe {
-        case 1...4: return "Could easily do 5+ more reps"
-        case 5...6: return "Could do 4 more reps"
-        case 7: return "Could've done 3 more reps"
-        case 8: return "Could've done 2 more reps"
-        case 9: return "Could've done 1 more rep"
-        case 10: return "Absolute failure. 0 reps in reserve."
+        case 1...4: return String(localized: "Could easily do 5+ more reps")
+        case 5...6: return String(localized: "Could do 4 more reps")
+        case 7: return String(localized: "Could've done 3 more reps")
+        case 8: return String(localized: "Could've done 2 more reps")
+        case 9: return String(localized: "Could've done 1 more rep")
+        case 10: return String(localized: "Absolute failure. 0 reps in reserve.")
         default: return ""
         }
     }

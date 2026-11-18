@@ -54,10 +54,37 @@ final class SmartCaptureViewModel: NSObject {
 
     deinit {
         countdownTask?.cancel()
+        videoOutput.setSampleBufferDelegate(nil, queue: nil)
         let captureSession = session
         Task.detached {
             if captureSession.isRunning {
                 captureSession.stopRunning()
+            }
+        }
+    }
+
+    func stopSession() {
+        countdownTask?.cancel()
+        countdownTask = nil
+        countdown = nil
+        setCapturePaused(false)
+        videoOutput.setSampleBufferDelegate(nil, queue: nil)
+        let captureSession = session
+        Task.detached {
+            if captureSession.isRunning {
+                captureSession.stopRunning()
+            }
+        }
+    }
+
+    func resumeSessionIfNeeded() {
+        guard isAuthorized, !cameraUnavailable, !session.isRunning else { return }
+        let cameraQueue = DispatchQueue(label: "com.workouttracker.smartcamera", qos: .userInteractive)
+        videoOutput.setSampleBufferDelegate(self, queue: cameraQueue)
+        let captureSession = session
+        Task.detached {
+            if !captureSession.isRunning {
+                captureSession.startRunning()
             }
         }
     }

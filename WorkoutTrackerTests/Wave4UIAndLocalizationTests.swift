@@ -354,4 +354,33 @@ struct Wave4UIAndLocalizationTests {
         #expect(capturedDates.count == 3)
         #expect(defaults.double(forKey: FutureSelfCommitmentScheduler.dateKey) == weekendDate.timeIntervalSince1970)
     }
+
+    @Test("Pre-App Store: SmartCapture, Speech, Watch empty start, discard sync, and Vision feedback tone are wired")
+    func preAppStoreAuditRemediationChecks() throws {
+        let smartCaptureView = try readSource("WorkoutTracker/Features/Profile/SmartCaptureView.swift")
+        #expect(smartCaptureView.contains("viewModel.stopSession()"))
+        #expect(smartCaptureView.contains("scenePhase"))
+
+        let aiCoachView = try readSource("WorkoutTracker/Features/AICoach/Views/AICoachView.swift")
+        #expect(aiCoachView.contains("speechRecognizer.stopTranscribing()"))
+        let aiChatBotView = try readSource("WorkoutTracker/Features/AICoach/Views/AIChatBotView.swift")
+        #expect(aiChatBotView.contains("speechRecognizer.stopTranscribing()"))
+
+        let aiTrackerView = try readSource("WorkoutTracker/MlVision/AITrackerView.swift")
+        #expect(aiTrackerView.contains("engine.feedbackTone"))
+        #expect(!aiTrackerView.contains("lowercased.contains(\"occluded\")"))
+
+        let watchHub = try readSource("WatchApp/Views/WatchWorkoutHubView.swift")
+        #expect(watchHub.contains("Start Empty Workout"))
+
+        let workoutService = try readSource("WorkoutTracker/Services/Domain/WorkoutService.swift")
+        #expect(workoutService.contains("sendDiscardWorkoutToWatch"))
+
+        let settingsView = try readSource("WorkoutTracker/Features/Settings/SettingsView.swift")
+        #expect(settingsView.contains("BlockedUsersSettingsView"))
+
+        let bodyHeatmap = try readSource("WorkoutTracker/SharedUI/Components/BodyHeatmapView.swift")
+        #expect(bodyHeatmap.contains("if showLabels && isCompactMode"))
+        #expect(bodyHeatmap.contains("1 exercise"))
+    }
 }

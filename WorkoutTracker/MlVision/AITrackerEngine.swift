@@ -211,7 +211,7 @@ public enum ExerciseRegistry: Sendable {
             thresholds: PhaseThresholds(relaxed: 165.0, contracted: 90.0, hysteresis: 15.0),
             maxOccludedFrames: 10,
             primaryMuscles: ["quadriceps", "gluteal"], secondaryMuscles: ["hamstring", "lower-back", "calves"],
-            texts: PhaseTexts(contracting: "Lower deep...", contracted: "Drive up!", extending: "Stand tall", relaxed: "Ready"))
+            texts: PhaseTexts(contracting: String(localized: "Lower deep..."), contracted: String(localized: "Drive up!"), extending: String(localized: "Stand tall"), relaxed: String(localized: "Ready")))
     }
 
     private static func horizontalPress(name: String) -> BiomechanicsProfile {
@@ -220,7 +220,7 @@ public enum ExerciseRegistry: Sendable {
             thresholds: PhaseThresholds(relaxed: 160.0, contracted: 75.0, hysteresis: 15.0),
             maxOccludedFrames: 8,
             primaryMuscles: ["chest", "triceps"], secondaryMuscles: ["deltoids"],
-            texts: PhaseTexts(contracting: "Lower slowly...", contracted: "Press hard!", extending: "Lock out", relaxed: "Arms straight"))
+            texts: PhaseTexts(contracting: String(localized: "Lower slowly..."), contracted: String(localized: "Press hard!"), extending: String(localized: "Lock out"), relaxed: String(localized: "Arms straight")))
     }
 
     private static func verticalPull(name: String) -> BiomechanicsProfile {
@@ -247,7 +247,7 @@ public enum ExerciseRegistry: Sendable {
             thresholds: PhaseThresholds(relaxed: 60.0, contracted: 160.0, hysteresis: 15.0),
             maxOccludedFrames: 8,
             primaryMuscles: ["deltoids", "triceps"], secondaryMuscles: ["trapezius"],
-            texts: PhaseTexts(contracting: "Press overhead!", contracted: "Locked out", extending: "Lower safely", relaxed: "Ready"))
+            texts: PhaseTexts(contracting: String(localized: "Press overhead!"), contracted: String(localized: "Locked out"), extending: String(localized: "Lower safely"), relaxed: String(localized: "Ready")))
     }
 
     private static func hingePattern(name: String) -> BiomechanicsProfile {
@@ -256,7 +256,7 @@ public enum ExerciseRegistry: Sendable {
             thresholds: PhaseThresholds(relaxed: 170.0, contracted: 90.0, hysteresis: 15.0),
             maxOccludedFrames: 10,
             primaryMuscles: ["hamstring", "gluteal", "lower-back"], secondaryMuscles: ["trapezius", "forearm"],
-            texts: PhaseTexts(contracting: "Hinge hips...", contracted: "Thrust hips!", extending: "Lock hips", relaxed: "Standing tall"))
+            texts: PhaseTexts(contracting: String(localized: "Hinge hips..."), contracted: String(localized: "Thrust hips!"), extending: String(localized: "Lock hips"), relaxed: String(localized: "Standing tall")))
     }
 
     private static func lungePattern(name: String) -> BiomechanicsProfile {
@@ -265,7 +265,7 @@ public enum ExerciseRegistry: Sendable {
             thresholds: PhaseThresholds(relaxed: 170.0, contracted: 90.0, hysteresis: 15.0),
             maxOccludedFrames: 10,
             primaryMuscles: ["quadriceps", "gluteal", "hamstring"], secondaryMuscles: ["calves"],
-            texts: PhaseTexts(contracting: "Drop knee...", contracted: "Push through heel!", extending: "Rise up", relaxed: "Feet together"))
+            texts: PhaseTexts(contracting: String(localized: "Drop knee..."), contracted: String(localized: "Push through heel!"), extending: String(localized: "Rise up"), relaxed: String(localized: "Feet together")))
     }
 
     private static func tricepsExtension(name: String) -> BiomechanicsProfile {
@@ -488,11 +488,18 @@ public final class RepetitionTracker {
 
 // MARK: - AITrackerEngine
 
+public enum TrackingFeedbackTone: Sendable {
+    case normal
+    case warning
+    case tracking
+}
+
 @MainActor
 public final class AITrackerEngine: ObservableObject {
 
     @Published public private(set) var repsCount: Int = 0
     @Published public private(set) var feedbackMessage: String = String(localized: "Initializing AI...")
+    @Published public private(set) var feedbackTone: TrackingFeedbackTone = .normal
     @Published public private(set) var isTrackingAction: Bool = false
     @Published public var liveMuscleTension: [String: Int] = [:]
     @Published public private(set) var vbtWarningTriggered: Bool = false
@@ -592,16 +599,30 @@ public final class AITrackerEngine: ObservableObject {
         self.liveMuscleTension = newTension
 
         let newFeedback: String
+        let newTone: TrackingFeedbackTone
         switch state.phase {
-        case .relaxed:     newFeedback = profile.texts.relaxed
-        case .contracting: newFeedback = profile.texts.contracting
-        case .contracted:  newFeedback = profile.texts.contracted
-        case .extending:   newFeedback = profile.texts.extending
-        case .unknown:     newFeedback = String(localized: "Body parts occluded. Adjust camera!")
+        case .relaxed:
+            newFeedback = profile.texts.relaxed
+            newTone = isTrackingAction ? .tracking : .normal
+        case .contracting:
+            newFeedback = profile.texts.contracting
+            newTone = .tracking
+        case .contracted:
+            newFeedback = profile.texts.contracted
+            newTone = .tracking
+        case .extending:
+            newFeedback = profile.texts.extending
+            newTone = .tracking
+        case .unknown:
+            newFeedback = String(localized: "Body parts occluded. Adjust camera!")
+            newTone = .warning
         }
 
         if self.feedbackMessage != newFeedback {
             self.feedbackMessage = newFeedback
+        }
+        if self.feedbackTone != newTone {
+            self.feedbackTone = newTone
         }
     }
 
@@ -609,6 +630,7 @@ public final class AITrackerEngine: ObservableObject {
         self.repsCount = 0
         self.liveMuscleTension.removeAll()
         self.isTrackingAction = false
+        self.feedbackTone = .normal
         self.mlEngine.reset()
 
         if let profile = self.profile {

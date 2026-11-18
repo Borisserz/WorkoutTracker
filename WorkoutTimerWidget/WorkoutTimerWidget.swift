@@ -74,7 +74,7 @@ struct WorkoutTimerWidget: Widget {
                     Image(systemName: "figure.strengthtraining.traditional").foregroundColor(WidgetPastel.sage)
                 }
             }
-            .widgetURL(nil)
+            .widgetURL(URL(string: "workouttracker://tab?index=2"))
         }
     }
 }

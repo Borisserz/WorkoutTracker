@@ -190,7 +190,7 @@ struct BodyHeatmapView: View {
                             drawGhostMuscle(muscle, centeringOffset: centeringOffset)
                         }
 
-                        if showLabels {
+                        if showLabels && isCompactMode {
                             if let sel = selectedMuscle ?? (selectedMuscleSlug != nil ? currentMuscles.first(where: { $0.slug == selectedMuscleSlug }) : nil) {
                                 drawMuscleTag(sel, centeringOffset: centeringOffset, scale: scale)
                                     .transition(.scale(scale: 0.85).combined(with: .opacity))
@@ -228,7 +228,6 @@ struct BodyHeatmapView: View {
                 .overlay(alignment: .bottom) {
                     if let muscle = selectedMuscle, !isCompactMode {
                         let locName = NSLocalizedString(muscle.name, comment: "")
-                        let badgeColor = activeIsFront ? Color.blue : Color.red
 
                         Group {
                             if isRecoveryMode {
@@ -239,18 +238,26 @@ struct BodyHeatmapView: View {
                                 }
                             } else {
                                 let count = rawMuscleCounts?[muscle.slug] ?? 0
-                                let locLabel = NSLocalizedString(countLabel, comment: "")
-                                Text("\(locName): \(count) \(locLabel)")
+                                if countLabel == "exercises" {
+                                    if count == 1 {
+                                        Text("\(locName): \(String(localized: "1 exercise"))")
+                                    } else {
+                                        Text("\(locName): \(String(localized: "\(count) exercises"))")
+                                    }
+                                } else {
+                                    let locLabel = NSLocalizedString(countLabel, comment: "")
+                                    Text("\(locName): \(count) \(locLabel)")
+                                }
                             }
                         }
-                        .font(.system(size: 16, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 20)
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .foregroundColor(PastelTheme.textOnOat)
+                        .padding(.horizontal, 18)
                         .padding(.vertical, 10)
-                        .background(badgeColor.opacity(0.9))
+                        .background(PastelTheme.pastelOat)
                         .clipShape(Capsule())
-                        .overlay(Capsule().stroke(Color.white.opacity(0.3), lineWidth: 1))
-                        .shadow(color: badgeColor.opacity(0.6), radius: 10, y: 5)
+                        .overlay(Capsule().stroke(PastelTheme.cardBorderFocused, lineWidth: 1))
+                        .shadow(color: Color.black.opacity(0.3), radius: 8, y: 4)
                         .padding(.bottom, 60)
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                     }

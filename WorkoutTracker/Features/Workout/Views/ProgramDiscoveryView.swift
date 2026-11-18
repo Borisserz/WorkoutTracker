@@ -371,7 +371,7 @@ struct ProgramPressurePlate: View {
             VStack(alignment: .leading, spacing: 8) {
                 // Top Row: Level Pill & Equipment Icon
                 HStack(spacing: 4) {
-                    Text(program.level.rawValue)
+                    Text(LocalizedStringKey(program.level.rawValue))
                         .font(.system(size: 8.5, weight: .heavy, design: .rounded))
                         .foregroundStyle(levelColor)
                         .padding(.horizontal, 6)

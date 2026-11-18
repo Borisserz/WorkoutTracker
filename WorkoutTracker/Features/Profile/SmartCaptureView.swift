@@ -5,6 +5,7 @@ import UIKit
 
 struct SmartCaptureView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var scenePhase
     @State private var viewModel = SmartCaptureViewModel()
 
     let referenceImage: UIImage?
@@ -67,6 +68,19 @@ struct SmartCaptureView: View {
             }
         }
         .preferredColorScheme(.dark)
+        .onDisappear {
+            viewModel.stopSession()
+        }
+        .onChange(of: scenePhase) { _, phase in
+            switch phase {
+            case .background, .inactive:
+                viewModel.stopSession()
+            case .active:
+                viewModel.resumeSessionIfNeeded()
+            @unknown default:
+                break
+            }
+        }
         .alert(
             LocalizedStringKey("Couldn't Capture Photo"),
             isPresented: $viewModel.captureFailed

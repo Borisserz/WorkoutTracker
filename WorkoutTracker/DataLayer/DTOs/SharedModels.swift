@@ -34,7 +34,10 @@ struct WatchUserSettings: Codable, Sendable, Equatable {
 enum SyncActionType: String, Codable, Sendable {
     case startWorkout
     case logSet
+    case addSet
+    case removeSet
     case addExercise
+    case removeExercise
     case updateEffort
     case finishWorkout
     case discardWorkout

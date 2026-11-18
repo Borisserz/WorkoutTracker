@@ -577,35 +577,55 @@ actor WorkoutStore: WorkoutStoreProtocol {
     }
 
     func checkAndGenerateDefaultPresets() async throws {
-            let defaults = UserDefaults.standard
-            let flagKey = Constants.UserDefaultsKeys.hasGeneratedDefaultPresets_v3.rawValue
+        try await checkAndGenerateDefaultPresets(defaults: .standard)
+    }
 
-            guard !defaults.bool(forKey: flagKey) else { return }
+    func checkAndGenerateDefaultPresets(defaults: UserDefaults) async throws {
+        let flagKey = Constants.UserDefaultsKeys.hasGeneratedDefaultPresets_v3.rawValue
+        let hasGeneratedBefore = defaults.bool(forKey: flagKey)
 
-            let templates: [(name: String, icon: String, exercises: [(n: String, g: String, s: Int, r: Int, w: Double)])] = [
-                ("Push Day", "img_chest", [
-                    ("Barbell Bench Press - Medium Grip", "Chest", 4, 8, 60.0),
-                    ("Standing Military Press", "Shoulders", 3, 10, 40.0),
-                    ("Triceps Pushdown", "Arms", 3, 12, 20.0)
-                ]),
-                ("Pull Day", "img_back", [
-                    ("Pullups", "Back", 4, 8, 0.0),
-                    ("Bent Over Barbell Row", "Back", 3, 10, 50.0),
-                    ("Barbell Curl", "Arms", 3, 12, 25.0)
-                ]),
-                ("Legs Day", "img_legs", [
-                    ("Barbell Squat", "Legs", 4, 8, 80.0),
-                    ("Leg Press", "Legs", 3, 12, 120.0),
-                    ("Standing Barbell Calf Raise", "Legs", 4, 15, 60.0)
-                ]),
-                ("Full Body", "img_default", [
-                    ("Barbell Squat", "Legs", 3, 10, 60.0),
-                    ("Barbell Bench Press - Medium Grip", "Chest", 3, 10, 50.0),
-                    ("Barbell Deadlift", "Back", 3, 5, 80.0)
-                ])
-            ]
+        // Heal CloudKit / prior-wipe zombies: remove hollowed-out (0 exercises) or duplicate system presets.
+        let existingSystem = (try? modelContext.fetch(
+            FetchDescriptor<WorkoutPreset>(predicate: #Predicate { $0.isSystem == true })
+        )) ?? []
 
-            for template in templates {
+        var seenNames = Set<String>()
+        var didMutate = false
+        for preset in existingSystem {
+            if preset.exercises.isEmpty || seenNames.contains(preset.name) {
+                modelContext.delete(preset)
+                didMutate = true
+            } else {
+                seenNames.insert(preset.name)
+            }
+        }
+
+        let templates: [(name: String, icon: String, exercises: [(n: String, g: String, s: Int, r: Int, w: Double)])] = [
+            ("Push Day", "img_chest", [
+                ("Barbell Bench Press - Medium Grip", "Chest", 4, 8, 60.0),
+                ("Standing Military Press", "Shoulders", 3, 10, 40.0),
+                ("Triceps Pushdown", "Arms", 3, 12, 20.0)
+            ]),
+            ("Pull Day", "img_back", [
+                ("Pullups", "Back", 4, 8, 0.0),
+                ("Bent Over Barbell Row", "Back", 3, 10, 50.0),
+                ("Barbell Curl", "Arms", 3, 12, 25.0)
+            ]),
+            ("Legs Day", "img_legs", [
+                ("Barbell Squat", "Legs", 4, 8, 80.0),
+                ("Leg Press", "Legs", 3, 12, 120.0),
+                ("Standing Barbell Calf Raise", "Legs", 4, 15, 60.0)
+            ]),
+            ("Full Body", "img_default", [
+                ("Barbell Squat", "Legs", 3, 10, 60.0),
+                ("Barbell Bench Press - Medium Grip", "Chest", 3, 10, 50.0),
+                ("Barbell Deadlift", "Back", 3, 5, 80.0)
+            ])
+        ]
+
+        let shouldEnsureAllSystemPresets = !hasGeneratedBefore || didMutate || seenNames.count < templates.count
+        if shouldEnsureAllSystemPresets {
+            for template in templates where !seenNames.contains(template.name) {
                 let preset = WorkoutPreset(
                     id: UUID(),
                     name: template.name,
@@ -633,11 +653,18 @@ actor WorkoutStore: WorkoutStoreProtocol {
                     exercise.preset = preset
                     preset.exercises.append(exercise)
                 }
+                seenNames.insert(template.name)
+                didMutate = true
             }
+        }
 
+        if didMutate {
             try modelContext.save()
+        }
+        if !hasGeneratedBefore {
             defaults.set(true, forKey: flagKey)
         }
+    }
 
     func applyAIAdjustment(_ adjustment: InWorkoutResponseDTO, workoutID: PersistentIdentifier) async throws {
         guard let workout = modelContext.model(for: workoutID) as? Workout, workout.isActive else { return }

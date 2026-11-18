@@ -268,6 +268,14 @@ struct SettingsView: View {
             }
             .accessibilityIdentifier("wt.settings.export")
 
+            NavigationLink(destination: BlockedUsersSettingsView()) {
+                Label {
+                    Text(LocalizedStringKey("Blocked Users"))
+                } icon: {
+                    Image(systemName: "person.slash.fill").foregroundStyle(Color.accentColor)
+                }
+            }
+
             Button(role: .destructive) {
                 showDeleteProfileAlert = true
             } label: {
@@ -581,6 +589,7 @@ struct SettingsView: View {
         await generator.clearAllDataAsync()
         await di.analyticsService.rebuildAllStats()
         await di.workoutService.updateWidgetData()
+        di.progressManager.resetProgress()
         self.isProcessing = false
         self.testDataAlertMessage = "All workouts, weight history, goals, measurements, XP, and widget data cleared."
         self.showTestDataAlert = true
@@ -747,10 +756,7 @@ struct SettingsView: View {
             try modelContext.delete(model: AIChatSession.self)
             try modelContext.delete(model: MuscleColorPreference.self)
 
-            let customPresetsDesc = FetchDescriptor<WorkoutPreset>(predicate: #Predicate { $0.isSystem == false })
-            if let customPresets = try? modelContext.fetch(customPresetsDesc) {
-                for preset in customPresets { modelContext.delete(preset) }
-            }
+            try modelContext.delete(model: WorkoutPreset.self)
             // Wipe parity: custom catalog rows + unhide any soft-deleted defaults.
             let customDictDesc = FetchDescriptor<ExerciseDictionaryItem>(predicate: #Predicate { $0.isCustom == true })
             if let customs = try? modelContext.fetch(customDictDesc) {
@@ -773,15 +779,21 @@ struct SettingsView: View {
             "userAge",
             Constants.UserDefaultsKeys.hasConsentedToAI.rawValue,
             Constants.UserDefaultsKeys.hasSeenTutorial_Final_v8.rawValue,
+            Constants.UserDefaultsKeys.hasGeneratedDefaultPresets_v3.rawValue,
             Constants.UserDefaultsKeys.muscleColors.rawValue,
             "userTotalXP",
-            "userLevel"
+            "userLevel",
+            "userRecoveryHours",
+            "futureSelfCommitmentOption",
+            "futureSelfCommitmentTimestamp",
+            "hasSeenCommitmentSheet"
         ]
         for key in keysToReset {
             UserDefaults.standard.removeObject(forKey: key)
         }
         UserDefaults.standard.set(0, forKey: "userTotalXP")
         UserDefaults.standard.set(1, forKey: "userLevel")
+        UserDefaults.standard.set(Constants.CNS.unmeasuredAppStorageDefault, forKey: "cnsScore")
 
         WorkoutStore.clearSharedAppGroupState()
         WorkoutDetailViewModel.wipeSupplementaryDefaultsAndFiles()
@@ -798,6 +810,67 @@ struct SettingsView: View {
             Task {
                 await LocalImageStore.shared.deleteImages(named: weightImageNames)
             }
+        }
+    }
+}
+
+struct BlockedUsersSettingsView: View {
+    @State private var blockedUids: [String] = []
+    @State private var isLoading = true
+    @State private var errorMessage: String?
+
+    var body: some View {
+        List {
+            if isLoading {
+                ProgressView()
+                    .frame(maxWidth: .infinity, alignment: .center)
+            } else if blockedUids.isEmpty {
+                ContentUnavailableView(
+                    LocalizedStringKey("No Blocked Users"),
+                    systemImage: "person.slash",
+                    description: Text(LocalizedStringKey("Creators you block when reporting a shared workout will appear here."))
+                )
+            } else {
+                ForEach(blockedUids, id: \.self) { uid in
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(LocalizedStringKey("Blocked Creator"))
+                                .font(.subheadline.weight(.semibold))
+                            Text(uid)
+                                .font(.caption.monospaced())
+                                .foregroundStyle(PastelTheme.textSecondary)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                        }
+                        Spacer()
+                        Button(LocalizedStringKey("Unblock")) {
+                            Task { await unblock(uid) }
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                    }
+                }
+            }
+        }
+        .navigationTitle(LocalizedStringKey("Blocked Users"))
+        .task {
+            _ = await BlockedUsersStore.shared.startListening()
+            blockedUids = Array(await BlockedUsersStore.shared.blockedUids()).sorted()
+            isLoading = false
+        }
+        .alert(LocalizedStringKey("Error"), isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
+            Button(LocalizedStringKey("OK"), role: .cancel) { }
+        } message: {
+            Text(errorMessage ?? "")
+        }
+    }
+
+    private func unblock(_ uid: String) async {
+        do {
+            try await BlockedUsersStore.shared.unblock(uid: uid)
+            blockedUids.removeAll { $0 == uid }
+        } catch {
+            errorMessage = error.localizedDescription
         }
     }
 }

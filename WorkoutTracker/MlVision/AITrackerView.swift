@@ -108,7 +108,7 @@ struct AITrackerView: View {
         .task {
             await engine.setup()
             cameraManager.checkPermission()
-            coach.speak("Ready. Let's go!")
+            coach.speak(String(localized: "Ready. Let's go!"))
         }
         .onDisappear {
             coach.stop()
@@ -157,7 +157,7 @@ struct AITrackerView: View {
             AppLog.ml.debug("📩 AITrackerView: Received gesture event — \(String(describing: action), privacy: .public)")
             switch action {
             case .confirmSet:
-                coach.speak("Set completed! Great job.")
+                coach.speak(String(localized: "Set completed! Great job."))
                 onFinish?(engine.repsCount)
                 Task { @MainActor in
                     try? await Task.sleep(for: .seconds(1.5))
@@ -166,7 +166,7 @@ struct AITrackerView: View {
                 }
 
             case .cancelSet:
-                coach.speak("Tracker canceled.")
+                coach.speak(String(localized: "Tracker canceled."))
                 Task { @MainActor in
                     try? await Task.sleep(for: .seconds(1.0))
                     guard !Task.isCancelled else { return }
@@ -179,7 +179,7 @@ struct AITrackerView: View {
 
         .onChange(of: engine.vbtWarningTriggered) { _, triggered in
             if triggered {
-                coach.speak("Bar speed dropping! Last two reps, push!")
+                coach.speak(String(localized: "Bar speed dropping! Last two reps, push!"))
                 HapticManager.shared.notification(.warning)
             }
         }
@@ -493,13 +493,13 @@ struct AITrackerView: View {
 
     // MARK: - Helpers
 
-    private func feedbackColor(for message: String) -> Color {
-        let lowercased = message.lowercased()
-        if lowercased.contains("occluded") || lowercased.contains("adjust") {
+    private func feedbackColor(for _: String) -> Color {
+        switch engine.feedbackTone {
+        case .warning:
             return .orange
-        } else if lowercased.contains("tracking") {
+        case .tracking:
             return .green
-        } else {
+        case .normal:
             return .white
         }
     }
