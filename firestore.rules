@@ -25,20 +25,42 @@ service cloud.firestore {
 
     // === User-generated shared workouts ===
     match /shared_workouts/{workoutId} {
-      // Read: only approved workouts, OR your own doc (any status)
-      allow read: if (resource.data.status == "approved")
-                  || (request.auth != null
-                      && resource.data.creatorUid == request.auth.uid);
+      // Read: require authentication; only approved workouts, OR your own doc (any status)
+      allow read: if request.auth != null
+                  && ((resource.data.status == "approved")
+                      || (resource.data.creatorUid == request.auth.uid));
 
-      // Create: must be authed; creatorUid must equal own UID;
-      // must start as pending with zero reports; size limits on text.
+      // Create: must be authed; strict field allowlist; creatorUid must equal own UID;
+      // must start as pending with zero reports; consistent title/name and bounded exercises list.
       allow create: if request.auth != null
+                    && request.resource.data.keys().hasOnly([
+                         "name", "icon", "folderName", "exercises",
+                         "title", "description", "creatorUid", "status",
+                         "reportCount", "moderationReason", "createdAt", "language"
+                       ])
                     && request.resource.data.creatorUid == request.auth.uid
                     && request.resource.data.status == "pending"
                     && request.resource.data.reportCount == 0
+                    && request.resource.data.moderationReason is string
+                    && request.resource.data.moderationReason == ""
+                    && request.resource.data.name is string
+                    && request.resource.data.name.size() > 0
+                    && request.resource.data.name.size() <= 200
                     && request.resource.data.title is string
-                    && request.resource.data.title.size() > 0
-                    && request.resource.data.title.size() <= 200
+                    && request.resource.data.title == request.resource.data.name
+                    && request.resource.data.icon is string
+                    && request.resource.data.icon.size() > 0
+                    && request.resource.data.icon.size() <= 100
+                    && request.resource.data.exercises is list
+                    && request.resource.data.exercises.size() > 0
+                    && request.resource.data.exercises.size() <= 200
+                    && (!("folderName" in request.resource.data)
+                        || request.resource.data.folderName == null
+                        || (request.resource.data.folderName is string
+                            && request.resource.data.folderName.size() <= 100))
+                    && (!("language" in request.resource.data)
+                        || (request.resource.data.language is string
+                            && request.resource.data.language.size() <= 16))
                     && (!("description" in request.resource.data)
                         || (request.resource.data.description is string
                             && request.resource.data.description.size() <= 2000));
@@ -54,8 +76,17 @@ service cloud.firestore {
     // === Reports ===
     match /reports/{reportId} {
       allow create: if request.auth != null
+                    && request.resource.data.keys().hasOnly([
+                         "workoutId", "reporterUid", "reason", "details", "status", "createdAt"
+                       ])
                     && request.resource.data.reporterUid == request.auth.uid
+                    && request.resource.data.status == "pending"
                     && request.resource.data.workoutId is string
+                    && request.resource.data.workoutId.size() > 0
+                    && request.resource.data.workoutId.size() <= 128
+                    && !request.resource.data.workoutId.matches('.*/.*')
+                    && reportId == request.resource.data.workoutId + "_" + request.auth.uid
+                    && exists(/databases/$(database)/documents/shared_workouts/$(request.resource.data.workoutId))
                     && request.resource.data.reason in
 ["spam", "hate", "harassment", "sexual", "violence", "dangerous", "other"]
                     && (!("details" in request.resource.data)
@@ -66,7 +97,14 @@ service cloud.firestore {
 
     // === Per-user blocked list ===
     match /users/{userId}/blocked/{blockedUid} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow create, update: if request.auth != null
+                            && request.auth.uid == userId
+                            && blockedUid != userId
+                            && blockedUid.size() > 0
+                            && blockedUid.size() <= 128
+                            && request.resource.data.keys().hasOnly(["blockedAt"]);
+      allow delete: if request.auth != null && request.auth.uid == userId;
     }
 
     // === Default deny ===

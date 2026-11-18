@@ -6,11 +6,26 @@ const { getFirestore, FieldValue } = require("firebase-admin/firestore");
 const { getAuth } = require("firebase-admin/auth");
 const { defineSecret } = require("firebase-functions/params");
 
-// Per-user AI rate limit (abuse control). With free OpenRouter models we still
-// cap abuse, but count only successful upstream calls.
+// Per-user AI rate limit (abuse control). Quota is atomically reserved inside
+// enforceRateLimit to prevent concurrent TOCTOU bypass and refunded on upstream 5xx.
 const AI_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 const DEFAULT_AI_WEEKLY_LIMIT = 200;
+const DEFAULT_ANON_AI_WEEKLY_LIMIT = 40;
 const UPSTREAM_TIMEOUT_MS = 15000;
+const TOTAL_RETRY_BUDGET_MS = 45000;
+const STREAM_IDLE_TIMEOUT_MS = 25000;
+const MAX_VERTEX_CONTENTS = 40;
+const MAX_VERTEX_TEXT_CHARS = 60000;
+const MAX_VERTEX_IMAGES = 4;
+const MAX_VERTEX_IMAGE_BASE64_LEN = 6000000;
+const ALLOWED_IMAGE_MIMES = new Set([
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/webp",
+  "image/heic",
+]);
+const PROJECT_NUMBER = "667537183554";
 
 initializeApp();
 
@@ -153,6 +168,80 @@ function geminiPartsToOpenAIContent(parts) {
 }
 
 /**
+ * Verify an already-decoded Firebase App Check token response belongs to this Firebase project
+ * (or an explicit comma-separated ALLOWED_APP_IDS env override).
+ */
+function verifyAllowedAppCheck(verified) {
+  const appId = typeof verified?.appId === "string" ? verified.appId.trim() : "";
+  if (!appId) return false;
+  const rawAllowlist = String(process.env.ALLOWED_APP_IDS || "").trim();
+  if (rawAllowlist) {
+    const allowed = new Set(parseApiKeys(rawAllowlist));
+    return allowed.has(appId);
+  }
+  return appId.startsWith(`1:${PROJECT_NUMBER}:`);
+}
+
+function validateVertexProxyBody(body) {
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return { ok: false, error: "Request body must be a JSON object." };
+  }
+  if (!Array.isArray(body.contents) || body.contents.length === 0) {
+    return { ok: false, error: "contents must be a non-empty array." };
+  }
+  if (body.contents.length > MAX_VERTEX_CONTENTS) {
+    return { ok: false, error: `contents exceeds ${MAX_VERTEX_CONTENTS} turns.` };
+  }
+
+  let totalTextChars = 0;
+  let totalImages = 0;
+
+  const inspectParts = (parts) => {
+    if (!Array.isArray(parts)) return null;
+    for (const p of parts) {
+      if (typeof p?.text === "string") {
+        totalTextChars += p.text.length;
+        if (totalTextChars > MAX_VERTEX_TEXT_CHARS) {
+          return `Total prompt length exceeds ${MAX_VERTEX_TEXT_CHARS} characters.`;
+        }
+      }
+      if (p?.inlineData && p.inlineData.data !== undefined) {
+        totalImages += 1;
+        if (totalImages > MAX_VERTEX_IMAGES) {
+          return `Image count exceeds ${MAX_VERTEX_IMAGES}.`;
+        }
+        if (typeof p.inlineData.data !== "string" || p.inlineData.data.length === 0) {
+          return "inlineData.data must be a non-empty base64 string.";
+        }
+        if (p.inlineData.data.length > MAX_VERTEX_IMAGE_BASE64_LEN) {
+          return "inlineData image exceeds maximum allowed size.";
+        }
+        const mime = String(p.inlineData.mimeType || "image/jpeg").toLowerCase();
+        if (!ALLOWED_IMAGE_MIMES.has(mime)) {
+          return `Unsupported inlineData mimeType: ${mime}`;
+        }
+      }
+    }
+    return null;
+  };
+
+  if (body.systemInstruction?.parts) {
+    const sysErr = inspectParts(body.systemInstruction.parts);
+    if (sysErr) return { ok: false, error: sysErr };
+  }
+
+  for (const content of body.contents) {
+    if (!content || typeof content !== "object") {
+      return { ok: false, error: "Each content entry must be an object." };
+    }
+    const err = inspectParts(content.parts);
+    if (err) return { ok: false, error: err };
+  }
+
+  return { ok: true };
+}
+
+/**
  * Translate the iOS GeminiRequest body into an OpenAI-compatible Chat Completions body.
  */
 function geminiBodyToOpenAI(body, { streaming, model }) {
@@ -168,7 +257,8 @@ function geminiBodyToOpenAI(body, { streaming, model }) {
 
   if (Array.isArray(body?.contents)) {
     for (const content of body.contents) {
-      const role = content.role === "model" ? "assistant" : content.role || "user";
+      // Never permit client conversation items to inject "system" or "tool" roles.
+      const role = content.role === "model" ? "assistant" : "user";
       const mapped = geminiPartsToOpenAIContent(content.parts);
       if (
         (typeof mapped === "string" && mapped) ||
@@ -180,12 +270,20 @@ function geminiBodyToOpenAI(body, { streaming, model }) {
   }
 
   const gen = body?.generationConfig || {};
-  const temperature =
-    typeof gen.temperature === "number" ? gen.temperature : 0.4;
+  const rawTemp = typeof gen.temperature === "number" && Number.isFinite(gen.temperature)
+    ? gen.temperature
+    : 0.4;
+  const temperature = Math.min(Math.max(rawTemp, 0), 1.5);
+  const rawMax = typeof gen.maxOutputTokens === "number" && Number.isFinite(gen.maxOutputTokens)
+    ? Math.floor(gen.maxOutputTokens)
+    : 4096;
+  const maxTokens = Math.min(Math.max(rawMax, 1), 4096);
+
   const openAIBody = {
     model,
     messages,
     temperature,
+    max_tokens: maxTokens,
     stream: Boolean(streaming),
     // Helps free models return parseable JSON when they drift.
     plugins: [{ id: "response-healing" }],
@@ -266,6 +364,11 @@ function openAIStreamChunkToGemini(line) {
   if (!payload || payload === "[DONE]") return payload === "[DONE]" ? "[DONE]" : null;
   try {
     const parsed = JSON.parse(payload);
+    if (parsed?.error) {
+      const msg = String(parsed.error.message || "Upstream stream error").slice(0, 300);
+      const code = Number.isFinite(parsed.error.code) ? parsed.error.code : 502;
+      return JSON.stringify({ error: { code, message: msg } });
+    }
     const delta =
       parsed?.choices?.[0]?.delta?.content ??
       parsed?.choices?.[0]?.message?.content ??
@@ -279,6 +382,39 @@ function openAIStreamChunkToGemini(line) {
   }
 }
 
+function computeRateLimitReservation({
+  existingData,
+  now = Date.now(),
+  limit = DEFAULT_AI_WEEKLY_LIMIT,
+  windowMs = AI_WINDOW_MS,
+}) {
+  let windowStart = now;
+  let currentCount = 0;
+
+  if (existingData && typeof existingData === "object") {
+    const ws = typeof existingData.windowStart === "number" ? existingData.windowStart : 0;
+    if (now - ws < windowMs) {
+      windowStart = ws;
+      currentCount = typeof existingData.count === "number" ? existingData.count : 0;
+    }
+  }
+
+  if (currentCount >= limit) {
+    const retryAfterSeconds = Math.max(
+      1,
+      Math.ceil((windowStart + windowMs - now) / 1000)
+    );
+    return { allowed: false, retryAfterSeconds, windowStart, nextCount: currentCount };
+  }
+
+  return {
+    allowed: true,
+    retryAfterSeconds: 0,
+    windowStart,
+    nextCount: currentCount + 1,
+  };
+}
+
 async function fetchWithTimeout(url, options, timeoutMs = UPSTREAM_TIMEOUT_MS) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -289,65 +425,66 @@ async function fetchWithTimeout(url, options, timeoutMs = UPSTREAM_TIMEOUT_MS) {
   }
 }
 
-async function enforceRateLimit(uid) {
+async function enforceRateLimit(uid, { isAnonymous = false } = {}) {
   const db = getFirestore();
   const configSnap = await db.collection("config").doc("ai_settings").get();
   const configData = configSnap.data() || {};
-  const aiWeeklyLimit =
+  const signedInLimit =
     typeof configData.weeklyLimit === "number"
       ? configData.weeklyLimit
       : DEFAULT_AI_WEEKLY_LIMIT;
+  const anonLimit =
+    typeof configData.anonymousWeeklyLimit === "number"
+      ? configData.anonymousWeeklyLimit
+      : DEFAULT_ANON_AI_WEEKLY_LIMIT;
+  const aiWeeklyLimit = isAnonymous
+    ? Math.min(signedInLimit, anonLimit)
+    : signedInLimit;
 
   const ref = db.collection("ai_usage").doc(uid);
 
-  // Pre-check only (no increment). Successful calls call recordSuccessfulAIUse.
+  // Atomically reserve a slot inside the transaction so concurrent requests cannot race.
   await db.runTransaction(async (tx) => {
     const snap = await tx.get(ref);
     const now = Date.now();
-    let windowStart = now;
-    let count = 0;
+    const decision = computeRateLimitReservation({
+      existingData: snap.exists ? snap.data() : null,
+      now,
+      limit: aiWeeklyLimit,
+      windowMs: AI_WINDOW_MS,
+    });
 
-    if (snap.exists) {
-      const data = snap.data() || {};
-      const ws = typeof data.windowStart === "number" ? data.windowStart : 0;
-      if (now - ws < AI_WINDOW_MS) {
-        windowStart = ws;
-        count = data.count || 0;
-      }
+    if (!decision.allowed) {
+      throw new RateLimitError(decision.retryAfterSeconds, aiWeeklyLimit);
     }
 
-    if (count >= aiWeeklyLimit) {
-      const retryAfterSeconds = Math.ceil(
-        (windowStart + AI_WINDOW_MS - now) / 1000
-      );
-      throw new RateLimitError(retryAfterSeconds, aiWeeklyLimit);
-    }
+    tx.set(
+      ref,
+      {
+        windowStart: decision.windowStart,
+        count: decision.nextCount,
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true }
+    );
   });
 
   return aiWeeklyLimit;
 }
 
-async function recordSuccessfulAIUse(uid) {
+async function releaseRateLimitSlot(uid) {
   const db = getFirestore();
   const ref = db.collection("ai_usage").doc(uid);
   await db.runTransaction(async (tx) => {
     const snap = await tx.get(ref);
-    const now = Date.now();
-    let windowStart = now;
-    let count = 0;
-    if (snap.exists) {
-      const data = snap.data() || {};
-      const ws = typeof data.windowStart === "number" ? data.windowStart : 0;
-      if (now - ws < AI_WINDOW_MS) {
-        windowStart = ws;
-        count = data.count || 0;
-      }
-    }
+    if (!snap.exists) return;
+    const data = snap.data() || {};
+    const current = typeof data.count === "number" ? data.count : 0;
+    if (current <= 0) return;
     tx.set(
       ref,
       {
-        windowStart,
-        count: count + 1,
+        count: current - 1,
         updatedAt: FieldValue.serverTimestamp(),
       },
       { merge: true }
@@ -376,15 +513,26 @@ function modelChainForRequest(body) {
   ];
 }
 
-async function callOpenRouterText({ apiKeys, geminiBody, timeoutMs = UPSTREAM_TIMEOUT_MS }) {
+async function callOpenRouterText({
+  apiKeys,
+  geminiBody,
+  timeoutMs = UPSTREAM_TIMEOUT_MS,
+  maxBudgetMs = TOTAL_RETRY_BUDGET_MS,
+}) {
   const chain = modelChainForRequest(geminiBody);
   const expectJSON =
     geminiBody?.generationConfig?.responseMimeType === "application/json" ||
     Boolean(geminiBody?.generationConfig?.responseSchema);
+  const deadline = Date.now() + maxBudgetMs;
 
   let lastError = null;
   for (const apiKey of apiKeys) {
     for (let i = 0; i < chain.length; i++) {
+      const remainingMs = deadline - Date.now();
+      if (remainingMs <= 500) {
+        lastError = lastError || new Error("OpenRouter retry budget exceeded");
+        break;
+      }
       const model = chain[i];
       const attempt = geminiBodyToOpenAI(geminiBody, {
         streaming: false,
@@ -393,7 +541,8 @@ async function callOpenRouterText({ apiKeys, geminiBody, timeoutMs = UPSTREAM_TI
 
       try {
         const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), timeoutMs);
+        const perRequestMs = Math.min(timeoutMs, remainingMs);
+        const timer = setTimeout(() => controller.abort(), perRequestMs);
         let text;
         let ok;
         let status;
@@ -438,6 +587,7 @@ async function callOpenRouterText({ apiKeys, geminiBody, timeoutMs = UPSTREAM_TI
         console.warn(lastError.message);
       }
     }
+    if (deadline - Date.now() <= 500) break;
   }
   throw lastError || new Error("OpenRouter text call failed");
 }
@@ -454,6 +604,22 @@ function resolveReportUpdate({
   return { reportCount: newCount, shouldBlock };
 }
 
+async function readChunkWithTimeout(reader, timeoutMs = STREAM_IDLE_TIMEOUT_MS) {
+  let timer = null;
+  try {
+    return await Promise.race([
+      reader.read(),
+      new Promise((_, reject) => {
+        timer = setTimeout(() => {
+          reject(new Error("Upstream SSE idle timeout"));
+        }, timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 // ==========================================
 // 1) HTTP proxy for the iOS client
 // ==========================================
@@ -463,6 +629,7 @@ exports.vertexProxy = onRequest(
     serviceAccount: SERVICE_ACCOUNT,
     memory: "512MiB",
     timeoutSeconds: 300,
+    maxInstances: 20,
     secrets: [openRouterApiKey],
   },
   async (req, res) => {
@@ -477,7 +644,11 @@ exports.vertexProxy = onRequest(
       return;
     }
     try {
-      await getAppCheck().verifyToken(appCheckToken);
+      const verified = await getAppCheck().verifyToken(appCheckToken);
+      if (!verifyAllowedAppCheck(verified)) {
+        res.status(403).json({ error: "App Check app ID not allowed" });
+        return;
+      }
     } catch (e) {
       res.status(401).json({ error: "Invalid App Check token" });
       return;
@@ -490,16 +661,25 @@ exports.vertexProxy = onRequest(
       return;
     }
     let uid;
+    let isAnonymous = false;
     try {
       const decoded = await getAuth().verifyIdToken(m[1]);
       uid = decoded.uid;
+      isAnonymous = decoded?.firebase?.sign_in_provider === "anonymous";
     } catch (e) {
       res.status(401).json({ error: "Invalid Firebase ID token" });
       return;
     }
 
+    const body = req.body || {};
+    const validation = validateVertexProxyBody(body);
+    if (!validation.ok) {
+      res.status(400).json({ error: "invalid_request", message: validation.error });
+      return;
+    }
+
     try {
-      await enforceRateLimit(uid);
+      await enforceRateLimit(uid, { isAnonymous });
     } catch (e) {
       if (e instanceof RateLimitError) {
         res.set("Retry-After", String(e.retryAfterSeconds));
@@ -517,27 +697,42 @@ exports.vertexProxy = onRequest(
 
     const apiKeys = parseApiKeys(openRouterApiKey.value());
     if (apiKeys.length === 0) {
-      res.status(500).json({ error: "OPENROUTER_API_KEY not configured" });
+      await releaseRateLimitSlot(uid).catch(() => {});
+      res.status(500).json({ error: "AI service not configured" });
       return;
     }
 
-    const body = req.body || {};
     const streaming = req.query.stream === "true";
     const chain = modelChainForRequest(body);
+    let yielded = false;
+    let reserved = true;
+
+    const refundQuotaIfUnused = async () => {
+      if (!yielded && reserved) {
+        reserved = false;
+        await releaseRateLimitSlot(uid).catch(() => {});
+      }
+    };
 
     try {
       if (!streaming) {
         const gemini = await callOpenRouterText({ apiKeys, geminiBody: body });
-        await recordSuccessfulAIUse(uid);
+        yielded = true;
         res.status(200).json(gemini);
         return;
       }
 
-      // Streaming: try models until one returns a live SSE body (timeout on initial handshake).
+      // Streaming: try models until one returns a live SSE body within total retry budget.
+      const deadline = Date.now() + TOTAL_RETRY_BUDGET_MS;
       let upstream = null;
       let lastError = null;
       for (const apiKey of apiKeys) {
         for (let i = 0; i < chain.length; i++) {
+          const remainingMs = deadline - Date.now();
+          if (remainingMs <= 500) {
+            lastError = lastError || new Error("Streaming retry budget exceeded");
+            break;
+          }
           const model = chain[i];
           const attempt = geminiBodyToOpenAI(body, { streaming: true, model });
           try {
@@ -553,7 +748,7 @@ exports.vertexProxy = onRequest(
                 },
                 body: JSON.stringify(attempt),
               },
-              UPSTREAM_TIMEOUT_MS
+              Math.min(UPSTREAM_TIMEOUT_MS, remainingMs)
             );
             if (!resp.ok || !resp.body) {
               lastError = new Error(
@@ -571,7 +766,7 @@ exports.vertexProxy = onRequest(
             console.warn(lastError.message);
           }
         }
-        if (upstream) break;
+        if (upstream || deadline - Date.now() <= 500) break;
       }
 
       if (!upstream) {
@@ -580,39 +775,58 @@ exports.vertexProxy = onRequest(
 
       res.status(200).set("Content-Type", "text/event-stream");
       const reader = upstream.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      let yielded = false;
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || "";
-        for (const rawLine of lines) {
-          const line = rawLine.trimEnd();
-          if (!line) continue;
-          const converted = openAIStreamChunkToGemini(line);
-          if (converted === "[DONE]") {
-            res.write("data: [DONE]\n\n");
-            continue;
+      let clientDisconnected = false;
+      const onClose = () => {
+        clientDisconnected = true;
+        Promise.resolve(reader.cancel()).catch(() => {});
+      };
+      req.on("close", onClose);
+
+      try {
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let streamErrorSeen = false;
+        while (!clientDisconnected) {
+          const { done, value } = await readChunkWithTimeout(reader);
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+          for (const rawLine of lines) {
+            const line = rawLine.trimEnd();
+            if (!line) continue;
+            const converted = openAIStreamChunkToGemini(line);
+            if (converted === "[DONE]") {
+              res.write("data: [DONE]\n\n");
+              continue;
+            }
+            if (converted) {
+              if (converted.startsWith('{"error":')) {
+                streamErrorSeen = true;
+                res.write(`data: ${converted}\n\n`);
+                break;
+              }
+              yielded = true;
+              res.write(`data: ${converted}\n\n`);
+            }
           }
-          if (converted) {
-            yielded = true;
-            res.write(`data: ${converted}\n\n`);
-          }
+          if (streamErrorSeen) break;
         }
+      } finally {
+        req.off("close", onClose);
       }
-      if (yielded) {
-        await recordSuccessfulAIUse(uid);
+
+      if (!yielded) {
+        await refundQuotaIfUnused();
       }
       res.end();
     } catch (e) {
       console.error("vertexProxy OpenRouter error:", e);
+      await refundQuotaIfUnused();
       if (!res.headersSent) {
         res.status(502).json({
           error: "upstream_failed",
-          message: String(e?.message || e).slice(0, 500),
+          message: "Upstream AI service temporarily unavailable. Please try again.",
         });
       } else {
         res.end();
@@ -620,6 +834,46 @@ exports.vertexProxy = onRequest(
     }
   }
 );
+
+function collectExerciseModerationLines(exercise, out, depth = 0) {
+  if (!exercise || typeof exercise !== "object" || depth > 2) return;
+  const name = String(exercise.name || "").slice(0, 200).trim();
+  const muscle = String(exercise.muscleGroup || "").slice(0, 100).trim();
+  const notes = String(exercise.notes || "").slice(0, 500).trim();
+  const parts = [name, muscle, notes].filter(Boolean);
+  if (parts.length > 0) out.push(parts.join(" — "));
+  if (Array.isArray(exercise.subExercises)) {
+    for (const sub of exercise.subExercises.slice(0, 20)) {
+      collectExerciseModerationLines(sub, out, depth + 1);
+    }
+  }
+}
+
+function extractModeratedWorkoutText(data) {
+  const title = String(data?.title || "").slice(0, 300).trim();
+  const name = String(data?.name || "").slice(0, 300).trim();
+  const folderName = String(data?.folderName || "").slice(0, 200).trim();
+  const description = String(data?.description || "").slice(0, 2000).trim();
+  const exercises = Array.isArray(data?.exercises)
+    ? data.exercises.slice(0, 200)
+    : [];
+
+  const exerciseLines = [];
+  for (const ex of exercises) {
+    collectExerciseModerationLines(ex, exerciseLines, 0);
+  }
+
+  return [
+    `TITLE: ${title}`,
+    name && name !== title ? `NAME: ${name}` : "",
+    folderName ? `FOLDER: ${folderName}` : "",
+    `DESCRIPTION: ${description}`,
+    `EXERCISES:\n${exerciseLines.join("\n")}`,
+  ]
+    .filter(Boolean)
+    .join("\n")
+    .slice(0, 16000);
+}
 
 // ==========================================
 // 2) Auto-moderation of every new shared workout
@@ -629,6 +883,7 @@ exports.moderateSharedWorkout = onDocumentCreated(
     document: "shared_workouts/{workoutId}",
     region: "us-central1",
     serviceAccount: SERVICE_ACCOUNT,
+    maxInstances: 20,
     secrets: [openRouterApiKey],
   },
   async (event) => {
@@ -636,20 +891,6 @@ exports.moderateSharedWorkout = onDocumentCreated(
     if (!snap) return;
     const data = snap.data() || {};
     const ref = snap.ref;
-
-    const title = String(data.title || "").slice(0, 300);
-    const description = String(data.description || "").slice(0, 2000);
-    const exercises = Array.isArray(data.exercises)
-      ? data.exercises.slice(0, 50)
-      : [];
-    const exerciseTexts = exercises
-      .map((e) => {
-        const name = String(e?.name || "").slice(0, 200);
-        const notes = String(e?.notes || "").slice(0, 500);
-        return notes ? `${name} — ${notes}` : name;
-      })
-      .filter(Boolean)
-      .join("\n");
 
     const systemPrompt = `You are a strict content moderator for a fitness app.
 Decide if user-submitted workout text is acceptable on a public platform that may be used by minors.
@@ -663,10 +904,7 @@ BLOCK any of:
 APPROVE otherwise.
 Respond ONLY with JSON: {"decision":"approved"|"blocked","reason":"short reason"}.`;
 
-    const userPayload =
-      `TITLE: ${title}\n` +
-      `DESCRIPTION: ${description}\n` +
-      `EXERCISES:\n${exerciseTexts}`;
+    const userPayload = extractModeratedWorkoutText(data);
 
     let decision = "blocked";
     let reason = "Moderation service error";
@@ -709,7 +947,7 @@ Respond ONLY with JSON: {"decision":"approved"|"blocked","reason":"short reason"
     });
 
     console.log(
-      `Moderated workout ${event.params.workoutId}: ${decision} — ${reason}`
+      `Moderated workout ${event.params.workoutId}: ${decision}`
     );
   }
 );
@@ -722,6 +960,7 @@ exports.onReportCreated = onDocumentCreated(
     document: "reports/{reportId}",
     region: "us-central1",
     serviceAccount: SERVICE_ACCOUNT,
+    maxInstances: 20,
   },
   async (event) => {
     const snap = event.data;
@@ -761,7 +1000,7 @@ exports.onReportCreated = onDocumentCreated(
         });
         if (!outcome) {
           console.log(
-            `Duplicate report ${event.params.reportId} ignored for workout ${workoutId} by uid=${reporterUid}`
+            `Duplicate report ${event.params.reportId} ignored for workout ${workoutId}`
           );
           return;
         }
@@ -792,7 +1031,7 @@ exports.onReportCreated = onDocumentCreated(
 // ==========================================
 // 4) Full account + data deletion (Guideline 5.1.1(v))
 // ==========================================
-async function deleteUserAccountData(db, auth, uid) {
+async function deleteUserAccountData(db, auth, uid, { deleteAuth = true } = {}) {
   const sharedSnap = await db
     .collection("shared_workouts")
     .where("creatorUid", "==", uid)
@@ -818,7 +1057,7 @@ async function deleteUserAccountData(db, auth, uid) {
   await db.recursiveDelete(db.collection("users").doc(uid));
   await db.collection("ai_usage").doc(uid).delete();
 
-  if (auth && typeof auth.deleteUser === "function") {
+  if (deleteAuth !== false && auth && typeof auth.deleteUser === "function") {
     try {
       await auth.deleteUser(uid);
     } catch (err) {
@@ -836,6 +1075,7 @@ exports.deleteAccount = onCall(
     enforceAppCheck: true,
     memory: "512MiB",
     timeoutSeconds: 300,
+    maxInstances: 10,
   },
   async (request) => {
     const uid = request.auth?.uid;
@@ -845,8 +1085,12 @@ exports.deleteAccount = onCall(
         "You must be signed in to delete your account."
       );
     }
+    if (request.app && !verifyAllowedAppCheck(request.app)) {
+      throw new HttpsError("permission-denied", "Unsupported client application.");
+    }
 
-    await deleteUserAccountData(getFirestore(), getAuth(), uid);
+    const deleteAuth = request.data?.deleteAuthUser !== false;
+    await deleteUserAccountData(getFirestore(), getAuth(), uid, { deleteAuth });
 
     return { ok: true };
   }
@@ -856,6 +1100,7 @@ exports.deleteAccount = onCall(
 module.exports._test = {
   geminiBodyToOpenAI,
   openAIToGeminiResponse,
+  openAIStreamChunkToGemini,
   convertGeminiSchema,
   modelChainForRequest,
   parseApiKeys,
@@ -863,6 +1108,10 @@ module.exports._test = {
   hasImageContent,
   supportsResponseFormat,
   resolveReportUpdate,
+  extractModeratedWorkoutText,
+  validateVertexProxyBody,
+  computeRateLimitReservation,
+  verifyAppCheckResponse: verifyAllowedAppCheck,
   UPSTREAM_TIMEOUT_MS,
   FREE_MODELS_STRUCTURED,
   FREE_MODELS_FALLBACK,

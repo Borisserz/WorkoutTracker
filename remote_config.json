@@ -6,13 +6,6 @@
       },
       "valueType": "STRING"
     },
-    "fatsecret_secret": {
-      "defaultValue": {
-        "value": ""
-      },
-      "description": "Set real FatSecret secret only in Firebase Remote Config console — never commit.",
-      "valueType": "STRING"
-    },
     "recommended_ios_version": {
       "defaultValue": {
         "value": "1.0.8"
