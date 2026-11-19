@@ -432,7 +432,9 @@ final class WorkoutDetailViewModel {
         }
 
         let userWeight = BodyMetricStore.weightKilograms() ?? 0
-        let burnedCalories = CalorieCalculator.calculate(for: workout, userWeight: userWeight)
+        let timingSnapshot = CalorieCalculator.workoutTimingSnapshot(for: workout)
+        let hasCardioExercises = flatExercises.contains { $0.type == .cardio }
+        let burnedCalories = CalorieCalculator.calculate(from: timingSnapshot, userWeight: userWeight)
         let wDistance = workout.computedCardioDistanceMeters
         let container = analyticsService.modelContainer
         let dominantMuscle = NotificationManager.getDominantGroup(for: workout)
@@ -457,19 +459,18 @@ final class WorkoutDetailViewModel {
         ))
 
         Task {
-            do {
-                try await HealthKitManager.shared.requestAuthorization()
-                try await HealthKitManager.shared.saveWorkout(
-                    title: wTitle,
-                    startDate: wStart,
-                    endDate: wEnd,
-                    durationSeconds: wDuration,
-                    calories: burnedCalories,
-                    distanceMeters: wDistance
-                )
-            } catch {
-                AppLog.health.error("❌ ViewModel: HealthKit call error- \(error.localizedDescription, privacy: .public)")
-            }
+            await HealthKitManager.shared.syncCompletedWorkout(
+                title: wTitle,
+                startDate: wStart,
+                endDate: wEnd,
+                durationSeconds: wDuration,
+                timingSnapshot: timingSnapshot,
+                distanceMeters: wDistance,
+                hasCardioExercises: hasCardioExercises,
+                initialCalories: burnedCalories,
+                modelContainer: container,
+                sourceContext: "WorkoutDetailViewModel_HealthKit"
+            )
         }
 
         let capturedPrCount = prCount

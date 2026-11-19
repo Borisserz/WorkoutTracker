@@ -97,4 +97,65 @@ struct Wave3HealthAndFoodSyncTests {
         try await store.deleteWorkout(id: w2.id, userWeightKg: userWeightKg, sharedDefaults: sharedDefaults)
         #expect(sharedDefaults.integer(forKey: dayKey) == 0)
     }
+
+    @Test("HealthKit payload classifies cardio across locales/exercises and normalizes workout date bounds")
+    func testHealthKitPayloadCardioClassificationAndNormalizedDates() {
+        let ruRun = HealthKitManager.buildWorkoutPayload(
+            title: "Утренний бег",
+            calories: 280,
+            distanceMeters: 3500
+        )
+        #expect(ruRun.activityType == .running)
+
+        let cardioFlagged = HealthKitManager.buildWorkoutPayload(
+            title: "Morning Session",
+            calories: 240,
+            distanceMeters: 0,
+            hasCardioExercises: true
+        )
+        #expect(cardioFlagged.activityType == .mixedCardio)
+
+        let strength = HealthKitManager.buildWorkoutPayload(
+            title: "Upper Body",
+            calories: 210,
+            distanceMeters: 0,
+            hasCardioExercises: false
+        )
+        #expect(strength.activityType == .traditionalStrengthTraining)
+
+        let now = Date()
+        let normalized = HealthKitManager.normalizedWorkoutInterval(
+            startDate: now,
+            endDate: now.addingTimeInterval(-30),
+            durationSeconds: 1800
+        )
+        #expect(normalized.durationSeconds == 1800)
+        #expect(normalized.endDate.timeIntervalSince(normalized.startDate) >= 1800)
+    }
+
+    @Test("CalorieCalculator snapshot matches workout calculation for delayed weight resolution")
+    func testCalorieCalculatorSnapshotMatchesWorkoutCalculation() {
+        let now = Date()
+        let workout = Workout(title: "Push", date: now.addingTimeInterval(-2400))
+        workout.endTime = now
+        workout.durationSeconds = 2400
+
+        let strengthEx = Exercise(name: "Bench", muscleGroup: "Chest", type: .strength, isCompleted: true)
+        strengthEx.setsList = [
+            WorkoutSet(index: 1, weight: 80, reps: 8, isCompleted: true),
+            WorkoutSet(index: 2, weight: 80, reps: 8, isCompleted: true)
+        ]
+        let cardioEx = Exercise(name: "Bike", muscleGroup: "Cardio", type: .cardio, isCompleted: true)
+        cardioEx.setsList = [
+            WorkoutSet(index: 1, distance: 2000, time: 600, isCompleted: true)
+        ]
+        workout.exercises = [strengthEx, cardioEx]
+
+        let snapshot = CalorieCalculator.workoutTimingSnapshot(for: workout)
+        #expect(CalorieCalculator.calculate(from: snapshot, userWeight: 0) == 0)
+        #expect(
+            CalorieCalculator.calculate(from: snapshot, userWeight: 82.5)
+                == CalorieCalculator.calculate(for: workout, userWeight: 82.5)
+        )
+    }
 }

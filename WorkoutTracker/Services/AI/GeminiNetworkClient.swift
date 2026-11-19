@@ -136,25 +136,55 @@ actor GeminiNetworkClient {
         return .rateLimited(retryAfter: retryAfter)
     }
 
+    private func recordAIError(_ error: Error, stream: Bool, statusCode: Int? = nil) {
+        var info: [String: Any] = [
+            "context": "GeminiNetworkClient",
+            "stream": stream
+        ]
+        if let statusCode {
+            info["status_code"] = statusCode
+        }
+        TrackingManager.shared.recordError(error: error, additionalInfo: info)
+    }
+
     func generateText(from requestBody: GeminiRequest) async throws -> String {
-        let request = try await makeRequest(stream: false, body: requestBody)
-        let (data, response) = try await urlSession.data(for: request)
-        guard let http = response as? HTTPURLResponse else { throw AILogicError.invalidResponse }
+        do {
+            let request = try await makeRequest(stream: false, body: requestBody)
+            let (data, response) = try await urlSession.data(for: request)
+            guard let http = response as? HTTPURLResponse else { throw AILogicError.invalidResponse }
 
-        if http.statusCode == 429 {
-            throw rateLimitError(from: http, data: data)
-        }
-
-        guard (200...299).contains(http.statusCode) else {
-            if http.statusCode == 400, let msg = Self.extractBadRequestMessage(from: data) {
-                throw AILogicError.badRequest(reason: msg)
+            if http.statusCode == 429 {
+                let err = rateLimitError(from: http, data: data)
+                recordAIError(err, stream: false, statusCode: 429)
+                throw err
             }
-            let msg = String(data: data, encoding: .utf8) ?? "Unknown Error"
-            throw AILogicError.apiError(statusCode: http.statusCode, message: msg)
+
+            guard (200...299).contains(http.statusCode) else {
+                if http.statusCode == 400, let msg = Self.extractBadRequestMessage(from: data) {
+                    let err = AILogicError.badRequest(reason: msg)
+                    recordAIError(err, stream: false, statusCode: 400)
+                    throw err
+                }
+                let msg = String(data: data, encoding: .utf8) ?? "Unknown Error"
+                let err = AILogicError.apiError(statusCode: http.statusCode, message: msg)
+                recordAIError(err, stream: false, statusCode: http.statusCode)
+                throw err
+            }
+            let decoded = try JSONDecoder().decode(GeminiResponse.self, from: data)
+            guard let text = decoded.candidates.first?.content.parts.first?.text else { throw AILogicError.noDataReturned }
+            return text
+        } catch let error as AILogicError {
+            switch error {
+            case .aiConsentRequired, .rateLimited, .badRequest, .apiError:
+                break
+            default:
+                recordAIError(error, stream: false)
+            }
+            throw error
+        } catch {
+            recordAIError(error, stream: false)
+            throw error
         }
-        let decoded = try JSONDecoder().decode(GeminiResponse.self, from: data)
-        guard let text = decoded.candidates.first?.content.parts.first?.text else { throw AILogicError.noDataReturned }
-        return text
     }
 
     nonisolated private static func extractBadRequestMessage(from data: Data) -> String? {
@@ -170,12 +200,28 @@ actor GeminiNetworkClient {
     }
 
     func streamText(from requestBody: GeminiRequest) async throws -> AsyncThrowingStream<String, Error> {
-        let request = try await makeRequest(stream: true, body: requestBody)
-        let (bytes, response) = try await urlSession.bytes(for: request)
-        guard let http = response as? HTTPURLResponse else { throw AILogicError.invalidResponse }
+        let request: URLRequest
+        let bytes: URLSession.AsyncBytes
+        let response: URLResponse
+        do {
+            request = try await makeRequest(stream: true, body: requestBody)
+            (bytes, response) = try await urlSession.bytes(for: request)
+        } catch {
+            if case AILogicError.aiConsentRequired = error { throw error }
+            recordAIError(error, stream: true)
+            throw error
+        }
+
+        guard let http = response as? HTTPURLResponse else {
+            let err = AILogicError.invalidResponse
+            recordAIError(err, stream: true)
+            throw err
+        }
 
         if http.statusCode == 429 {
-            throw rateLimitError(from: http, data: nil)
+            let err = rateLimitError(from: http, data: nil)
+            recordAIError(err, stream: true, statusCode: 429)
+            throw err
         }
 
         guard (200...299).contains(http.statusCode) else {
@@ -184,9 +230,13 @@ actor GeminiNetworkClient {
             if http.statusCode == 400,
                let data = errorBody.data(using: .utf8),
                let msg = Self.extractBadRequestMessage(from: data) {
-                throw AILogicError.badRequest(reason: msg)
+                let err = AILogicError.badRequest(reason: msg)
+                recordAIError(err, stream: true, statusCode: 400)
+                throw err
             }
-            throw AILogicError.apiError(statusCode: http.statusCode, message: errorBody)
+            let err = AILogicError.apiError(statusCode: http.statusCode, message: errorBody)
+            recordAIError(err, stream: true, statusCode: http.statusCode)
+            throw err
         }
         return AsyncThrowingStream { continuation in
             Task {
@@ -200,7 +250,9 @@ actor GeminiNetworkClient {
                            let err = errorResp.error {
                             let code = err.code ?? 502
                             let msg = err.message ?? "Upstream AI error"
-                            throw AILogicError.apiError(statusCode: code, message: msg)
+                            let apiErr = AILogicError.apiError(statusCode: code, message: msg)
+                            await self.recordAIError(apiErr, stream: true, statusCode: code)
+                            throw apiErr
                         }
                         if let chunk = try? JSONDecoder().decode(GeminiResponse.self, from: jsonData),
                            let textChunk = chunk.candidates.first?.content.parts.first?.text {
@@ -208,7 +260,10 @@ actor GeminiNetworkClient {
                         }
                     }
                     continuation.finish()
-                } catch { continuation.finish(throwing: error) }
+                } catch {
+                    await self.recordAIError(error, stream: true)
+                    continuation.finish(throwing: error)
+                }
             }
         }
     }

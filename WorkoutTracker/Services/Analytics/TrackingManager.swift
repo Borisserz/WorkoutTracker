@@ -176,13 +176,20 @@ public final class TrackingManager: @unchecked Sendable {
     }
 
     public nonisolated func recordError(error: Error, additionalInfo: [String: Any]? = nil) {
+        if error is CancellationError { return }
+        let nsError = error as NSError
+        if nsError.domain == NSURLErrorDomain && nsError.code == NSURLErrorCancelled { return }
+
         AppLog.analytics.debug("📊 [Crashlytics] Recording non-fatal error: \(error.localizedDescription)")
-        if let info = additionalInfo {
-            let nsError = NSError(domain: "WorkoutTracker", code: 1, userInfo: [
-                NSUnderlyingErrorKey: error,
-                "additionalInfo": info
-            ])
-            Crashlytics.crashlytics().record(error: nsError)
+        if let info = additionalInfo, !info.isEmpty {
+            let sanitizedInfo = info.reduce(into: [String: Any]()) { result, pair in
+                switch pair.value {
+                case let str as String: result[pair.key] = str
+                case let num as NSNumber: result[pair.key] = num
+                default: result[pair.key] = String(describing: pair.value)
+                }
+            }
+            Crashlytics.crashlytics().record(error: error, userInfo: sanitizedInfo)
         } else {
             Crashlytics.crashlytics().record(error: error)
         }

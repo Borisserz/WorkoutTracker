@@ -349,6 +349,7 @@ actor AnalyticsService {
             try bgContext.save()
         } catch {
             AppLog.data.error("❌ Analytics rebuild save failed — previous caches may remain: \(error.localizedDescription, privacy: .public)")
+            TrackingManager.shared.recordError(error: error, additionalInfo: ["context": "AnalyticsService_rebuild"])
         }
     }
 

@@ -415,6 +415,10 @@ struct WorkoutTrackerApp: App {
                 container = try ModelContainer(for: schema, configurations: [cloudConfig])
             } catch {
                 AppLog.app.warning("⚠️ CloudKit didn't open, local rollback: \(error.localizedDescription, privacy: .public)")
+                TrackingManager.shared.recordError(
+                    error: error,
+                    additionalInfo: ["context": "CloudKit_SwiftData_fallback"]
+                )
                 let localConfig = ModelConfiguration(schema: schema, url: dbURL, cloudKitDatabase: .none)
                 container = try ModelContainer(for: schema, configurations: [localConfig])
             }
@@ -453,6 +457,10 @@ struct WorkoutTrackerApp: App {
                     await BlockedUsersStore.shared.startListening()
                 } catch {
                     AppLog.app.error("⚠️ Anonymous auth bootstrap failed: \(error.localizedDescription)")
+                    TrackingManager.shared.recordError(
+                        error: error,
+                        additionalInfo: ["context": "AnonymousAuthBootstrap"]
+                    )
                     // Maestro / UITestMode: keep chrome unobstructed; cloud is optional for smoke.
                     if !UITestLaunchConfiguration.isUITestMode {
                         await MainActor.run {

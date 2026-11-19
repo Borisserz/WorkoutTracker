@@ -130,6 +130,7 @@ public actor ExerciseDatabaseService {
             AppLog.catalog.info("☁️✅ The exercise catalog has been successfully uploaded from Firebase Storage!")
         } catch {
             AppLog.catalog.error("☁️⚠️ Error downloading from Firebase: \(error.localizedDescription). We switch to local files.")
+            TrackingManager.shared.recordError(error: error, additionalInfo: ["context": "ExerciseDatabaseService_download"])
         }
         #endif
         

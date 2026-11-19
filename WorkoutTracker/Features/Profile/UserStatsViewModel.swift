@@ -27,6 +27,10 @@ final class UserStatsViewModel {
             }
         } catch {
             AppLog.health.error("HealthKit sync skipped: \(error.localizedDescription)")
+            TrackingManager.shared.recordError(
+                error: error,
+                additionalInfo: ["context": "UserStatsViewModel_syncWeight"]
+            )
         }
     }
 
@@ -38,6 +42,10 @@ final class UserStatsViewModel {
                 savedFileNames = try await LocalImageStore.shared.saveImages(images)
             } catch {
                 AppLog.health.error("❌ Failed to save progress photos: \(error.localizedDescription)")
+                TrackingManager.shared.recordError(
+                    error: error,
+                    additionalInfo: ["context": "UserStatsViewModel_savePhotos"]
+                )
             }
         }
 

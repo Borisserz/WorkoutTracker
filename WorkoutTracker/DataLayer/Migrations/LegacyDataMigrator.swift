@@ -18,6 +18,7 @@ actor LegacyDataMigrator {
             try modelContext.save()
         } catch {
             AppLog.migration.error("❌ Legacy migration save failed — sources kept for retry: \(error.localizedDescription, privacy: .public)")
+            TrackingManager.shared.recordError(error: error, additionalInfo: ["context": "LegacyDataMigrator"])
             return
         }
 

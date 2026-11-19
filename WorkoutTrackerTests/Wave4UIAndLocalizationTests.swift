@@ -383,4 +383,43 @@ struct Wave4UIAndLocalizationTests {
         #expect(bodyHeatmap.contains("if showLabels && isCompactMode"))
         #expect(bodyHeatmap.contains("1 exercise"))
     }
+
+    @Test("Crashlytics preserves original error domain, covers CloudKit/HealthKit/AI paths, and declares dSYM inputs")
+    func crashlyticsAndCloudKitReadinessChecks() throws {
+        let tracking = try readSource("WorkoutTracker/Services/Analytics/TrackingManager.swift")
+        #expect(tracking.contains("record(error: error, userInfo:"))
+        #expect(!tracking.contains("NSError(domain: \"WorkoutTracker\", code: 1"))
+
+        let appSource = try readSource("WorkoutTracker/AppCore/WorkoutTrackerApp.swift")
+        #expect(appSource.contains("CloudKit_SwiftData_fallback"))
+        #expect(appSource.contains("AnonymousAuthBootstrap"))
+
+        let hkManager = try readSource("WorkoutTracker/CoreLogic/Managers/HealthKitManager.swift")
+        #expect(hkManager.contains("HealthKit_saveWorkout"))
+        #expect(hkManager.contains("authorizationStatus(for:"))
+
+        let geminiClient = try readSource("WorkoutTracker/Services/AI/GeminiNetworkClient.swift")
+        #expect(geminiClient.contains("TrackingManager.shared.recordError"))
+
+        let templatePreview = try readSource("WorkoutTracker/Features/Workout/Views/TemplatePreviewSheetView.swift")
+        #expect(templatePreview.contains("TrackingManager.shared.recordError"))
+
+        let pbxproj = try readSource("WorkoutTracker.xcodeproj/project.pbxproj")
+        #expect(pbxproj.contains("${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Resources/DWARF/${PRODUCT_NAME}"))
+
+        // Verify none of the SwiftData models use @Attribute(.unique) which breaks CloudKit sync.
+        let modelFiles = [
+            "WorkoutTracker/DataLayer/Models/Workout.swift",
+            "WorkoutTracker/DataLayer/Models/WeightEntry.swift",
+            "WorkoutTracker/DataLayer/Models/MuscleColorPreference.swift",
+            "WorkoutTracker/DataLayer/Models/BodyMeasurement.swift",
+            "WorkoutTracker/DataLayer/Models/CustomExerciseModels.swift",
+            "WorkoutTracker/DataLayer/Models/UserGoal.swift",
+            "WorkoutTracker/DataLayer/Models/AIChatModels.swift"
+        ]
+        for file in modelFiles {
+            let content = try readSource(file)
+            #expect(!content.contains(".unique"), "CloudKit forbids @Attribute(.unique) in \(file)")
+        }
+    }
 }

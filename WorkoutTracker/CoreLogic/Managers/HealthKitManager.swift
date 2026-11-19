@@ -1,6 +1,7 @@
 import Foundation
 import OSLog
 import HealthKit
+import SwiftData
 internal import SwiftUI
 enum HealthKitError: LocalizedError {
     case notAvailable
@@ -178,15 +179,35 @@ actor HealthKitManager: Sendable {
         }
     }
 
+    nonisolated static func normalizedWorkoutInterval(
+        startDate: Date,
+        endDate: Date,
+        durationSeconds: Int
+    ) -> (startDate: Date, endDate: Date, durationSeconds: Double) {
+        let actualDuration = max(Double(durationSeconds), endDate.timeIntervalSince(startDate))
+        let safeEnd = endDate.timeIntervalSince(startDate) >= max(1.0, actualDuration * 0.5)
+            ? endDate
+            : startDate.addingTimeInterval(max(1.0, actualDuration))
+        return (startDate, safeEnd, max(actualDuration, safeEnd.timeIntervalSince(startDate)))
+    }
+
     nonisolated static func buildWorkoutPayload(
         title: String,
         calories: Int,
-        distanceMeters: Double
+        distanceMeters: Double,
+        hasCardioExercises: Bool = false
     ) -> (activityType: HKWorkoutActivityType, energyQuantity: HKQuantity, distanceQuantity: HKQuantity?) {
         let lowerTitle = title.lowercased()
-        let activityType: HKWorkoutActivityType = (lowerTitle.contains("cardio") || lowerTitle.contains("run"))
-            ? .running
-            : .traditionalStrengthTraining
+        let runningKeywords = ["run", "бег", "lauf", "course", "corrida", "corsa"]
+        let cardioKeywords = ["cardio", "кардио", "kardio", "cycling", "вело", "hiit"]
+        let activityType: HKWorkoutActivityType
+        if runningKeywords.contains(where: { lowerTitle.contains($0) }) {
+            activityType = .running
+        } else if cardioKeywords.contains(where: { lowerTitle.contains($0) }) || hasCardioExercises || distanceMeters > 0 {
+            activityType = distanceMeters > 0 ? .running : .mixedCardio
+        } else {
+            activityType = .traditionalStrengthTraining
+        }
         let energyQuantity = HKQuantity(unit: .kilocalorie(), doubleValue: Double(calories))
         let distanceQuantity: HKQuantity? = distanceMeters > 0
             ? HKQuantity(unit: .meter(), doubleValue: distanceMeters)
@@ -200,7 +221,8 @@ actor HealthKitManager: Sendable {
         endDate: Date,
         durationSeconds: Int,
         calories: Int,
-        distanceMeters: Double = 0
+        distanceMeters: Double = 0,
+        hasCardioExercises: Bool = false
     ) async throws {
         AppLog.health.debug("🔄 HealthKitManager: Initiating save...")
         guard isAvailable else {
@@ -208,15 +230,29 @@ actor HealthKitManager: Sendable {
             return
         }
 
-        let actualDuration = max(Double(durationSeconds), endDate.timeIntervalSince(startDate))
-        AppLog.health.debug("📊 Data: Duration = \(actualDuration) sec, Calories = \(calories) kcal, Distance = \(distanceMeters) m")
+        if healthStore.authorizationStatus(for: HKObjectType.workoutType()) == .sharingDenied {
+            AppLog.health.warning("⚠️ HealthKit: Workout write authorization denied.")
+            throw HealthKitError.unauthorized
+        }
 
-        guard actualDuration >= 60 else {
+        let interval = Self.normalizedWorkoutInterval(
+            startDate: startDate,
+            endDate: endDate,
+            durationSeconds: durationSeconds
+        )
+        AppLog.health.debug("📊 Data: Duration = \(interval.durationSeconds) sec, Calories = \(calories) kcal, Distance = \(distanceMeters) m")
+
+        guard interval.durationSeconds >= 60 else {
             AppLog.health.warning("⚠️ Cancelled: Workout is under 60 seconds. Apple Health will ignore it.")
             return
         }
 
-        let payload = Self.buildWorkoutPayload(title: title, calories: calories, distanceMeters: distanceMeters)
+        let payload = Self.buildWorkoutPayload(
+            title: title,
+            calories: calories,
+            distanceMeters: distanceMeters,
+            hasCardioExercises: hasCardioExercises
+        )
         let configuration = HKWorkoutConfiguration()
         configuration.activityType = payload.activityType
         configuration.locationType = .indoor
@@ -228,15 +264,18 @@ actor HealthKitManager: Sendable {
         )
 
         do {
-            try await builder.beginCollection(at: startDate)
+            try await builder.beginCollection(at: interval.startDate)
 
             var samples: [HKSample] = []
-            if calories > 0, let energyType = HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned) {
-                samples.append(HKQuantitySample(type: energyType, quantity: payload.energyQuantity, start: startDate, end: endDate))
+            if calories > 0,
+               let energyType = HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned),
+               healthStore.authorizationStatus(for: energyType) == .sharingAuthorized {
+                samples.append(HKQuantitySample(type: energyType, quantity: payload.energyQuantity, start: interval.startDate, end: interval.endDate))
             }
             if let distanceQuantity = payload.distanceQuantity,
-               let distanceType = HKQuantityType.quantityType(forIdentifier: .distanceWalkingRunning) {
-                samples.append(HKQuantitySample(type: distanceType, quantity: distanceQuantity, start: startDate, end: endDate))
+               let distanceType = HKQuantityType.quantityType(forIdentifier: .distanceWalkingRunning),
+               healthStore.authorizationStatus(for: distanceType) == .sharingAuthorized {
+                samples.append(HKQuantitySample(type: distanceType, quantity: distanceQuantity, start: interval.startDate, end: interval.endDate))
             }
 
             if !samples.isEmpty {
@@ -246,12 +285,64 @@ actor HealthKitManager: Sendable {
                 HKMetadataKeyWorkoutBrandName: "AI Workout",
                 "CustomTitle": title
             ])
-            try await builder.endCollection(at: endDate)
+            try await builder.endCollection(at: interval.endDate)
             _ = try await builder.finishWorkout()
             AppLog.health.debug("✅ SUCCESS: Workout saved via HKWorkoutBuilder!")
         } catch {
             AppLog.health.error("❌ HealthKit save ERROR: \(error.localizedDescription)")
+            TrackingManager.shared.recordError(
+                error: error,
+                additionalInfo: [
+                    "context": "HealthKit_saveWorkout",
+                    "duration_seconds": Int(interval.durationSeconds),
+                    "calories": calories
+                ]
+            )
             throw HealthKitError.saveFailed(error)
+        }
+    }
+
+    /// Requests HealthKit authorization, resolves real Apple Health weight if local weight is missing,
+    /// keeps FoodTracker daily calories in sync, and writes the workout + active calories to Apple Health.
+    func syncCompletedWorkout(
+        title: String,
+        startDate: Date,
+        endDate: Date,
+        durationSeconds: Int,
+        timingSnapshot: WorkoutTimingSnapshot,
+        distanceMeters: Double,
+        hasCardioExercises: Bool,
+        initialCalories: Int,
+        modelContainer: ModelContainer,
+        sourceContext: String
+    ) async {
+        do {
+            try await requestAuthorization()
+            var finalCalories = initialCalories
+            if finalCalories == 0,
+               let hkWeight = try? await fetchLatestWeight(),
+               hkWeight > 10 {
+                if BodyMetricStore.weightKilograms() == nil {
+                    UserDefaults.standard.set(hkWeight, forKey: Constants.UserDefaultsKeys.userBodyWeight.rawValue)
+                }
+                finalCalories = CalorieCalculator.calculate(from: timingSnapshot, userWeight: hkWeight)
+                await WorkoutStore(modelContainer: modelContainer).syncSharedDailyCalories(for: startDate, userWeightKg: hkWeight)
+            }
+            try await saveWorkout(
+                title: title,
+                startDate: startDate,
+                endDate: endDate,
+                durationSeconds: durationSeconds,
+                calories: finalCalories,
+                distanceMeters: distanceMeters,
+                hasCardioExercises: hasCardioExercises
+            )
+        } catch {
+            AppLog.health.error("❌ \(sourceContext): HealthKit sync error - \(error.localizedDescription, privacy: .public)")
+            TrackingManager.shared.recordError(
+                error: error,
+                additionalInfo: ["context": sourceContext]
+            )
         }
     }
 

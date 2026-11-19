@@ -627,23 +627,26 @@ final class WorkoutService {
                 let wDuration = workout.durationSeconds > 0 ? workout.durationSeconds : Int(wEnd.timeIntervalSince(wStart))
 
                 let userWeight = BodyMetricStore.weightKilograms() ?? 0
-                let burnedCalories = CalorieCalculator.calculate(for: workout, userWeight: userWeight)
+                let timingSnapshot = CalorieCalculator.workoutTimingSnapshot(for: workout)
+                let flatExercises = workout.exercises.flatMap { $0.isSuperset ? $0.subExercises : [$0] }
+                let hasCardioExercises = flatExercises.contains { $0.type == .cardio }
+                let burnedCalories = CalorieCalculator.calculate(from: timingSnapshot, userWeight: userWeight)
                 let wDistance = max(workout.computedCardioDistanceMeters, workout.totalCardioDistance)
+                let container = analyticsService.modelContainer
 
                 Task.detached {
-                    do {
-                        try await HealthKitManager.shared.requestAuthorization()
-                        try await HealthKitManager.shared.saveWorkout(
-                            title: wTitle,
-                            startDate: wStart,
-                            endDate: wEnd,
-                            durationSeconds: wDuration,
-                            calories: burnedCalories,
-                            distanceMeters: wDistance
-                        )
-                    } catch {
-                        AppLog.session.error("⚠️ Failed to sync workout to HealthKit: \(error.localizedDescription, privacy: .public)")
-                    }
+                    await HealthKitManager.shared.syncCompletedWorkout(
+                        title: wTitle,
+                        startDate: wStart,
+                        endDate: wEnd,
+                        durationSeconds: wDuration,
+                        timingSnapshot: timingSnapshot,
+                        distanceMeters: wDistance,
+                        hasCardioExercises: hasCardioExercises,
+                        initialCalories: burnedCalories,
+                        modelContainer: container,
+                        sourceContext: "WorkoutService_HealthKit"
+                    )
                 }
             } catch {
                 appState.showError(title: "Process Failed", message: "Could not process completed workout: \(error.localizedDescription)")
@@ -702,6 +705,7 @@ final class WorkoutService {
             if activeIDs.isEmpty { stopLiveActivity() }
         } catch {
             AppLog.session.error("Cleanup failed: \(error.localizedDescription)")
+            TrackingManager.shared.recordError(error: error, additionalInfo: ["context": "WorkoutService_cleanup"])
         }
     }
 
@@ -709,7 +713,7 @@ final class WorkoutService {
         do {
             try await workoutStore.applyAIAdjustment(adjustment, workoutID: workout.persistentModelID)
         } catch {
-            appState.showError(title: "AI Update Failed", message: "Could not apply AI recommendations: \(error.localizedDescription)")
+            appState.showError(title: "AI Update Failed", message: "Could not apply AI recommendations: \(error.localizedDescription)", underlyingError: error)
         }
     }
 
@@ -718,6 +722,7 @@ final class WorkoutService {
             try await exerciseCatalogService.checkAndGenerateDefaultPresets()
         } catch {
             AppLog.session.error("Failed to generate default presets: \(error.localizedDescription)")
+            TrackingManager.shared.recordError(error: error, additionalInfo: ["context": "WorkoutService_defaultPresets"])
         }
     }
 

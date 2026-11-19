@@ -2,13 +2,15 @@
 
 import Foundation
 
+struct WorkoutTimingSnapshot: Sendable {
+    let strengthActiveSeconds: Int
+    let cardioActiveSeconds: Int
+    let totalWorkoutSeconds: Int
+}
+
 struct CalorieCalculator: Sendable {
 
-    static func calculate(for workout: Workout, userWeight: Double) -> Int {
-        // Missing or placeholder weight must not burn calories as a made-up 75 kg body.
-        guard userWeight > 10 else { return 0 }
-        let safeWeight = userWeight
-
+    static func workoutTimingSnapshot(for workout: Workout) -> WorkoutTimingSnapshot {
         var totalStrengthActiveSeconds = 0
         var totalCardioActiveSeconds = 0
 
@@ -21,10 +23,8 @@ struct CalorieCalculator: Sendable {
 
                 switch ex.type {
                 case .strength:
-
                     totalStrengthActiveSeconds += completedSets.count * 40
                 case .duration, .cardio:
-
                     let timeInSeconds = completedSets.compactMap { $0.time }.reduce(0, +)
                     totalCardioActiveSeconds += timeInSeconds > 0 ? timeInSeconds : (completedSets.count * 60)
                 }
@@ -40,17 +40,31 @@ struct CalorieCalculator: Sendable {
             return max(1, active)
         }()
 
-        let actualStrengthActive = min(totalStrengthActiveSeconds, totalWorkoutSeconds)
-        let actualCardioActive = min(totalCardioActiveSeconds, totalWorkoutSeconds - actualStrengthActive)
+        return WorkoutTimingSnapshot(
+            strengthActiveSeconds: totalStrengthActiveSeconds,
+            cardioActiveSeconds: totalCardioActiveSeconds,
+            totalWorkoutSeconds: totalWorkoutSeconds
+        )
+    }
 
-        let restingSeconds = max(0, totalWorkoutSeconds - actualStrengthActive - actualCardioActive)
+    static func calculate(from snapshot: WorkoutTimingSnapshot, userWeight: Double) -> Int {
+        // Missing or placeholder weight must not burn calories as a made-up 75 kg body.
+        guard userWeight > 10 else { return 0 }
+        let safeWeight = userWeight
+
+        let actualStrengthActive = min(snapshot.strengthActiveSeconds, snapshot.totalWorkoutSeconds)
+        let actualCardioActive = min(snapshot.cardioActiveSeconds, snapshot.totalWorkoutSeconds - actualStrengthActive)
+        let restingSeconds = max(0, snapshot.totalWorkoutSeconds - actualStrengthActive - actualCardioActive)
 
         let strengthCals = (Double(actualStrengthActive) / 3600.0) * 6.0 * safeWeight
         let cardioCals = (Double(actualCardioActive) / 3600.0) * 8.0 * safeWeight
         let restingCals = (Double(restingSeconds) / 3600.0) * 2.0 * safeWeight
 
         let totalCals = strengthCals + cardioCals + restingCals
-
         return max(10, Int(totalCals))
+    }
+
+    static func calculate(for workout: Workout, userWeight: Double) -> Int {
+        calculate(from: workoutTimingSnapshot(for: workout), userWeight: userWeight)
     }
 }

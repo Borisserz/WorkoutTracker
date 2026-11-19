@@ -26,11 +26,27 @@ final class AppStateManager {
     var showSmartBuilderSheet: Bool = false
     var showAISettingsSheet: Bool = false
 
-    func showError(title: String, message: String) {
+    func showError(title: String, message: String, underlyingError: Error? = nil) {
         self.currentError = AppError(title: title, message: message)
-        
-        // Convert to an NSError for Crashlytics non-fatal error logging
-        let error = NSError(domain: "AppStateManager", code: -1, userInfo: [
+
+        if let underlyingError {
+            TrackingManager.shared.recordError(
+                error: underlyingError,
+                additionalInfo: [
+                    "screen": "AppStateManager.showError",
+                    "alert_title": title,
+                    "alert_message": message
+                ]
+            )
+            return
+        }
+
+        let safeTitle = title
+            .components(separatedBy: CharacterSet.alphanumerics.inverted)
+            .filter { !$0.isEmpty }
+            .joined(separator: "_")
+        let domain = safeTitle.isEmpty ? "AppStateManager" : "AppStateManager.\(safeTitle)"
+        let error = NSError(domain: domain, code: -1, userInfo: [
             NSLocalizedDescriptionKey: message,
             "title": title
         ])

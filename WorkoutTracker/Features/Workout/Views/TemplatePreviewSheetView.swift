@@ -486,6 +486,10 @@ struct TemplatePreviewSheetView: View {
                     }
                 } catch {
                     AppLog.ui.error("❌ The sharing error: \(error.localizedDescription, privacy: .public)")
+                    TrackingManager.shared.recordError(
+                        error: error,
+                        additionalInfo: ["context": "TemplatePreviewSheet_shareWorkout"]
+                    )
                     await MainActor.run {
                         self.shareErrorMessage = error.localizedDescription
                         self.isSharing = false

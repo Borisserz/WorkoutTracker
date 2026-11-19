@@ -56,6 +56,7 @@ final class FirestoreProgramService {
                     fetchedLegendary.append(routine)
                 } catch {
                     AppLog.firestore.error("❌ Error decoding FBLegendaryRoutine for doc \(doc.documentID): \(error.localizedDescription, privacy: .public)")
+                    TrackingManager.shared.recordError(error: error, additionalInfo: ["context": "FirestoreProgramService_legendary", "doc_id": doc.documentID])
                 }
             }
 
@@ -78,6 +79,7 @@ final class FirestoreProgramService {
                     fetchedPrograms.append(prog)
                 } catch {
                     AppLog.firestore.error("❌ Error decoding FBWorkoutProgram for doc \(doc.documentID): \(error.localizedDescription, privacy: .public)")
+                    TrackingManager.shared.recordError(error: error, additionalInfo: ["context": "FirestoreProgramService_explore", "doc_id": doc.documentID])
                 }
             }
 
@@ -86,6 +88,7 @@ final class FirestoreProgramService {
             log.info("☁️ Catalog loaded: \(fetchedLegendary.count) legendary, \(fetchedPrograms.count) explore")
         } catch {
             log.error("☁️ Catalog load failed: \(error.localizedDescription, privacy: .public)")
+            TrackingManager.shared.recordError(error: error, additionalInfo: ["context": "FirestoreProgramService_load"])
         }
 
         isLoading = false
